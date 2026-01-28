@@ -1,0 +1,73 @@
+---
+interface Props {
+	delay?: number
+	duration?: number
+	direction?: 'up' | 'down' | 'left' | 'right' | 'none'
+	class?: string
+}
+
+const { delay = 0, duration = 0.5, direction = 'up', class: className = '' } = Astro.props
+---
+
+<div class:list={['fade-in-wrapper opacity-0', className]} data-delay={delay} data-duration={duration} data-direction={direction}>
+	<slot />
+</div>
+
+<script>
+	import { animate, inView } from 'motion'
+
+	// Initialize animations for all fade-in wrappers
+	const wrappers = document.querySelectorAll('.fade-in-wrapper')
+
+	wrappers.forEach((wrapper) => {
+		const delay = Number((wrapper as HTMLElement).dataset.delay) || 0
+		const duration = Number((wrapper as HTMLElement).dataset.duration) || 0.5
+		const direction = (wrapper as HTMLElement).dataset.direction
+
+		let initialTransform = {}
+		if (direction === 'up') initialTransform = { y: 20 }
+		else if (direction === 'down') initialTransform = { y: -20 }
+		else if (direction === 'left') initialTransform = { x: 20 }
+		else if (direction === 'right') initialTransform = { x: -20 }
+		
+		inView(wrapper, () => {
+			animate(
+				wrapper,
+				{ opacity: [0, 1], ...initialTransform, y: [initialTransform.y || 0, 0], x: [initialTransform.x || 0, 0] },
+				{ duration, delay, easing: 'ease-out' }
+			)
+		}, { amount: 0.2 })
+	})
+
+  // Re-run on View Transitions
+  document.addEventListener('astro:page-load', () => {
+    const wrappers = document.querySelectorAll('.fade-in-wrapper')
+    wrappers.forEach((wrapper) => {
+      // Logic duplicated for re-init (ideal to extract to function, but inline is fine for this scope)
+      const delay = Number((wrapper as HTMLElement).dataset.delay) || 0
+      const duration = Number((wrapper as HTMLElement).dataset.duration) || 0.5
+      const direction = (wrapper as HTMLElement).dataset.direction
+
+      let initialTransform: any = { opacity: 0 }
+      if (direction === 'up') initialTransform.y = 20
+      else if (direction === 'down') initialTransform.y = -20
+      else if (direction === 'left') initialTransform.x = 20
+      else if (direction === 'right') initialTransform.x = -20
+      
+      // Reset style for re-animation if needed or ensuring it starts hidden
+      ;(wrapper as HTMLElement).style.opacity = '0'
+      
+      inView(wrapper, () => {
+        const keyframes: any = { opacity: [0, 1] }
+        if (initialTransform.y) keyframes.y = [initialTransform.y, 0]
+        if (initialTransform.x) keyframes.x = [initialTransform.x, 0]
+
+        animate(
+          wrapper,
+          keyframes,
+          { duration, delay, easing: 'ease-out' }
+        )
+      })
+    })
+  })
+</script>

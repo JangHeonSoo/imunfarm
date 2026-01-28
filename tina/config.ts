@@ -41,7 +41,10 @@ export default defineConfig({
 						name: 'category',
 						label: 'Category',
 						description: 'Select an category for this post',
-						options: [...CATEGORIES]
+						options: CATEGORIES.map((category) => ({
+							label: category.title,
+							value: category.slug
+						}))
 					},
 					{
 						type: 'string',

@@ -4,29 +4,35 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProviderTheme from '@/components/ProviderTheme'
 import ProviderAnimations from '@/components/ProviderAnimations'
-import TwSizeIndicator from '@/components/TwSizeIndicator'
-import EditBlog from '@/components/editBlog'
 import Mermaid, { MermaidModule } from '../components/mermaid'
+import { siteConfig } from '@/site-config'
 const { title, description, image, articleDate } = Astro.props
 ---
 
-<html lang='en' class='scroll-smooth'>
+<html lang={siteConfig.lang} class='scroll-smooth'>
 	<head>
 		<BaseHead title={title} description={description} ogImage={image} articleDate={articleDate} />
 		<ProviderTheme />
 		<ProviderAnimations />
+		<!-- Google Fonts -->
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+		<!-- Google AdSense -->
+		<script
+			async
+			src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX'
+			crossorigin='anonymous'></script>
 	</head>
 
-	<body class='bg-white text-stone-950 dark:bg-[#0a0910] dark:text-white'>
+	<body class='bg-bg-light text-text-main dark:bg-[#0a0910] dark:text-white'>
 		<main
-			class='px-5 sm:mx-auto sm:max-w-2xl sm:px-8 lg:px-0 antialiased md:max-w-6xl grid gap-12 mt-4 overflow-hidden md:overflow-visible'
+			class='px-5 sm:mx-auto sm:px-8 lg:px-0 antialiased max-w-7xl grid gap-12 pt-20 overflow-hidden md:overflow-visible'
 		>
 			<Header />
 			<slot />
 			<Footer />
 		</main>
-		<TwSizeIndicator />
-		<EditBlog />
 		<style>
 			body {
 				margin-left: calc(100vw - 100%); /* prevent layout shift */

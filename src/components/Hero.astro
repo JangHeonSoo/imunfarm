@@ -1,0 +1,77 @@
+---
+interface Props {
+	title?: string
+	subtitle?: string
+	stats?: { label: string; value: string }[]
+	backgroundImage?: string
+}
+
+const { 
+	title = 'IMUN FARM', 
+	subtitle = '경북 구미시 선산 이문리 | 농사, 농기계, 영농형 태양광',
+	stats = [
+		{ label: '포스트', value: '120+' },
+		{ label: '방문자', value: '5k+' },
+		{ label: '친환경', value: '100%' }
+	],
+	backgroundImage
+} = Astro.props
+---
+
+<section class='relative h-[80vh] min-h-[600px] flex items-center justify-center text-white text-center overflow-hidden -mt-20'>
+	{backgroundImage && (
+		<>
+			<img src={backgroundImage} alt='Farm Landscape' class='absolute top-0 left-0 w-full h-full object-cover -z-20' />
+			<div class='absolute top-0 left-0 w-full h-full bg-gradient-to-b from-black/20 to-black/60 -z-10'></div>
+		</>
+	)}
+	
+	<div class='container mx-auto px-5 z-10'>
+		<h1 class='text-6xl md:text-8xl font-heading font-extrabold mb-5 tracking-tight fade-in'>
+			{title}
+		</h1>
+		<p class='text-xl md:text-2xl font-light max-w-3xl mx-auto mb-10 opacity-90 fade-in-delay-1'>
+			{subtitle}
+		</p>
+		
+		{stats && stats.length > 0 && (
+			<div class='flex justify-center gap-12 md:gap-16 mt-10 fade-in-delay-2'>
+				{stats.map((stat) => (
+					<div class='flex flex-col text-sm uppercase tracking-wide'>
+						<span class='text-3xl md:text-4xl font-heading font-bold'>{stat.value}</span>
+						{stat.label}
+					</div>
+				))}
+			</div>
+		)}
+	</div>
+</section>
+
+<style>
+	.fade-in {
+		opacity: 0;
+		transform: translateY(30px);
+		animation: fadeInUp 1s forwards cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+	
+	.fade-in-delay-1 {
+		opacity: 0;
+		transform: translateY(30px);
+		animation: fadeInUp 1s forwards cubic-bezier(0.2, 0.8, 0.2, 1);
+		animation-delay: 0.2s;
+	}
+	
+	.fade-in-delay-2 {
+		opacity: 0;
+		transform: translateY(30px);
+		animation: fadeInUp 1s forwards cubic-bezier(0.2, 0.8, 0.2, 1);
+		animation-delay: 0.4s;
+	}
+	
+	@keyframes fadeInUp {
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+</style>

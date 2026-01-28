@@ -51,15 +51,15 @@ interface SiteConfig {
 
 export const siteConfig: SiteConfig = {
 	author: {
-		name: `Rizky Maulana Nugraha`,
-		summary: `Software Developer. Currently remotely working from Indonesia.`
+		name: `Imun Farm`,
+		summary: `경북 구미에서 쌀, 샤인머스켓 포도, 감자, 수박, 메론을 재배하는 농장입니다.`
 	},
-	title: `Maulana's Astro Theme`,
-	description: `Personal blog theme.`,
-	siteUrl: `https://astro-starter.maulana.id/`,
+	title: `imun.farm - 농업 지식 공유 블로그`,
+	description: `경북 구미 실전 농업 노하우와 농사 기록`,
+	siteUrl: `https://imun.farm/`,
 	social: {
-		twitter: `maulana_pcfre`,
-		github: `lucernae`
+		twitter: ``,
+		github: ``
 	},
 	config: {
 		// contentPath: `${__dirname}/../content`,
@@ -90,8 +90,8 @@ export const siteConfig: SiteConfig = {
 			queries: queries
 		}
 	},
-	lang: 'en-US',
-	ogLocale: 'en_US',
+	lang: 'ko-KR',
+	ogLocale: 'ko_KR',
 	shareMessage: 'Share this post', // Message to share a post on social media
 	paginationSize: 6 // Number of posts per page
 }

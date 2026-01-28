@@ -1,0 +1,159 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import FadeIn from '../components/FadeIn.astro'
+---
+
+<BaseLayout title="협찬 문의" description="이문농장 협찬 및 제휴 문의 안내">
+
+<div class="min-h-screen flex flex-col lg:flex-row relative">
+  
+  <!-- Left Column: Inspiring Image (Sticky on Desktop) -->
+  <div class="lg:w-1/2 relative min-h-[400px] lg:h-screen lg:sticky lg:top-0 z-0">
+    <div class="absolute inset-0">
+      <img src="/images/solar-farm.png" alt="농업의 미래 파트너십" class="w-full h-full object-cover" />
+      <div class="absolute inset-0 bg-primary-dark/40 mix-blend-multiply"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-black/50"></div>
+    </div>
+    
+    <div class="absolute bottom-10 left-10 right-10 text-white z-10">
+      <FadeIn delay={0.2} direction="up">
+        <h1 class="text-4xl lg:text-5xl font-heading font-extrabold mb-4 leading-tight">
+          농업의 미래를<br/>함께 만들어갑니다.
+        </h1>
+        <p class="text-lg lg:text-xl text-white/90 font-light max-w-md">
+          이문농장과 함께 혁신적인 농업 기술과 제품을<br/>세상에 알릴 파트너를 찾습니다.
+        </p>
+      </FadeIn>
+    </div>
+  </div>
+
+  <!-- Right Column: Content (Scrollable) -->
+  <div class="lg:w-1/2 bg-white dark:bg-[#0a0910] relative z-10">
+    <div class="max-w-2xl mx-auto px-6 py-20 lg:py-32">
+      
+      <FadeIn direction="up">
+        <div class="mb-16">
+          <span class="text-primary font-bold tracking-widest uppercase text-sm mb-2 block">Partnership</span>
+          <h2 class="text-3xl font-heading font-bold mb-6 text-text-main dark:text-white">협찬 및 제휴 문의</h2>
+          <p class="text-text-muted dark:text-gray-400 text-lg leading-relaxed">
+            농기계, 스마트팜 솔루션, 친환경 자재 등<br/>
+            농업 현장에서 가치를 발휘할 수 있는 모든 제안을 환영합니다.
+          </p>
+        </div>
+      </FadeIn>
+
+      <!-- Category Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+        <FadeIn delay={0.1} class="h-full">
+          <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/30 transition-colors h-full">
+            <div class="text-3xl mb-4">🚜</div>
+            <h3 class="font-bold text-lg mb-2">농기계 & 장비</h3>
+            <p class="text-sm text-text-muted dark:text-gray-400">트랙터, 드론, 자동화 설비 실증 테스트</p>
+          </div>
+        </FadeIn>
+        
+        <FadeIn delay={0.2} class="h-full">
+          <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/30 transition-colors h-full">
+            <div class="text-3xl mb-4">🌱</div>
+            <h3 class="font-bold text-lg mb-2">친환경 농자재</h3>
+            <p class="text-sm text-text-muted dark:text-gray-400">비료, 종자, 스마트팜 양액 솔루션</p>
+          </div>
+        </FadeIn>
+
+        <FadeIn delay={0.3} class="h-full">
+          <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/30 transition-colors h-full">
+            <div class="text-3xl mb-4">☀️</div>
+            <h3 class="font-bold text-lg mb-2">에너지 솔루션</h3>
+            <p class="text-sm text-text-muted dark:text-gray-400">영농형 태양광, ESS, 에너지 관리</p>
+          </div>
+        </FadeIn>
+
+        <FadeIn delay={0.4} class="h-full">
+          <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/30 transition-colors h-full">
+            <div class="text-3xl mb-4">🤝</div>
+            <h3 class="font-bold text-lg mb-2">콘텐츠 협업</h3>
+            <p class="text-sm text-text-muted dark:text-gray-400">유튜브/블로그 브랜디드 콘텐츠 제작</p>
+          </div>
+        </FadeIn>
+      </div>
+
+      <!-- Process Steps -->
+      <FadeIn direction="up">
+        <div class="relative py-10 mb-16 border-t border-b border-gray-100 dark:border-gray-800">
+           <h3 class="font-heading font-bold text-xl mb-8">진행 절차</h3>
+           <div class="flex flex-col md:flex-row justify-between relative">
+             <div class="absolute top-[15px] left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-700 hidden md:block -z-10"></div>
+             
+             <div class="flex md:flex-col items-center gap-4 md:gap-2 mb-6 md:mb-0 bg-white dark:bg-[#0a0910] md:bg-transparent pr-4 md:pr-0">
+               <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-md">1</div>
+               <span class="text-sm font-medium">문의 접수</span>
+             </div>
+             <div class="flex md:flex-col items-center gap-4 md:gap-2 mb-6 md:mb-0 bg-white dark:bg-[#0a0910] md:bg-transparent pr-4 md:pr-0">
+               <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 flex items-center justify-center font-bold text-sm">2</div>
+               <span class="text-sm font-medium">검토 및 회신</span>
+             </div>
+             <div class="flex md:flex-col items-center gap-4 md:gap-2 mb-6 md:mb-0 bg-white dark:bg-[#0a0910] md:bg-transparent pr-4 md:pr-0">
+               <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 flex items-center justify-center font-bold text-sm">3</div>
+               <span class="text-sm font-medium">미팅 및 협의</span>
+             </div>
+             <div class="flex md:flex-col items-center gap-4 md:gap-2 bg-white dark:bg-[#0a0910] md:bg-transparent">
+               <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 flex items-center justify-center font-bold text-sm">4</div>
+               <span class="text-sm font-medium">파트너십 체결</span>
+             </div>
+           </div>
+        </div>
+      </FadeIn>
+
+      <!-- Email CTA -->
+      <FadeIn direction="up">
+        <div class="bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden group border border-gray-100 dark:border-gray-700">
+          <div class="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 dark:bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/20 dark:group-hover:bg-primary/30 transition-colors"></div>
+          
+          <h3 class="text-2xl font-bold mb-2">지금 바로 문의하세요</h3>
+          <p class="text-gray-600 dark:text-gray-400 mb-8 text-sm">3영업일 이내에 담당자가 직접 회신드립니다.</p>
+          
+          <a href="mailto:sponsor@imun.farm" class="block w-full text-center py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-primary/20">
+            sponsor@imun.farm
+          </a>
+          
+          <div class="mt-6 flex justify-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+            <span>📞 054-XXX-XXXX</span>
+            <span>📍 경북 구미시 선산 이문리</span>
+          </div>
+        </div>
+      </FadeIn>
+      
+      <!-- FAQ Accordion (Simple JS) -->
+      <div class="mt-16">
+        <h3 class="font-heading font-bold text-xl mb-6">자주 묻는 질문</h3>
+        <div class="space-y-4">
+           <details class="group border-b border-gray-100 dark:border-gray-800 pb-4">
+             <summary class="flex justify-between items-center font-medium cursor-pointer list-none">
+               <span>제품 반환 여부가 궁금합니다</span>
+               <span class="transition group-open:rotate-180">
+                 <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+               </span>
+             </summary>
+             <p class="text-text-muted dark:text-gray-400 mt-3 text-sm leading-relaxed">
+               소모성 자재는 반환하지 않으며, 고가의 장비는 협의 후 반환 또는 매입 결정을 진행합니다.
+             </p>
+           </details>
+           <details class="group border-b border-gray-100 dark:border-gray-800 pb-4">
+             <summary class="flex justify-between items-center font-medium cursor-pointer list-none">
+               <span>방문 미팅이 가능한가요?</span>
+               <span class="transition group-open:rotate-180">
+                 <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+               </span>
+             </summary>
+             <p class="text-text-muted dark:text-gray-400 mt-3 text-sm leading-relaxed">
+               네, 사전 일정을 조율하여 구미 농장 현장에서 미팅 진행이 가능합니다. 현장을 직접 확인하시길 권장드립니다.
+             </p>
+           </details>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</BaseLayout>

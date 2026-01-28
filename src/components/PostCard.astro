@@ -16,88 +16,44 @@ const categorySlug = sluglify(getCategoryName(category).toLowerCase())
 const categoryTitle = getCategoryTitleFromSlug(categorySlug)
 ---
 
-<article
-	class={`${
-		displayAsRows
-			? 'grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6 min-h-full group'
-			: `grid min-h-full group ${
-					heroImage ? 'grid-rows-[300px_auto] md:grid-rows-[300px_220px]' : 'grid-rows-[auto]'
-				}`
-	} border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden transition-all duration-200 hover:shadow-sm`}
->
-	{
-		heroImage ? (
-			<a class='relative overflow-hidden' href={`/${categorySlug}/${slug}/`}>
-				<Image
-					src={heroImage}
-					width={600}
-					height={200}
-					format='webp'
-					class='h-full min-w-full object-cover hover:scale-[101%] transition-all duration-200 rounded-[2px]'
-					alt={`img of ${title}`}
-				/>
-
-				<div class='z-30 absolute bottom-0 w-full h-20'>
-					<div class='-z-10 absolute bottom-0 glass w-full min-h-full' />
-					<div class='flex items-center justify-between gap-x-1 text-white px-6 py-4'>
-						<div class='flex flex-col gap-1 items-center justify-center'>
-							<FormattedDate date={pubDate} />
-							<span class='text-sm'> {readTime}</span>
-						</div>
-						<span class='pb-4'>{categoryTitle}</span>
-					</div>
-				</div>
-			</a>
-		) : (
-			<div class='bg-gray-100 dark:bg-gray-800 rounded-[2px] p-6 mb-4'>
-				<div class='flex justify-between items-center mb-4'>
-					<div class='flex flex-col gap-1'>
-						<FormattedDate date={pubDate} />
-						<span class='text-sm'>{readTime}</span>
-					</div>
-					<span>{categoryTitle}</span>
-				</div>
-				<p class='text-gray-700 dark:text-white line-clamp-6'>{description}</p>
-			</div>
-		)
-	}
-
-	<div class='flex justify-between flex-col gap-4 md:gap-0 py-6 px-4'>
-		<div class='flex flex-col gap-3'>
-			<div class='flex flex-col gap-2'>
-				<a class='text-2xl font-semibold -tracking-wider' href={`/${categorySlug}/${slug}/`}>
-					{title}
-				</a>
-			</div>
-
-			{
-				heroImage && !displayAsRows && (
-					<p class='overflow-hidden line-clamp-6 text-gray-700 dark:text-white mb-5 font-[400]'>
-						{description}
-					</p>
-				)
-			}
-			{
-				displayAsRows && (
-					<p class='overflow-hidden line-clamp-4 text-gray-700 dark:text-white mb-5 font-[400]'>
-						{description}
-					</p>
-				)
-			}
-		</div>
-
-		<footer class='flex justify-between items-center'>
-			<a
-				href={`/${categorySlug}/${slug}/`}
-				class='flex justify-center items-center dark:text-white rounded-full hover:translate-x-1 transition-transform duration-150 ease-in-out font-semibold gap-1 group'
-				aria-label={`go to ${title}`}
-			>
-				Read Post <span
-					class='mt-[1px] group-hover:rotate-45 transition-transform duration-250 ease-in-out'
-					><ArrowUp width='18' height='18' /></span
-				>
-			</a>
-		</footer>
+<article class='bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-card transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-pointer group'>
+	{heroImage && (
+		<a href={`/${categorySlug}/${slug}/`} class='relative block h-60 overflow-hidden'>
+			<Image
+				src={heroImage}
+				width={600}
+				height={240}
+				format='webp'
+				class='w-full h-full object-cover transition-transform duration-300 group-hover:scale-105'
+				alt={`img of ${title}`}
+			/>
+			<span class='absolute top-5 left-5 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold'>
+				{categoryTitle}
+			</span>
+		</a>
+	)}
+	
+	<div class='p-8'>
+		<span class='block text-sm text-text-muted dark:text-gray-400 mb-2.5'>
+			<FormattedDate date={pubDate} />
+		</span>
+		
+		<a href={`/${categorySlug}/${slug}/`}>
+			<h3 class='text-2xl font-heading font-semibold mb-4 text-text-main dark:text-white group-hover:text-primary transition-colors'>
+				{title}
+			</h3>
+		</a>
+		
+		<p class='text-base text-text-muted dark:text-gray-300 mb-5 line-clamp-3'>
+			{description}
+		</p>
+		
+		<a 
+			href={`/${categorySlug}/${slug}/`}
+			class='inline-block text-primary dark:text-primary font-semibold hover:text-primary-dark transition-all hover:ml-1'
+		>
+			자세히 보기 →
+		</a>
 	</div>
 </article>
 

@@ -1,19 +1,23 @@
 // List of categories for blog posts
 export const CATEGORIES = [
 	{
-		title: 'All',
-		slug: 'all'
+		title: '재배',
+		slug: 'farming'
 	},
 	{
-		title: 'Blogs',
-		slug: 'blogs'
+		title: '시즌 노트',
+		slug: 'seasonal-notes'
 	},
 	{
-		title: 'Physics',
-		slug: 'physics'
+		title: '스마트팜',
+		slug: 'smartfarm'
 	},
 	{
-		title: 'Software Development',
-		slug: 'soft-dev'
+		title: '태양광',
+		slug: 'solar'
+	},
+	{
+		title: '농기계 리뷰',
+		slug: 'equipment-review'
 	}
 ] as const

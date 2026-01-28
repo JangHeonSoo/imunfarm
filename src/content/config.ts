@@ -15,7 +15,7 @@ const createBlogSchema = ({ image }: SchemaContext) =>
 			.or(z.date())
 			.transform((val) => new Date(val))
 			.optional(),
-		heroImage: image().optional(),
+		heroImage: image().or(z.string()).optional(),
 		category: z
 			.enum([CATEGORIES[0].slug, ...CATEGORIES.slice(1).map((c) => c.slug)])
 			.or(z.string())
@@ -40,25 +40,4 @@ const blog = defineCollection({
 	}
 })
 
-const blogs = defineCollection({
-	// Type-check frontmatter using a schema
-	schema: ({ image }) => {
-		return createBlogSchema({ image })
-	}
-})
-
-const physics = defineCollection({
-	// Type-check frontmatter using a schema
-	schema: ({ image }) => {
-		return createBlogSchema({ image })
-	}
-})
-
-const softDev = defineCollection({
-	// Type-check frontmatter using a schema
-	schema: ({ image }) => {
-		return createBlogSchema({ image })
-	}
-})
-
-export const collections = { blog, blogs, physics, 'soft-dev': softDev }
+export const collections = { blog }

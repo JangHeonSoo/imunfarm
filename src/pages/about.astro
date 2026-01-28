@@ -1,0 +1,173 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import FadeIn from '../components/FadeIn.astro'
+---
+
+<BaseLayout title="About IMUN.FARM" description="경북 구미시 선산 이문리에서 지속 가능한 농업을 실천하는 이문농장을 소개합니다.">
+
+<!-- Hero Section with Parallax Effect -->
+<div class="relative h-[60vh] min-h-[500px] flex items-center justify-center overflow-hidden">
+  <div class="absolute inset-0 z-0">
+    <img src="/images/drone-farm.png" alt="이문농장 드론 전경" class="w-full h-full object-cover opacity-90" />
+    <div class="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-bg-light dark:to-[#0a0910]"></div>
+  </div>
+  
+  <div class="relative z-10 text-center px-4 max-w-4xl mx-auto mt-20">
+    <FadeIn delay={0.2} direction="up">
+      <h1 class="text-5xl md:text-7xl font-heading font-extrabold mb-6 text-white drop-shadow-lg tracking-tight">
+        IMUN<span class="text-primary">.FARM</span>
+      </h1>
+    </FadeIn>
+    <FadeIn delay={0.4} direction="up">
+      <p class="text-xl md:text-3xl text-white/90 font-light leading-relaxed drop-shadow-md">
+        전통의 지혜와 <span class="text-primary font-bold">첨단 기술</span>의 만남<br/>
+        <span class="text-lg md:text-xl mt-4 block opacity-80">경북 구미시 선산 이문리</span>
+      </p>
+    </FadeIn>
+  </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+
+  <!-- Intro Story (Scrollytelling) -->
+  <div class="max-w-3xl mx-auto text-center mb-32">
+    <FadeIn direction="up">
+      <h2 class="text-3xl md:text-4xl font-heading font-bold mb-8 leading-snug">
+        우리는 <span class="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">농업의 미래</span>를<br/>
+        가꾸고 있습니다.
+      </h2>
+    </FadeIn>
+    
+    <div class="space-y-6 text-lg md:text-xl text-text-muted dark:text-gray-300 leading-relaxed">
+      <FadeIn delay={0.2} direction="up">
+        <p>
+          이문농장은 <strong>3대째 이어져 내려오는 가족 농장</strong>입니다.<br/>
+          흙을 만지며 배운 정직함에 최신 스마트팜 기술을 더했습니다.
+        </p>
+      </FadeIn>
+      <FadeIn delay={0.4} direction="up">
+        <p>
+          우리의 목표는 단순합니다.<br/>
+          <strong class="text-primary">더 건강한 먹거리</strong>를, <strong class="text-secondary">더 지속 가능한 방식</strong>으로 생산하는 것.
+        </p>
+      </FadeIn>
+    </div>
+  </div>
+
+  <!-- Bento Grid Layout -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-32">
+    
+    <!-- Large Card: Shine Muscat (2x2) -->
+    <div class="md:col-span-2 md:row-span-2 relative group overflow-hidden rounded-3xl shadow-xl min-h-[400px]">
+      <FadeIn class="h-full" delay={0.1}>
+        <img src="/images/shine-muscat.png" alt="프리미엄 샤인머스켓" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
+          <span class="text-primary font-bold tracking-wider mb-2">PREMIUM QUALITY</span>
+          <h3 class="text-3xl md:text-4xl font-heading font-bold !text-white mb-2">샤인머스켓</h3>
+          <p class="text-white/90 text-lg">18Brix 이상의 고당도, 껍질째 먹는 달콤함</p>
+        </div>
+      </FadeIn>
+    </div>
+
+    <!-- Smart Farm (1x1 top-right) -->
+    <div class="relative group overflow-hidden rounded-3xl shadow-xl min-h-[250px] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+      <FadeIn class="h-full flex flex-col" delay={0.2}>
+        <div class="h-2/5 overflow-hidden">
+           <img src="/images/smart-farm.png" alt="스마트팜 데이터" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+        </div>
+        <div class="p-6 flex flex-col justify-center h-3/5">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="text-2xl">📱</span>
+            <h3 class="text-xl font-heading font-bold">데이터 농업</h3>
+          </div>
+          <p class="text-sm text-text-muted dark:text-gray-400">
+            토양 센서와 기상 데이터를 분석하여<br/>최적의 생육 환경 조성
+          </p>
+        </div>
+      </FadeIn>
+    </div>
+
+    <!-- Rice (1x1 bottom-right) -->
+    <div class="relative group overflow-hidden rounded-3xl shadow-lg bg-[#f8f9fa] dark:bg-gray-800 p-8 border border-gray-100 dark:border-gray-700 flex flex-col justify-center">
+      <FadeIn delay={0.3}>
+        <div class="flex justify-between items-start mb-4">
+          <h3 class="text-2xl font-heading font-bold">친환경 쌀</h3>
+          <span class="text-4xl">🌾</span>
+        </div>
+        <p class="text-text-muted dark:text-gray-400">우렁이 농법으로 키운<br/>건강하고 찰진 쌀</p>
+      </FadeIn>
+    </div>
+
+    <!-- Solar (3x1 Full Width) -->
+    <div class="md:col-span-3 relative group overflow-hidden rounded-3xl shadow-lg bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10 p-8 border border-primary/10">
+      <FadeIn delay={0.4}>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-3 mb-2">
+              <h3 class="text-2xl font-heading font-bold text-primary-dark dark:text-primary">영농형 태양광</h3>
+              <span class="text-3xl">☀️</span>
+            </div>
+            <p class="text-text-muted dark:text-gray-300">농사와 에너지 생산을 동시에 실현하는 미래 농업 모델</p>
+          </div>
+          <div class="md:text-right">
+             <span class="text-3xl font-bold text-secondary">100kW</span>
+             <span class="block text-sm opacity-70">친환경 에너지 생산</span>
+          </div>
+        </div>
+      </FadeIn>
+    </div>
+
+  </div>
+
+  <!-- Tech Specs Section (Glassmorphism) -->
+  <div class="relative rounded-3xl overflow-hidden mb-32">
+    <div class="absolute inset-0">
+      <img src="/images/solar-farm.png" alt="태양광 발전소" class="w-full h-full object-cover" />
+      <div class="absolute inset-0 bg-gray-900/90 backdrop-blur-sm"></div>
+    </div>
+    
+    <div class="relative z-10 p-10 md:p-20 text-center">
+      <FadeIn direction="up">
+        <h2 class="text-3xl md:text-5xl font-heading font-bold !text-white mb-12 drop-shadow-lg">Innovation Metrics</h2>
+      </FadeIn>
+      
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <FadeIn delay={0.1} direction="up">
+           <div class="text-white">
+             <div class="text-4xl md:text-5xl font-bold mb-2 text-primary drop-shadow-md">100kw</div>
+             <div class="text-sm md:text-base opacity-70 uppercase tracking-widest font-medium">Solar Power</div>
+           </div>
+        </FadeIn>
+        <FadeIn delay={0.2} direction="up">
+           <div class="text-white">
+             <div class="text-4xl md:text-5xl font-bold mb-2 text-secondary">30%</div>
+             <div class="text-sm md:text-base opacity-70 uppercase tracking-widest">Water Saved</div>
+           </div>
+        </FadeIn>
+        <FadeIn delay={0.3} direction="up">
+           <div class="text-4xl md:text-5xl font-bold mb-2 text-primary">0%</div>
+           <div class="text-sm md:text-base opacity-70 text-white uppercase tracking-widest">Pesticide</div>
+        </FadeIn>
+        <FadeIn delay={0.4} direction="up">
+           <div class="text-white">
+             <div class="text-4xl md:text-5xl font-bold mb-2 text-secondary">3rd</div>
+             <div class="text-sm md:text-base opacity-70 uppercase tracking-widest">Generation</div>
+           </div>
+        </FadeIn>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contact CTA -->
+  <div class="text-center pb-10">
+    <FadeIn direction="up">
+      <h2 class="text-3xl font-heading font-bold mb-6">함께 성장하고 싶으신가요?</h2>
+      <a href="/contact" class="inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all bg-primary rounded-full hover:bg-primary-dark hover:scale-105 shadow-lg shadow-primary/30">
+        협찬 및 제휴 문의하기 →
+      </a>
+    </FadeIn>
+  </div>
+
+</div>
+
+</BaseLayout>

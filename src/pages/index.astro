@@ -1,38 +1,190 @@
 ---
 import ListCategories from '@/components/ListCategories'
-import ListPosts from '@/components/ListPosts'
 import TitlePage from '@/components/TitlePage'
 import BaseLayout from '@/layouts/BaseLayout'
+import Hero from '@/components/Hero'
+import FadeIn from '../components/FadeIn.astro'
 import { getPosts } from '@/utils'
+import { siteConfig } from '@/site-config'
 
-const MAX_POSTS = 5 // max number of posts to show on the home page
+const MAX_POSTS = 7 // max number of posts to show on the home page (1 featured + 6 recent)
 const posts = await getPosts(MAX_POSTS)
+const featuredPost = posts[0]
+const recentPosts = posts.slice(1)
 ---
 
 <BaseLayout title='Home'>
-	<TitlePage title='Blog Title' />
-	<ListCategories />
+    <!-- Custom Hero Section -->
+    <div class="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
+        <!-- Background Image with Parallax-like fix -->
+        <div class="absolute inset-0 z-0">
+             <img src="/images/hero-farm.png" alt="Farm Hero" class="w-full h-full object-cover" />
+             <div class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"></div>
+             <div class="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-bg-light dark:to-gray-950"></div>
+        </div>
 
-	<div>
-		<h2 class='text-lg font-medium tracking-wide text-end'>Latest Posts</h2>
-		<ListPosts FirstBig={true} posts={posts} />
-	</div>
+        <div class="relative z-10 text-center px-4 max-w-5xl mx-auto mt-[-5vh]">
+            <FadeIn delay={0.2} direction="up">
+                <div class="inline-block mb-6 px-4 py-1.5 rounded-full border border-white/30 bg-white/10 backdrop-blur-md text-white/90 text-sm font-medium tracking-wider uppercase">
+                    Smart Farming & Technology
+                </div>
+                <h1 class="text-6xl md:text-8xl lg:text-9xl font-heading font-extrabold text-white mb-8 tracking-tight leading-tight drop-shadow-2xl">
+                    IMUN <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-green-400">FARM</span>
+                </h1>
+                <p class="text-xl md:text-2xl text-white/90 font-light max-w-2xl mx-auto leading-relaxed drop-shadow-lg">
+                    자연과 기술이 공존하는 스마트팜,<br class="hidden md:block"/>
+                    지속 가능한 농업의 미래를 만들어갑니다.
+                </p>
+                
+                <div class="mt-12 flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <a href="/about" class="px-8 py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-full transition-all hover:scale-105 shadow-xl shadow-primary/30 flex items-center gap-2">
+                        <span>농장 소개</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                    </a>
+                    <a href="/blog" class="px-8 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 text-white font-bold rounded-full transition-all hover:scale-105 flex items-center gap-2">
+                        <span>블로그 구경하기</span>
+                    </a>
+                </div>
+            </FadeIn>
+        </div>
+        
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce text-white/50">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+        </div>
+    </div>
+	
+    <!-- Main Content Area -->
+    <div class="max-w-7xl mx-auto px-4 py-20">
+        
+        <!-- Categories Section -->
+        <div class="mb-24">
+            <FadeIn delay={0.4} direction="up">
+                <div class="text-center mb-10">
+                    <h2 class="text-3xl font-heading font-bold mb-4">Categories</h2>
+                    <div class="w-20 h-1 bg-primary mx-auto rounded-full"></div>
+                </div>
+                <ListCategories />
+            </FadeIn>
+        </div>
+
+        <!-- Featured Post Section -->
+        {featuredPost && (
+            <div class="mb-24">
+                 <FadeIn delay={0.2} direction="up">
+                    <div class="flex items-center justify-between mb-8">
+                        <h2 class="text-3xl font-heading font-bold">Featured Post</h2>
+                        <a href="/blog" class="text-primary hover:text-primary-dark font-medium flex items-center gap-1 transition-colors">
+                            View All <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </a>
+                    </div>
+                    
+                    <article class="group relative rounded-[2rem] overflow-hidden shadow-2xl bg-white dark:bg-gray-800 isolate">
+                        <div class="grid md:grid-cols-2 gap-0">
+                            <div class="relative h-[400px] md:h-auto overflow-hidden">
+                                <div class="absolute inset-0 bg-gray-200 dark:bg-gray-700">
+                                    {featuredPost.data.heroImage && (
+                                        <img 
+                                            src={featuredPost.data.heroImage} 
+                                            alt={featuredPost.data.title} 
+                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                                        />
+                                    )}
+                                </div>
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent md:hidden"></div>
+                            </div>
+                            
+                            <div class="p-8 md:p-12 flex flex-col justify-center relative bg-white dark:bg-gray-800">
+                                <div class="flex items-center gap-3 mb-6">
+                                     {featuredPost.data.category && (
+                                        <span class="px-3 py-1 bg-primary/10 text-primary text-sm font-bold rounded-full uppercase tracking-wide">
+                                            {featuredPost.data.category}
+                                        </span>
+                                    )}
+                                    <time class="text-gray-500 dark:text-gray-400 text-sm font-medium">
+                                        {featuredPost.data.pubDate?.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    </time>
+                                </div>
+                                
+                                <h3 class="text-3xl md:text-4xl font-heading font-bold mb-6 leading-tight group-hover:text-primary transition-colors">
+                                    <a href={`/${featuredPost.collection}/${featuredPost.slug}`}>
+                                        {featuredPost.data.title}
+                                    </a>
+                                </h3>
+                                
+                                <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 line-clamp-3 leading-relaxed">
+                                    {featuredPost.data.description}
+                                </p>
+                                
+                                <a href={`/${featuredPost.collection}/${featuredPost.slug}`} class="inline-flex items-center text-primary font-bold hover:gap-2 transition-all">
+                                    Read Article <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+                </FadeIn>
+            </div>
+        )}
+
+        <!-- Recent Posts Section -->
+        <div>
+            <FadeIn delay={0.4} direction="up">
+                <h2 class="text-3xl font-heading font-bold mb-10">Recent Stories</h2>
+            </FadeIn>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {recentPosts.map((post, index) => (
+                    <FadeIn delay={0.1 * index} direction="up">
+                        <article class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 dark:border-gray-700 h-full flex flex-col group">
+                            {post.data.heroImage && (
+                                <a href={`/${post.collection}/${post.slug}`} class="block overflow-hidden h-52 relative">
+                                    <img 
+                                        src={post.data.heroImage} 
+                                        alt={post.data.title}
+                                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    />
+                                    <div class="absolute top-4 right-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                                        {post.data.category}
+                                    </div>
+                                </a>
+                            )}
+                            <div class="p-6 flex flex-col flex-grow">
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                    {post.data.pubDate?.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                </div>
+                                <h3 class="text-xl font-bold mb-3 leading-tight group-hover:text-primary transition-colors">
+                                    <a href={`/${post.collection}/${post.slug}`}>
+                                        {post.data.title}
+                                    </a>
+                                </h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4 flex-grow">
+                                    {post.data.description}
+                                </p>
+                                <div class="pt-4 border-t border-gray-100 dark:border-gray-700/50 mt-auto">
+                                    <a href={`/${post.collection}/${post.slug}`} class="text-sm font-semibold text-primary flex items-center gap-1 group/link">
+                                        Read More <span class="group-hover/link:translate-x-1 transition-transform">→</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </article>
+                    </FadeIn>
+                ))}
+            </div>
+
+            <!-- View All Button -->
+            <FadeIn delay={0.6} direction="up">
+                <div class="flex justify-center mt-20">
+                    <a 
+                        href="/blog" 
+                        class="group inline-flex items-center gap-2 px-10 py-5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-full transition-all duration-300 hover:scale-105 hover:bg-primary dark:hover:bg-primary dark:hover:text-white shadow-xl"
+                    >
+                        <span>모든 포스트 보기</span>
+                        <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+            </FadeIn>
+        </div>
+    </div>
 </BaseLayout>
-
-<script>
-	import { animate } from 'motion'
-	const showAnimations = localStorage.getItem('animations') === 'true'
-
-	if (showAnimations) {
-		animate(
-			'.title',
-			{ y: [80, 0], opacity: [0, 1] },
-			{
-				duration: 2.5,
-				opacity: { duration: 3 },
-
-				offset: [0, 0.55, 0.75]
-			}
-		)
-	}
-</script>
