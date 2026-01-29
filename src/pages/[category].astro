@@ -12,5 +12,6 @@ export async function getStaticPaths() {
 	})
 }
 const params = Astro.params
-return Astro.redirect(`/${params.category}/1`)
+// Encode the URL to handle non-ASCII characters (like Korean) in redirect headers
+return Astro.redirect(encodeURI(`/${params.category}/1`))
 ---
