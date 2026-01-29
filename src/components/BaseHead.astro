@@ -17,7 +17,7 @@ const socialImageURL = new URL(ogImage ? ogImage : '/open-graph.png', Astro.url)
 const titleSeparator = '•'
 
 // Show only site title on homepage, otherwise show "Page Title • Site Title"
-const siteTitle = title.toLowerCase() === 'home' 
+const siteTitle = title?.toLowerCase() === 'home' 
 	? siteConfig.title 
 	: `${title} ${titleSeparator} ${siteConfig.title}`
 
