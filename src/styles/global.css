@@ -21,6 +21,12 @@
 		@apply text-zinc-800 dark:text-zinc-100   !important;
 	}
 
+	html.light .shiki,
+	html.light .shiki span {
+		color: var(--shiki-light) !important;
+		background-color: theme(colors.slate.50) !important;
+	}
+
 	html.dark .shiki,
 	html.dark .shiki span {
 		color: var(--shiki-dark) !important;
