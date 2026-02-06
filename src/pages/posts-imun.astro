@@ -1,0 +1,27 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+import { getPosts } from '@/utils'
+
+const posts = await getPosts()
+---
+
+<BaseLayout title='Posts Index (Private)'>
+	<div class='max-w-4xl mx-auto py-20 px-4'>
+		<h1 class='text-3xl md:text-4xl font-heading font-bold mb-6'>현재 등록된 글 목록</h1>
+		<ul class='space-y-3'>
+			{
+				posts.map((post) => (
+					<li class='flex items-start gap-3'>
+						<span class='mt-1 text-primary'>•</span>
+						<a
+							href={`/${post.collection}/${post.slug}`}
+							class='text-lg font-medium hover:text-primary transition-colors'
+						>
+							{post.data.title}
+						</a>
+					</li>
+				))
+			}
+		</ul>
+	</div>
+</BaseLayout>
