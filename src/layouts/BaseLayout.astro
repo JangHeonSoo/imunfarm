@@ -36,6 +36,11 @@ const { title, description, image, articleDate } = Astro.props
 			}
 			gtag('js', new Date())
 			gtag('config', 'G-6ZQ577JL4Q')
+
+			// Re-initialize AdSense on page navigation
+			document.addEventListener('astro:page-load', () => {
+				;(window.adsbygoogle = window.adsbygoogle || []).push({})
+			})
 		</script>
 	</head>
 
