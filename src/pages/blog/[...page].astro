@@ -28,7 +28,7 @@ const { page } = Astro.props as { page: Page<CollectionEntry<'blog'>> }
             {page.data.map((post) => (
                 <article class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700 group flex flex-col h-full">
                     {post.data.heroImage && (
-                        <a href={`/${post.collection}/${post.slug}`} data-astro-reload class="block overflow-hidden h-56 relative">
+                        <a href={`/${post.collection}/${post.slug}`} class="block overflow-hidden h-56 relative">
                             <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors z-10"></div>
                             <img 
                                 src={post.data.heroImage} 
@@ -50,7 +50,7 @@ const { page } = Astro.props as { page: Page<CollectionEntry<'blog'>> }
                             )}
                         </div>
                         <h2 class="text-2xl font-heading font-bold mb-3 group-hover:text-primary transition-colors leading-tight">
-                            <a href={`/${post.collection}/${post.slug}`} data-astro-reload>
+                            <a href={`/${post.collection}/${post.slug}`}>
                                 {post.data.title}
                             </a>
                         </h2>
