@@ -31,7 +31,7 @@ const { posts } = Astro.props
 							</div>
 						) : null}
 						<header class='flex justify-center items-center'>
-							<a class='font-medium  hover:underline' href={`/${categorySlug}/${post.slug}/`}>
+							<a class='font-medium  hover:underline' href={`/${categorySlug}/${post.slug}/`} data-astro-reload>
 								{post.data.title}
 							</a>
 						</header>

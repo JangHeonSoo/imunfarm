@@ -36,24 +36,6 @@ const { title, description, image, articleDate } = Astro.props
 			}
 			gtag('js', new Date())
 			gtag('config', 'G-6ZQ577JL4Q')
-
-			// Re-initialize AdSense on page load
-			document.addEventListener('astro:page-load', () => {
-				try {
-					;(window.adsbygoogle = window.adsbygoogle || []).push({})
-				} catch (e) {
-					// Silent catch if push is called too many times or no ads are available
-				}
-			})
-		</script>
-
-		<!-- AdSense auto-reload for SPAs -->
-		<script is:inline data-astro-rerun>
-			if (window.adsbygoogle && window.adsbygoogle.loaded) {
-				try {
-					window.adsbygoogle.push({})
-				} catch (e) {}
-			}
 		</script>
 	</head>
 

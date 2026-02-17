@@ -18,7 +18,7 @@ const categoryTitle = getCategoryTitleFromSlug(categorySlug)
 
 <article class='bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-card transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-pointer group'>
 	{heroImage && (
-		<a href={`/${categorySlug}/${slug}/`} class='relative block h-60 overflow-hidden'>
+		<a href={`/${categorySlug}/${slug}/`} data-astro-reload class='relative block h-60 overflow-hidden'>
 			<Image
 				src={heroImage}
 				width={600}
@@ -38,7 +38,7 @@ const categoryTitle = getCategoryTitleFromSlug(categorySlug)
 			<FormattedDate date={pubDate} />
 		</span>
 		
-		<a href={`/${categorySlug}/${slug}/`}>
+		<a href={`/${categorySlug}/${slug}/`} data-astro-reload>
 			<h3 class='text-2xl font-heading font-semibold mb-4 text-text-main dark:text-white group-hover:text-primary transition-colors'>
 				{title}
 			</h3>
@@ -50,6 +50,7 @@ const categoryTitle = getCategoryTitleFromSlug(categorySlug)
 		
 		<a 
 			href={`/${categorySlug}/${slug}/`}
+			data-astro-reload
 			class='inline-block text-primary dark:text-primary font-semibold hover:text-primary-dark transition-all hover:ml-1'
 		>
 			자세히 보기 →
