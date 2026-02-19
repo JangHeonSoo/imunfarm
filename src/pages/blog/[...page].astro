@@ -26,7 +26,7 @@ const { page } = Astro.props as { page: Page<CollectionEntry<'blog'>> }
         <!-- Main Content: Posts Grid (Centered, No Sidebar) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             {page.data.map((post) => (
-                <article class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700 group flex flex-col h-full">
+                <article class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700 group flex flex-col h-full" data-lang={post.data.lang || 'ko'}>
                     {post.data.heroImage && (
                         <a href={`/${post.collection}/${post.slug}`} class="block overflow-hidden h-56 relative">
                             <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors z-10"></div>
@@ -87,3 +87,44 @@ const { page } = Astro.props as { page: Page<CollectionEntry<'blog'>> }
         </div>
 	</div>
 </BaseLayout>
+
+<script>
+function filterByLang() {
+	const lang = localStorage.getItem('site-lang') || 'ko'
+	const allPosts = document.querySelectorAll('[data-lang]')
+	let visibleCount = 0
+
+	allPosts.forEach(el => {
+		const postLang = el.getAttribute('data-lang')
+		if (postLang === lang) {
+			(el as HTMLElement).style.display = ''
+			visibleCount++
+		} else {
+			(el as HTMLElement).style.display = 'none'
+		}
+	})
+
+	// Update count text
+	const countEl = document.getElementById('post-count')
+	if (countEl) countEl.textContent = `${visibleCount}`
+
+	// Show empty message
+	let emptyMsg = document.getElementById('no-posts-msg')
+	if (visibleCount === 0) {
+		if (!emptyMsg) {
+			emptyMsg = document.createElement('div')
+			emptyMsg.id = 'no-posts-msg'
+			emptyMsg.className = 'col-span-full text-center py-20 text-gray-500 dark:text-gray-400 text-lg'
+			emptyMsg.textContent = lang === 'en' ? 'No English posts yet. Stay tuned!' : '포스팅이 없습니다.'
+			const grid = document.querySelector('.grid[class*="grid-cols"]')
+			grid?.appendChild(emptyMsg)
+		}
+		emptyMsg.style.display = ''
+	} else if (emptyMsg) {
+		emptyMsg.style.display = 'none'
+	}
+}
+
+filterByLang()
+document.addEventListener('langchange', filterByLang)
+</script>

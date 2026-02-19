@@ -7,7 +7,7 @@ import FadeIn from '../components/FadeIn.astro'
 import { getPosts } from '@/utils'
 import { siteConfig } from '@/site-config'
 
-const MAX_POSTS = 7 // max number of posts to show on the home page (1 featured + 6 recent)
+const MAX_POSTS = 30 // get more posts to ensure both languages have enough
 const posts = await getPosts(MAX_POSTS)
 const featuredPost = posts[0]
 const recentPosts = posts.slice(1)
@@ -79,7 +79,7 @@ const recentPosts = posts.slice(1)
                         </a>
                     </div>
                     
-                    <article class="group relative rounded-[2rem] overflow-hidden shadow-2xl bg-white dark:bg-gray-800 isolate">
+                    <article class="group relative rounded-[2rem] overflow-hidden shadow-2xl bg-white dark:bg-gray-800 isolate" data-lang={featuredPost.data.lang || 'ko'} data-post-type="featured">
                         <div class="grid md:grid-cols-2 gap-0">
                             <div class="relative h-[400px] md:h-auto overflow-hidden">
                                 <div class="absolute inset-0 bg-gray-200 dark:bg-gray-700">
@@ -135,7 +135,7 @@ const recentPosts = posts.slice(1)
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {recentPosts.map((post, index) => (
                     <FadeIn delay={0.1 * index} direction="up">
-                        <article class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 dark:border-gray-700 h-full flex flex-col group">
+                        <article class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 dark:border-gray-700 h-full flex flex-col group" data-lang={post.data.lang || 'ko'} data-post-type="recent">
                             {post.data.heroImage && (
                                 <a href={`/${post.collection}/${post.slug}`} class="block overflow-hidden h-52 relative">
                                     <img 
@@ -188,3 +188,40 @@ const recentPosts = posts.slice(1)
         </div>
     </div>
 </BaseLayout>
+
+<script>
+function filterByLang() {
+	const lang = localStorage.getItem('site-lang') || 'ko'
+	const allPosts = document.querySelectorAll('[data-lang]')
+	let visibleCount = 0
+
+	allPosts.forEach(el => {
+		const postLang = el.getAttribute('data-lang')
+		if (postLang === lang) {
+			(el as HTMLElement).style.display = ''
+			visibleCount++
+		} else {
+			(el as HTMLElement).style.display = 'none'
+		}
+	})
+
+	// Show empty message if no posts match
+	let emptyMsg = document.getElementById('no-posts-msg')
+	if (visibleCount === 0) {
+		if (!emptyMsg) {
+			emptyMsg = document.createElement('div')
+			emptyMsg.id = 'no-posts-msg'
+			emptyMsg.className = 'text-center py-20 text-gray-500 dark:text-gray-400 text-lg'
+			emptyMsg.textContent = lang === 'en' ? 'No English posts yet. Stay tuned!' : '포스팅이 없습니다.'
+			const container = document.querySelector('[data-lang]')?.parentElement
+			container?.appendChild(emptyMsg)
+		}
+		emptyMsg.style.display = ''
+	} else if (emptyMsg) {
+		emptyMsg.style.display = 'none'
+	}
+}
+
+filterByLang()
+document.addEventListener('langchange', filterByLang)
+</script>
