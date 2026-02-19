@@ -10,17 +10,21 @@ import {
 } from '@/utils'
 
 export async function getStaticPaths() {
-	const localizedTags = await Promise.all(
+	const allTagsSet = new Set<string>()
+	await Promise.all(
 		SUPPORTED_LOCALES.map(async (locale) => {
 			const tags = await getTags(locale)
-			return tags.map((tag) => ({
-				params: { lang: locale, tag },
-				props: { tag }
-			}))
+			tags.forEach((t) => allTagsSet.add(t))
 		})
 	)
+	const allTags = Array.from(allTagsSet)
 
-	return localizedTags.flat()
+	return SUPPORTED_LOCALES.flatMap((locale) => {
+		return allTags.map((tag) => ({
+			params: { lang: locale, tag },
+			props: { tag }
+		}))
+	})
 }
 
 const { tag } = Astro.props

@@ -1,5 +1,5 @@
 ---
-import { sluglify, getCategories } from '@/utils'
+import { sluglify, getCategories, DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
 export async function getStaticPaths() {
 	const categories = await getCategories()
 
@@ -12,6 +12,9 @@ export async function getStaticPaths() {
 	})
 }
 const params = Astro.params
+const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
+const localePrefix = getLocalePrefix(currentLocale)
+
 // Encode the URL to handle non-ASCII characters (like Korean) in redirect headers
-return Astro.redirect(encodeURI(`/${params.category}/1`))
+return Astro.redirect(encodeURI(`${localePrefix}/${params.category}/1`))
 ---

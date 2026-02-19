@@ -1,7 +1,7 @@
 ---
 import type { CollectionEntry } from 'astro:content'
 
-import { cn, getCategoryName, sluglify } from '@/utils'
+import { cn, getCategoryName, sluglify, getPostUrl, DEFAULT_LOCALE } from '@/utils'
 import { Image } from 'astro:assets'
 
 type Props = {
@@ -9,6 +9,7 @@ type Props = {
 }
 
 const { posts } = Astro.props
+const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
 ---
 
 <section class={cn(`flex flex-col md:flex-row sm:justify-between gap-8`)}>
@@ -31,7 +32,7 @@ const { posts } = Astro.props
 							</div>
 						) : null}
 						<header class='flex justify-center items-center'>
-							<a class='font-medium  hover:underline' href={`/${categorySlug}/${post.slug}/`}>
+							<a class='font-medium  hover:underline' href={getPostUrl(post.slug, currentLocale, post.data.category)}>
 								{post.data.title}
 							</a>
 						</header>

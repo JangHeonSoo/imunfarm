@@ -7,7 +7,10 @@ import Search from '@/components/Search'
 import TagIcon from './icons/TagIcon.astro'
 import ToggleTheme from './ToggleTheme.astro'
 import { siteConfig } from '@/data/site.config'
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES, getLocalePrefix } from '@/utils'
+import { CATEGORIES } from '@/data/categories'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, getLocalePrefix, getPostUrl } from '@/utils'
+
+const { postSlug, postCategory } = Astro.props
 
 const SOCIALNETWORKS = [
 	{
@@ -28,16 +31,34 @@ const localePrefix = getLocalePrefix(currentLocale)
 const currentPath = Astro.url.pathname
 
 const buildLocalePath = (targetLocale: string) => {
+	// If we have explicit post info, use getPostUrl for precise mapping
+	if (postSlug) {
+		return getPostUrl(postSlug, targetLocale, postCategory)
+	}
+
 	const segments = currentPath.split('/').filter(Boolean)
-	const hasLocalePrefix = SUPPORTED_LOCALES.includes(segments[0] as typeof SUPPORTED_LOCALES[number])
+	const hasLocalePrefix = SUPPORTED_LOCALES.includes(segments[0] as any)
 	const rest = hasLocalePrefix ? segments.slice(1) : segments
-	return `/${[targetLocale, ...rest].join('/')}`
+
+	// Prevent /ko prefix if not wanted, but keep others
+	const effectivePrefix = targetLocale === DEFAULT_LOCALE ? '' : `/${targetLocale}`
+
+	// Handle Tags mapping
+	if (rest[0] === 'tags') {
+		return `${effectivePrefix}/${rest.join('/')}`
+	}
+
+	const newPath = `/${[targetLocale, ...rest].join('/')}`
+	return newPath.replace(/\/ko\//, '/').replace(/\/ko$/, '/')
+}
+const buildHomePath = (targetLocale: string) => {
+	return targetLocale === DEFAULT_LOCALE ? '/' : `/${targetLocale}/`
 }
 ---
 
 <header class='fixed top-0 left-0 right-0 w-full h-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-50 border-b border-black/5 dark:border-white/10'>
 	<div class='w-full h-full px-5 md:px-8 lg:px-12 flex justify-between items-center'>
-		<a class='text-2xl font-heading font-bold text-primary-dark dark:text-primary tracking-tight' href={`${localePrefix}/`}>
+		<a class='text-2xl font-heading font-bold text-primary-dark dark:text-primary tracking-tight' href={buildHomePath(currentLocale)}>
 			IMUN<span class='text-secondary'>.FARM</span>
 		</a>
 

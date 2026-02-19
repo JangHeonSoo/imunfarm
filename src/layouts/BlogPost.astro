@@ -79,6 +79,8 @@ const breadcrumbSchema = {
 	description={description}
 	image={heroImage?.src}
 	articleDate={articleDate}
+	postSlug={data.slug || id.split('/').pop()?.replace(/\.(mdx|md)$/, '')}
+	postCategory={data.category}
 >
 	<!-- JSON-LD Structured Data -->
 	<script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />

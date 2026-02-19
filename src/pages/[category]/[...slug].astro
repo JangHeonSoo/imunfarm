@@ -5,7 +5,7 @@ import Code from '@/components/mdx/Code'
 import ListRelatedPosts from '@/components/ListRelatedPosts'
 import Share from '@/components/Share'
 import TableOfContents from '@/components/TableOfContents'
-import { getAllCollection, getPosts, getCategoryName, sluglify } from '@/utils'
+import { getAllCollection, getPosts, getCategoryName, sluglify, stripLocaleFromSlug } from '@/utils'
 import SButton from '@/components/mdx/SButton'
 import Disqus from '@/components/Disqus'
 import { disqusConfig } from '@/data/disqus.config'
@@ -17,7 +17,7 @@ export async function getStaticPaths() {
 
 	return posts.map((post) => ({
 		params: {
-			slug: post.slug,
+			slug: stripLocaleFromSlug(post.slug, 'ko'),
 			category: sluglify(getCategoryName(post.data.category).toLowerCase())
 		},
 		props: post

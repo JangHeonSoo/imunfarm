@@ -6,7 +6,7 @@ import ProviderTheme from '@/components/ProviderTheme'
 import ProviderAnimations from '@/components/ProviderAnimations'
 import Mermaid, { MermaidModule } from '../components/mermaid'
 import { siteConfig } from '@/site-config'
-const { title, description, image, articleDate } = Astro.props
+const { title, description, image, articleDate, postSlug, postCategory } = Astro.props
 ---
 
 <html lang={siteConfig.lang} class='scroll-smooth'>
@@ -43,7 +43,7 @@ const { title, description, image, articleDate } = Astro.props
 		<main
 			class='px-5 sm:mx-auto sm:px-8 lg:px-0 antialiased max-w-7xl grid gap-12 pt-20 overflow-hidden md:overflow-visible'
 		>
-			<Header />
+			<Header postSlug={postSlug} postCategory={postCategory} />
 			<slot />
 			<Footer />
 		</main>

@@ -1,8 +1,9 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout'
-import { getPosts } from '@/utils'
+import { getPosts, getPostUrl, DEFAULT_LOCALE } from '@/utils'
 
 const posts = await getPosts()
+const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
 ---
 
 <BaseLayout title='Posts Index (Private)'>
@@ -14,7 +15,7 @@ const posts = await getPosts()
 					<li class='flex items-start gap-3'>
 						<span class='mt-1 text-primary'>•</span>
 						<a
-							href={`/${post.collection}/${post.slug}`}
+							href={getPostUrl(post.slug, currentLocale, post.data.category)}
 							class='text-lg font-medium hover:text-primary transition-colors'
 						>
 							{post.data.title}

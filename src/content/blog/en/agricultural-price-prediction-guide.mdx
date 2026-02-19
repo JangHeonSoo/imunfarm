@@ -1,0 +1,371 @@
+---
+title: 'Agricultural Price Prediction: A Practical Guide Using KAMIS Data'
+description: 'A practical guide to analyzing KAMIS and wholesale market auction data for crop selection and optimal shipping timing decisions.'
+pubDate: 2026-02-11
+heroImage: '/images/agricultural-price-prediction-hero.png'
+category: 'agriculture technology'
+tags: ['agricultural auctions', 'KAMIS', 'data analysis', 'farming decisions', 'smart farm']
+---
+
+Last year when onion prices nosedived, every group chat was saying the same thing.<br/>
+"Planted based on last year's prices, and look where that got us."<br/>
+The same old line.
+
+Truth is, agricultural price prediction is already happening everywhere.<br/>
+
+<strong>KAMIS</strong>, public wholesale markets, local governments, even private apps.
+<br />
+But when it comes to my own field, my own greenhouse — information that directly answers "what to plant, how much, and when to sell" — that's hard to find.
+
+Instead of showing off fancy AI models,<br/>
+
+this article breaks down how to scrape <strong>KAMIS</strong> and wholesale market data to make practical "<strong>crop selection</strong>" and "<strong>shipping timing</strong>" decisions,
+<br />
+focused on real actions you can take.
+
+---
+
+## 1. Looking at "Patterns," Not "Averages" with KAMIS Data
+
+Let's start with the <strong>KAMIS</strong> site.<br/>
+Here are the URLs.
+
+- <strong>KAMIS</strong> main: https://www.kamis.or.kr/customer/main/main.do
+  <br />
+- Daily wholesale prices: https://www.kamis.or.kr/customer/price/bizcondition/catalogue.do?action=daily<br/>
+- Quick price info (consumer prices/simple lookup): https://www.kamis.or.kr/customer/info/retail/period.do?action=daily
+
+The basic structure of <strong>KAMIS</strong> data looks like this.
+<br />
+- Product category/subcategory codes (e.g., vegetables, onion, dried onion, etc.)
+<br />
+- Wholesale/retail classification
+<br />
+- Survey date
+<br />
+- Prices by quality grade (high/medium/low) or average price
+<br />- Survey region (wholesale market or consumer price reference area)
+
+Here's a common mistake.<br/>
+"Last year's average price was such-and-such." And that's where it ends.<br/>
+Averages alone won't help you pick the right crop or time your shipments.
+
+### 1-1. Look at These 3 Things at Minimum
+
+Pick a specific product (e.g., onions, garlic, cabbage) on <strong>KAMIS</strong>,
+<br />
+and download the last 3-5 years' data to Excel.
+
+At minimum, check these:
+
+1. Annual average wholesale price<br/>
+2. Monthly average wholesale price<br/>
+3. Annual/monthly peak and trough ranges
+
+For onions, for example:<br/>
+
+- Do prices drop when shipments pile up from May to July?<br/>
+- How do prices spike when storage onions come out (winter to early spring)?<br/>
+- Were there abnormal crashes or surges in specific years only?
+
+Only then can you tell whether "last year was a special case" or "that's the normal pattern."
+
+### 1-2. Avoiding "Price Valleys" with Moving Averages
+
+No need to overcomplicate things in Excel.<br/>
+
+- Sort daily price data chronologically<br/>
+- Run 7-day, 14-day, and 30-day <strong>moving averages</strong>.
+
+With <strong>moving averages</strong>,
+<br />
+- Days when supply got disrupted by sudden rain<br />
+- One-off spikes/drops from volume flooding a specific market
+<br />
+— this kind of noise gets cleaned up.
+
+Looking at the <strong>moving average</strong> curve,
+<br />
+"Ah, this product bottoms out around the second week of June every year."
+<br />
+"It starts creeping up from the last week of October."
+<br />
+— these patterns become visible.
+
+Just doing this much<br/>
+will help you largely avoid "mindlessly planting based on last year's prices."
+
+---
+
+## 2. Wholesale Market Auction Data: Real On-the-Ground Prices
+
+<strong>KAMIS</strong> is refined information, and slightly delayed.
+<br />
+Real on-the-ground data comes from public wholesale market auction records.
+
+![Wholesale Market Data Analysis](/images/wholesale-market-data-analysis.png)
+
+These datasets are available on the public data portal:
+
+- National Agricultural, Marine & Livestock Wholesale Market Auction Price Standard Data<br/>
+  - https://www.data.go.kr/data/15029181/standard.do<br/>
+- National Public Wholesale Market Real-time Auction Info OpenAPI<br/>
+  - https://www.data.go.kr/data/15141808/openapi.do<br/>
+  - Ministry of Agriculture Public Data Portal "Wholesale Market Real-time Auction Info"
+
+This data contains fields like:<br/>
+
+- Transaction date<br/>
+- Wholesale market code/name (Garak, Busan, Daegu, Gwangju, etc.)<br/>
+- Product code, variety code<br/>
+- Grade<br/>
+- Transaction weight (kg)<br/>
+- Highest, lowest, and average prices, number of transactions
+
+In a word, it tells you "how much actually traded at Garak Market today, and how many tons."
+
+Even without programming, there are options.<br/>
+
+- Download the standard data as CSV from the public data portal<br/>
+- Organize it monthly or quarterly and view it side by side with <strong>KAMIS</strong> data.
+
+---
+
+## 3. Patterns Already Validated in Research and Field Trials
+
+"Price prediction" has already been tested in multiple places.<br/>
+Among them, products like onions and garlic have quite a bit of research.
+
+### 3-1. Onion Wholesale Price Prediction Paper Summary
+
+Among papers from the Korea Information Processing Society ACK 2024:<br/>
+
+- Title: Comparative Analysis of 12 Models' Performance and Regional Results for Onion Wholesale Price Prediction<br/>
+- Data used: <strong>KAMIS</strong> daily onion wholesale prices + weather data, etc.<br/>
+- Models compared: Linear regression, Random Forest, XGBoost, LSTM, etc. — 12 total
+
+Key takeaways:<br/>
+
+- Even simple models (linear regression, <strong>moving averages</strong>) are "plenty useful for avoiding disasters."<br/>
+- Regional supply-demand structures differ, so even the same model shows large performance gaps across regions.<br/>
+- Overly complex deep learning models actually become unstable when data volume is insufficient.
+
+The bottom line: starting with simple models tailored to "our area, our crop" is better.
+
+### 3-2. Government and Public AI Prediction Services
+
+Looking at the Ministry of Agriculture's public data use cases,<br/>
+
+AI-based price prediction services combining <strong>KAMIS</strong>, public wholesale market, and weather data are being developed.
+
+- Agricultural price prediction web/mobile services: <strong>KAMIS</strong> + KOSIS + weather data integration<br/>
+- 1-week to 1-month predictions for specific products (onions, garlic, cabbage, etc.)
+
+Also, some municipalities like Gyeongsangnam-do<br/>
+have run pilot projects "using AI and big data to predict garlic and onion prices,"<br/>
+sending farmers price forecasts via text or app alerts.
+
+Common features of these services:<br/>
+
+- They combine <strong>KAMIS</strong> long-term time series + wholesale auction data + weather/cultivation area data to build models
+  <br />
+- They deliver simple messages to farmers like "this month's onion prices are expected to be 20% below the normal year."
+
+What we as individual farmers should do<br/>
+is reference "what data combinations these services use for prediction"<br/>
+and replicate similar combinations in our own spreadsheets or simple code.
+
+---
+
+## 4. How to Actually Use It: Crop and Shipping Timing Decisions
+
+Now for the most important part.<br/>
+Not "browsing" data but using it for "decisions."
+
+### 4-1. Crop Selection: "Should I Plant More Onions This Year or Not?"
+
+Let's use a hypothetical example.<br/>
+
+- My field: 2,000 pyeong<br/>
+- Candidate crops: Onions vs. Garlic<br/>
+- Dilemma: "Should I expand onions this year, or garlic?"
+
+Steps:
+
+1. Download monthly wholesale price data for onions and garlic for the last 5 years from <strong>KAMIS</strong>.
+   <br />
+2. Organize annual averages, monthly averages, and peak/trough prices.<br/>
+3. Extract garlic and onion auction average prices from Garak Market data.<br/>
+4. Conservatively estimate expected yields (kg/pyeong) for your field.<br/>
+5. Run a simple prediction model, or at minimum, calculate "normal year range" and "worst-case scenario" separately.
+
+For example:<br/>
+
+- Onion normal year wholesale price: 800 KRW/kg<br/>
+- Worst year wholesale price: 400 KRW/kg<br/>
+- My yield: 2,000 pyeong × 400 kg/pyeong = 800,000 kg (example — actual yields vary greatly by variety and method)<br/>
+- Average scenario revenue: 800,000 kg × 800 KRW = 640 million KRW<br/>
+- Worst scenario revenue: 800,000 kg × 400 KRW = 320 million KRW
+
+Calculate garlic the same way:<br/>
+
+- Average scenario revenue<br/>
+- Worst scenario revenue<br/>
+- Compare the money remaining after subtracting production costs (seeds, supplies, labor, storage).
+
+The key point here is<br/>
+"Don't judge by averages alone — look at whether you can survive the worst 1-2 years out of X."
+
+Using data means asking these questions:<br/>
+
+- "Are onion prices already in a low zone relative to historical norms?"<br/>
+- "Is garlic actually in the danger zone right now?"
+
+### 4-2. Shipping Timing: "Move Up 3 Days or Delay 1 Week?"
+
+Shipping timing requires more precision.<br/>
+Wholesale market auction data really shines here.
+
+1. Pull Garak Market onion auction average prices by date for February-April over the last 5 years.<br/>
+2. Mark the "local peak periods" and "trough periods" for each year.<br/>
+3. Calculate 7-day and 14-day <strong>moving averages</strong> to see gradual rise/fall zones.
+
+This might reveal patterns like:<br/>
+
+- Many years show prices rising in the 2 weeks before Lunar New Year.<br/>
+- After mid-March, volume increases and prices gradually decline.
+
+Then actual decision-making shifts to:<br/>
+
+- "This year storage quality is decent, and the market seems to be following the normal year pattern."<br/>
+- "Let's start shipping 10 days before the holiday and aim for peak 3-4 days before."
+
+Conversely:<br/>
+
+- If production-area volume is already flooding the market,<br/>
+- And the auction average is tracking below the normal year curve,<br/>
+  you can shift your judgment toward "stop being greedy and sell quickly."
+
+This doesn't require advanced AI.<br/>
+Just plotting "normal year curve vs. this year's curve" side by side is enough.
+
+---
+
+## 5. How Complex a Model Do You Really Need?
+
+Now a bit on AI.<br/>
+Looking at papers and actual services, we can roughly divide it into three tiers.
+
+Tier 1: Statistics/Excel level<br/>
+
+- <strong>Moving averages</strong>, seasonality (monthly/quarterly pattern) analysis
+  <br />
+- Average, worst, best scenario simulations<br/>
+- For <strong>crop selection</strong>/shipping timing decisions, this level is quite useful.
+
+Tier 2: Simple regression/tree models<br/>
+
+- Input: <strong>KAMIS</strong> prices, wholesale auction prices, weather data, cultivation area, etc.<br/>
+- Output: 7-day, 30-day price predictions<br/>
+- Advantage: Explanatory power — you can roughly see which factors influence prices.
+
+Tier 3: Deep learning/time-series specialized models (LSTM, Transformer, etc.)<br/>
+
+- Advantage: Can capture more complex patterns.<br/>
+- Disadvantage: Becomes unstable without sufficient data, and burdensome for farms to operate directly.
+
+Even in the onion wholesale price prediction paper,<br/>
+results showed "making the model more complex doesn't automatically make it better."<br/>
+And most government/public services operate at "not too complex" levels.
+
+So for individual farms or small teams, think of it this way:<br/>
+
+- Nail down Tier 1 solidly<br/>
+- If needed, apply Tier 2 to gauge "how much prices might deviate from normal." 
+
+---
+
+## 6. Data Limitations and Pitfalls
+
+Not all data should be trusted blindly.<br/>
+
+<strong>KAMIS</strong> and wholesale market data have several limitations.
+
+### 6-1. KAMIS's Structural Limitations
+
+- Survey frequency and standards: Consumer prices are sampled from selected supermarkets and traditional markets.<br/>
+- Holidays and weekends can create survey gaps or outliers.<br/>
+- Product/grade categories may not perfectly match reality.
+
+Also, <strong>KAMIS</strong> includes processed food retail price information.<br/>
+
+- Example: Prices of processed foods like ramen, cooking oil<br/>
+  This is more useful for understanding "consumer-perceived price levels" than for direct crop selection.
+
+### 6-2. Wholesale Market Data Limitations
+
+- Specific market bias: Looking only at Garak Market can distort regional supply-demand pictures.<br/>
+- Products/varieties with low trading volumes can show exaggerated price volatility.<br/>
+- Real-time auction info APIs can go down or experience delays.
+
+So in practice, you need this checklist:
+
+1. Look at minimum 3 years, preferably 5+ years of data.<br/>
+2. View at least 2 types of data together: <strong>KAMIS</strong> + wholesale market.
+   <br />
+3. For years that deviate significantly from normal patterns, check the news to understand why.<br/>
+4. Even if your model says "prices will boom this year," separately calculate production costs and worst-case scenarios.
+
+This much alone can largely avoid the "blind data trust" pitfall.
+
+---
+
+## 7. A Realistic Usage Scenario for an Individual Farm
+
+![Farmer Data Decision Making](/images/farmer-data-decision-making.png)
+
+Finally, imagine using this as an individual farmer.<br/>
+This is for a typical small-scale field farming operation.
+
+1. Download monthly wholesale prices for 4 products — onion, garlic, cabbage, green onion — from <strong>KAMIS</strong> for the last 5 years.
+   <br />
+2. From public wholesale market auction data, organize annual/monthly average auction prices for 2 markets (Garak and Busan).<br/>
+3. Record your local wholesale market's actual prices (NongHyup, nearby intermediary trader prices) for at least 1 year.<br/>
+4. In Excel, create:<br/>
+   - <strong>Moving averages</strong> (7-day, 30-day)
+     <br />
+   - Monthly seasonal patterns<br/>
+   - Normal year vs. this year curve comparisons<br/>
+5. For crop selection:<br/>
+   - Calculate average scenario vs. worst scenario net profit,<br/>
+   - First check "can I survive the loss in a worst year?"<br/>
+6. For shipping timing:<br/>
+   - Mark peak/trough zones from normal-year patterns<br/>
+   - Update this year's auction curve weekly, just checking "where is today relative to the normal year?"
+
+This much, without any fancy AI,<br/>
+gets you a move or two ahead of "planting the same as last year based on last year's prices."
+
+Data is ultimately a tool.<br/>
+You can build a house with just a hammer.<br/>
+But sketching out where and how to drive the nails beforehand — that's what data is for.
+
+#AgriculturalPricePrediction #KAMIS #WholesaleMarket #FarmingDecisions #SmartFarm #DataAgriculture
+
+## References
+
+- <strong>Korea Agricultural Marketing Information Service (KAMIS)</strong> main page, price information service structure and product/wholesale/retail data delivery explanation
+  <br />
+- <strong>KAMIS</strong> daily wholesale price lookup page, daily wholesale price lookup and Excel download functionality
+  <br />
+- <strong>KAMIS</strong> key agricultural product daily wholesale prices (Garak Market, etc.) page, market/product price information examples
+  <br />
+- <strong>KAMIS</strong> quick price information (consumer prices) page, period/product simple lookup functionality
+  <br />
+- Korea Agro-Fisheries & Food Trade Corporation (aT) processed food retail price information dataset, retail price information linked to <strong>KAMIS</strong> service<br/>
+- Public Data Portal National Agricultural/Marine/Livestock Wholesale Market Auction Price Standard Data, product/variety/grade daily auction price and trading volume field definitions<br/>
+- Ministry of Agriculture/aT National Public Wholesale Market Real-time Auction Info OpenAPI, real-time auction price and transaction information<br/>
+- Ministry of Agriculture Public Data Portal "Wholesale Market Real-time Auction Info" service description, wholesale market transaction information structure and usage guide<br/>
+- Ministry of Agriculture Public Data Portal data use cases: agricultural price prediction service built using <strong>KAMIS</strong> and public data<br/>
+- "Comparative Analysis of 12 Models' Performance and Regional Results for Onion Wholesale Price Prediction," KIPS ACK 2024 Conference Paper, <strong>KAMIS</strong> data and 12 prediction model comparison<br/>
+- "Using AI and Big Data to Predict Garlic and Onion Prices" video report, government/public sector AI price prediction project case

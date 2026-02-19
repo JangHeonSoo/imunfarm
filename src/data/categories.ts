@@ -19,5 +19,9 @@ export const CATEGORIES = [
 	{
 		title: '농기계 리뷰',
 		slug: 'equipment-review'
+	},
+	{
+		title: '영농형 태양광',
+		slug: 'agrivoltaics'
 	}
 ] as const

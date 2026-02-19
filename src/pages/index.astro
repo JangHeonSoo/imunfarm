@@ -4,7 +4,7 @@ import TitlePage from '@/components/TitlePage'
 import BaseLayout from '@/layouts/BaseLayout'
 import Hero from '@/components/Hero'
 import FadeIn from '../components/FadeIn.astro'
-import { DEFAULT_LOCALE, getLocalePrefix, getPosts, stripLocaleFromSlug } from '@/utils'
+import { DEFAULT_LOCALE, getLocalePrefix, getPosts, getPostUrl } from '@/utils'
 import { siteConfig } from '@/site-config'
 
 const MAX_POSTS = 7
@@ -111,7 +111,7 @@ const recentPosts = posts.slice(1)
                                 </div>
                                 
                                 <h3 class="text-3xl md:text-4xl font-heading font-bold mb-6 leading-tight group-hover:text-primary transition-colors">
-                                    <a href={`${localePrefix}/${featuredPost.collection}/${stripLocaleFromSlug(featuredPost.slug, locale)}`}>
+                                    <a href={getPostUrl(featuredPost.slug, locale, featuredPost.data.category)}>
                                         {featuredPost.data.title}
                                     </a>
                                 </h3>
@@ -120,7 +120,7 @@ const recentPosts = posts.slice(1)
                                     {featuredPost.data.description}
                                 </p>
                                 
-                                <a href={`${localePrefix}/${featuredPost.collection}/${stripLocaleFromSlug(featuredPost.slug, locale)}`} class="inline-flex items-center text-primary font-bold hover:gap-2 transition-all">
+                                <a href={getPostUrl(featuredPost.slug, locale, featuredPost.data.category)} class="inline-flex items-center text-primary font-bold hover:gap-2 transition-all">
                                     Read Article <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
                                 </a>
                             </div>
@@ -141,7 +141,7 @@ const recentPosts = posts.slice(1)
                     <FadeIn delay={0.1 * index} direction="up">
                         <article class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 dark:border-gray-700 h-full flex flex-col group">
                             {post.data.heroImage && (
-                                <a href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`} class="block overflow-hidden h-52 relative">
+                                <a href={getPostUrl(post.slug, locale, post.data.category)} class="block overflow-hidden h-52 relative">
                                     <img 
                                         src={post.data.heroImage} 
                                         alt={post.data.title}
@@ -157,7 +157,7 @@ const recentPosts = posts.slice(1)
                                     {post.data.pubDate?.toLocaleDateString(dateLocale, { year: 'numeric', month: 'long', day: 'numeric' })}
                                 </div>
                                 <h3 class="text-xl font-bold mb-3 leading-tight group-hover:text-primary transition-colors">
-                                    <a href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`}>
+                                    <a href={getPostUrl(post.slug, locale, post.data.category)}>
                                         {post.data.title}
                                     </a>
                                 </h3>
@@ -165,7 +165,7 @@ const recentPosts = posts.slice(1)
                                     {post.data.description}
                                 </p>
                                 <div class="pt-4 border-t border-gray-100 dark:border-gray-700/50 mt-auto">
-                                    <a href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`} class="text-sm font-semibold text-primary flex items-center gap-1 group/link">
+                                    <a href={getPostUrl(post.slug, locale, post.data.category)} class="text-sm font-semibold text-primary flex items-center gap-1 group/link">
                                         Read More <span class="group-hover/link:translate-x-1 transition-transform">→</span>
                                     </a>
                                 </div>

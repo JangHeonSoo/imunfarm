@@ -3,7 +3,7 @@ export const SUPPORTED_LOCALES = ['ko', 'en'] as const
 
 export type Locale = (typeof SUPPORTED_LOCALES)[number]
 
-export const getLocalePrefix = (locale: string) => `/${locale}`
+export const getLocalePrefix = (locale: string) => (locale === DEFAULT_LOCALE ? '' : `/${locale}`)
 
 export const stripLocaleFromSlug = (slug: string, locale: string) =>
     slug.startsWith(`${locale}/`) ? slug.slice(locale.length + 1) : slug

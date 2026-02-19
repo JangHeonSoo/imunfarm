@@ -1,6 +1,6 @@
 ---
 import { Image } from 'astro:assets'
-import { getCategoryName, getCategoryTitleFromSlug, sluglify } from '@/utils'
+import { getCategoryName, getCategoryTitleFromSlug, sluglify, getPostUrl, DEFAULT_LOCALE } from '@/utils'
 import FormattedDate from '@/components/FormattedDate'
 import ArrowUp from '@/components/icons/ArrowUp'
 
@@ -12,13 +12,15 @@ const {
 	displayAsRows = false
 } = Astro.props
 
+const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
 const categorySlug = sluglify(getCategoryName(category).toLowerCase())
 const categoryTitle = getCategoryTitleFromSlug(categorySlug)
+const postUrl = getPostUrl(slug, currentLocale, category)
 ---
 
 <article class='bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-card transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-pointer group'>
 	{heroImage && (
-		<a href={`/${categorySlug}/${slug}/`} class='relative block h-60 overflow-hidden'>
+		<a href={postUrl} class='relative block h-60 overflow-hidden'>
 			<Image
 				src={heroImage}
 				width={600}
@@ -38,7 +40,7 @@ const categoryTitle = getCategoryTitleFromSlug(categorySlug)
 			<FormattedDate date={pubDate} />
 		</span>
 		
-		<a href={`/${categorySlug}/${slug}/`}>
+		<a href={postUrl}>
 			<h3 class='text-2xl font-heading font-semibold mb-4 text-text-main dark:text-white group-hover:text-primary transition-colors'>
 				{title}
 			</h3>
@@ -49,7 +51,7 @@ const categoryTitle = getCategoryTitleFromSlug(categorySlug)
 		</p>
 		
 		<a 
-			href={`/${categorySlug}/${slug}/`}
+			href={postUrl}
 			class='inline-block text-primary dark:text-primary font-semibold hover:text-primary-dark transition-all hover:ml-1'
 		>
 			자세히 보기 →

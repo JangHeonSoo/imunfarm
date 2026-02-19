@@ -9,7 +9,8 @@ export {
 	getTags,
 	getPostByTag,
 	getIndexPageByCategory,
-	filterPostsByCategory
+	filterPostsByCategory,
+	getPostUrl
 } from './post'
 export { remarkReadingTime } from './readTime'
 export {

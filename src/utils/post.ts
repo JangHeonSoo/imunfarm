@@ -1,15 +1,19 @@
 import { getCollection } from 'astro:content'
 import { CATEGORIES } from '@/data/categories.ts'
-import { unsluglify } from './sluglify.ts'
-import { DEFAULT_LOCALE } from './locale'
+import { unsluglify, sluglify } from './sluglify.ts'
+import { DEFAULT_LOCALE, stripLocaleFromSlug } from './locale'
 
 export const getAllCollection = async (locale: string = DEFAULT_LOCALE) => {
-	const allPosts = [
-		await getCollection('blogs'),
-		await getCollection('physics'),
-		await getCollection('soft-dev'),
-		await getCollection('blog')
-	]
+	const collections = ['blogs', 'physics', 'soft-dev', 'blog']
+	const allPosts = await Promise.all(
+		collections.map(async (col) => {
+			try {
+				return await getCollection(col as any)
+			} catch (e) {
+				return []
+			}
+		})
+	)
 	return allPosts
 		.flat()
 		.filter((c) => c.data.title !== undefined && c.data.post)
@@ -60,7 +64,7 @@ export const getTags = async (locale: string = DEFAULT_LOCALE) => {
 	const posts = await getPosts(undefined, locale)
 	const tags = new Set()
 	posts.forEach((post) => {
-		post.data.tags.forEach((tag) => {
+		post.data.tags.forEach((tag: string) => {
 			tags.add(tag.toLowerCase())
 		})
 	})
@@ -79,11 +83,20 @@ export const getPostByTag = async (tag: string, locale: string = DEFAULT_LOCALE)
 	const posts = await getPosts(undefined, locale)
 	const lowercaseTag = tag.toLowerCase()
 	return posts.filter((post) => {
-		return post.data.tags.some((postTag) => postTag.toLowerCase() === lowercaseTag)
+		return post.data.tags.some((postTag: string) => postTag.toLowerCase() === lowercaseTag)
 	})
 }
 
 export const filterPostsByCategory = async (category: string, locale: string = DEFAULT_LOCALE) => {
 	const posts = await getPosts(undefined, locale)
 	return posts.filter((post) => getCategoryName(post.data.category).toLowerCase() === category)
+}
+
+export const getPostUrl = (slug: string, locale: string = DEFAULT_LOCALE, category?: any) => {
+	const cleanSlug = stripLocaleFromSlug(slug, locale)
+	if (locale !== DEFAULT_LOCALE) {
+		return `/${locale}/blog/${cleanSlug}/`
+	}
+	const categorySlug = sluglify(getCategoryName(category).toLowerCase())
+	return `/${categorySlug}/${cleanSlug}/`
 }
