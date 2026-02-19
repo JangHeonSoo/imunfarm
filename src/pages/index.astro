@@ -7,8 +7,7 @@ import FadeIn from '../components/FadeIn.astro'
 import { getPosts } from '@/utils'
 import { siteConfig } from '@/site-config'
 
-const MAX_POSTS = 30 // get more posts to ensure both languages have enough
-const posts = await getPosts(MAX_POSTS)
+const posts = await getPosts()
 const featuredPost = posts[0]
 const recentPosts = posts.slice(1)
 ---
@@ -190,49 +189,48 @@ const recentPosts = posts.slice(1)
 </BaseLayout>
 
 <script>
+const MAX_VISIBLE_RECENT = 6
+
 function filterByLang() {
 	const lang = localStorage.getItem('site-lang') || 'ko'
-	const allPosts = document.querySelectorAll('[data-lang]')
-	let visibleCount = 0
 
-	allPosts.forEach(el => {
-		const postLang = el.getAttribute('data-lang')
-		// Hide the parent wrapper (FadeIn div) so grid reflows without gaps
-		const wrapper = (el as HTMLElement).closest('.grid > *') || (el as HTMLElement).parentElement
-		if (postLang === lang) {
-			if (wrapper) (wrapper as HTMLElement).style.display = ''
-			;(el as HTMLElement).style.display = ''
-			visibleCount++
-		} else {
-			if (wrapper) (wrapper as HTMLElement).style.display = 'none'
-			;(el as HTMLElement).style.display = 'none'
-		}
-	})
-
-	// Handle featured post section separately
+	// Handle featured post
 	const featuredPost = document.querySelector('[data-post-type="featured"]')
 	if (featuredPost) {
-		const featuredSection = featuredPost.closest('.max-w-6xl > div:first-child') || featuredPost.closest('section')
+		const featuredWrapper = featuredPost.closest('[data-post-type="featured"]')?.parentElement?.parentElement
 		const featuredLang = featuredPost.getAttribute('data-lang')
-		if (featuredSection && featuredLang !== lang) {
-			(featuredSection as HTMLElement).style.display = 'none'
-		} else if (featuredSection) {
-			(featuredSection as HTMLElement).style.display = ''
+		if (featuredWrapper) {
+			(featuredWrapper as HTMLElement).style.display = featuredLang === lang ? '' : 'none'
 		}
 	}
 
+	// Handle recent posts - show max 6 of selected language
+	const recentPosts = document.querySelectorAll('[data-post-type="recent"]')
+	let visibleCount = 0
+
+	recentPosts.forEach(el => {
+		const postLang = el.getAttribute('data-lang')
+		const wrapper = (el as HTMLElement).closest('.grid > *') || (el as HTMLElement).parentElement
+		if (postLang === lang && visibleCount < MAX_VISIBLE_RECENT) {
+			if (wrapper) (wrapper as HTMLElement).style.display = ''
+			visibleCount++
+		} else {
+			if (wrapper) (wrapper as HTMLElement).style.display = 'none'
+		}
+	})
+
 	// Show empty message if no posts match
 	let emptyMsg = document.getElementById('no-posts-msg')
+	const recentSection = document.querySelector('[data-post-type="recent"]')?.closest('.grid')?.parentElement
 	if (visibleCount === 0) {
-		if (!emptyMsg) {
+		if (!emptyMsg && recentSection) {
 			emptyMsg = document.createElement('div')
 			emptyMsg.id = 'no-posts-msg'
 			emptyMsg.className = 'text-center py-20 text-gray-500 dark:text-gray-400 text-lg'
-			emptyMsg.textContent = lang === 'en' ? 'No English posts yet. Stay tuned!' : '포스팅이 없습니다.'
-			const container = document.querySelector('[data-lang]')?.parentElement
-			container?.appendChild(emptyMsg)
+			emptyMsg.textContent = lang === 'en' ? 'No English posts yet. Stay tuned!' : '\ud3ec\uc2a4\ud305\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.'
+			recentSection.appendChild(emptyMsg)
 		}
-		emptyMsg.style.display = ''
+		if (emptyMsg) emptyMsg.style.display = ''
 	} else if (emptyMsg) {
 		emptyMsg.style.display = 'none'
 	}
