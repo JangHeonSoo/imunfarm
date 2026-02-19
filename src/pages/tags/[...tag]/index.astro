@@ -2,12 +2,19 @@
 import BaseLayout from '@/layouts/BaseLayout'
 import ListPosts from '@/components/ListPosts'
 import TitlePage from '@/components/TitlePage'
-import { getTags, getPostByTag } from '@/utils'
+import { SUPPORTED_LOCALES, getTags, getPostByTag } from '@/utils'
 
 export async function getStaticPaths() {
-	const tags = await getTags()
+	const allTagsSet = new Set<string>()
+	await Promise.all(
+		SUPPORTED_LOCALES.map(async (locale) => {
+			const tags = await getTags(locale)
+			tags.forEach((t) => allTagsSet.add(t))
+		})
+	)
+	const allTags = Array.from(allTagsSet)
 
-	return tags.map((tag) => ({
+	return allTags.map((tag) => ({
 		params: { tag },
 		props: { tag }
 	}))

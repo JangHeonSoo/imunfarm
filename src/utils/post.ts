@@ -26,10 +26,16 @@ export const getCategories = async (locale: string = DEFAULT_LOCALE) => {
 	return Array.from(categories)
 }
 
-export const getCategoryTitleFromSlug = (cat: string | any) => {
+export const getCategoryTitleFromSlug = (cat: string | any, locale: string = DEFAULT_LOCALE) => {
 	const name = getCategoryName(cat)
-	const title = CATEGORIES.find((o) => o.slug === name)?.title
-	return title || unsluglify(cat)
+	if (name.toLowerCase() === 'view all') {
+		return locale === 'en' ? 'View All' : '전체 보기'
+	}
+	const category = CATEGORIES.find((o) => o.slug === name || o.title === name)
+	if (category) {
+		return locale === 'en' ? (category as any).enTitle || category.title : category.title
+	}
+	return unsluglify(name)
 }
 
 export const getCategoryName = (cat: string | any) => {
@@ -44,7 +50,12 @@ export const getCategoryName = (cat: string | any) => {
 
 export const getCategorySlug = (cat: string | any) => {
 	const name = getCategoryName(cat)
-	const found = CATEGORIES.find((o) => o.slug === name || o.title === name)
+	const normalizedName = name.toLowerCase().replace(/\s+/g, '')
+	const found = CATEGORIES.find(
+		(o) =>
+			o.slug.toLowerCase().replace(/\s+/g, '') === normalizedName ||
+			o.title.toLowerCase().replace(/\s+/g, '') === normalizedName
+	)
 	return found ? found.slug : sluglify(name.toLowerCase())
 }
 
