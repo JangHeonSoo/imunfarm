@@ -81,7 +81,7 @@ export const getTags = async (locale: string = DEFAULT_LOCALE) => {
 export const getIndexPageByCategory = async (category: string, locale: string = DEFAULT_LOCALE) => {
 	const posts = await getAllCollection(locale)
 	return posts.find(
-		(post) => post.data.index && getCategoryName(post.data.category).toLowerCase() === category
+		(post) => post.data.index && getCategorySlug(post.data.category) === category
 	)
 }
 
@@ -95,7 +95,7 @@ export const getPostByTag = async (tag: string, locale: string = DEFAULT_LOCALE)
 
 export const filterPostsByCategory = async (category: string, locale: string = DEFAULT_LOCALE) => {
 	const posts = await getPosts(undefined, locale)
-	return posts.filter((post) => getCategoryName(post.data.category).toLowerCase() === category)
+	return posts.filter((post) => getCategorySlug(post.data.category) === category)
 }
 
 export const getPostUrl = (slug: string, locale: string = DEFAULT_LOCALE, category?: any) => {
