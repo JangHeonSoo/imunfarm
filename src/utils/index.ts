@@ -4,6 +4,7 @@ export {
 	getAllCollection,
 	getCategories,
 	getCategoryName,
+	getCategorySlug,
 	getCategoryTitleFromSlug,
 	getPosts,
 	getTags,

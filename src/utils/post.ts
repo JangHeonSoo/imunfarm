@@ -42,6 +42,12 @@ export const getCategoryName = (cat: string | any) => {
 	return cat
 }
 
+export const getCategorySlug = (cat: string | any) => {
+	const name = getCategoryName(cat)
+	const found = CATEGORIES.find((o) => o.slug === name || o.title === name)
+	return found ? found.slug : sluglify(name.toLowerCase())
+}
+
 export const getPosts = async (max?: number, locale: string = DEFAULT_LOCALE) => {
 	return (await getAllCollection(locale))
 		.filter((post) => !post.data.draft && !post.data.index)
@@ -97,6 +103,6 @@ export const getPostUrl = (slug: string, locale: string = DEFAULT_LOCALE, catego
 	if (locale !== DEFAULT_LOCALE) {
 		return `/${locale}/blog/${cleanSlug}/`
 	}
-	const categorySlug = sluglify(getCategoryName(category).toLowerCase())
+	const categorySlug = getCategorySlug(category)
 	return `/${categorySlug}/${cleanSlug}/`
 }
