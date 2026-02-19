@@ -197,13 +197,29 @@ function filterByLang() {
 
 	allPosts.forEach(el => {
 		const postLang = el.getAttribute('data-lang')
+		// Hide the parent wrapper (FadeIn div) so grid reflows without gaps
+		const wrapper = (el as HTMLElement).closest('.grid > *') || (el as HTMLElement).parentElement
 		if (postLang === lang) {
-			(el as HTMLElement).style.display = ''
+			if (wrapper) (wrapper as HTMLElement).style.display = ''
+			;(el as HTMLElement).style.display = ''
 			visibleCount++
 		} else {
-			(el as HTMLElement).style.display = 'none'
+			if (wrapper) (wrapper as HTMLElement).style.display = 'none'
+			;(el as HTMLElement).style.display = 'none'
 		}
 	})
+
+	// Handle featured post section separately
+	const featuredPost = document.querySelector('[data-post-type="featured"]')
+	if (featuredPost) {
+		const featuredSection = featuredPost.closest('.max-w-6xl > div:first-child') || featuredPost.closest('section')
+		const featuredLang = featuredPost.getAttribute('data-lang')
+		if (featuredSection && featuredLang !== lang) {
+			(featuredSection as HTMLElement).style.display = 'none'
+		} else if (featuredSection) {
+			(featuredSection as HTMLElement).style.display = ''
+		}
+	}
 
 	// Show empty message if no posts match
 	let emptyMsg = document.getElementById('no-posts-msg')
