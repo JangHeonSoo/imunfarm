@@ -33,7 +33,7 @@ const locale = Astro.params.lang ?? DEFAULT_LOCALE
 const posts = await getPostByTag(tag, locale)
 ---
 
-<BaseLayout title={tag}>
-	<TitlePage title={tag} />
+<BaseLayout title={`#${tag}`}>
+	<TitlePage title={`#${tag}`} />
 	<ListPosts posts={posts} />
 </BaseLayout>

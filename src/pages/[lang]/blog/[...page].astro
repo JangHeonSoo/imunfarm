@@ -9,7 +9,9 @@ import {
 	SUPPORTED_LOCALES,
 	getLocalePrefix,
 	getPosts,
-	stripLocaleFromSlug
+	stripLocaleFromSlug,
+	getCategoryTitleFromSlug,
+	getCategorySlug
 } from '@/utils'
 
 export async function getStaticPaths({ paginate }: GetStaticPathsOptions) {
@@ -71,7 +73,7 @@ const dateLocale = locale === 'en' ? 'en-US' : 'ko-KR'
                                 {post.data.category && (
                                      <div class="absolute top-4 right-4 z-20">
                                         <span class="px-3 py-1 bg-white/90 dark:bg-black/80 backdrop-blur text-xs font-bold rounded-full shadow-sm">
-                                            {post.data.category}
+                                            {getCategoryTitleFromSlug(getCategorySlug(post.data.category), locale)}
                                         </span>
                                     </div>
                                 )}

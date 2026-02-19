@@ -4,7 +4,7 @@ import { unsluglify, sluglify } from './sluglify.ts'
 import { DEFAULT_LOCALE, stripLocaleFromSlug } from './locale'
 
 export const getAllCollection = async (locale: string = DEFAULT_LOCALE) => {
-	const collections = ['blogs', 'physics', 'soft-dev', 'blog']
+	const collections = ['blog']
 	const allPosts = await Promise.all(
 		collections.map(async (col) => {
 			try {

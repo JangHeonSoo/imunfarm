@@ -14,7 +14,7 @@ const {
 
 const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
 const categorySlug = sluglify(getCategoryName(category).toLowerCase())
-const categoryTitle = getCategoryTitleFromSlug(categorySlug)
+const categoryTitle = getCategoryTitleFromSlug(categorySlug, currentLocale)
 const postUrl = getPostUrl(slug, currentLocale, category)
 ---
 

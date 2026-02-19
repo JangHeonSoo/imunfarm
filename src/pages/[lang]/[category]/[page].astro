@@ -4,21 +4,19 @@ import ListPosts from '@/components/ListPosts'
 import ListCategories from '@/components/ListCategories'
 import TitlePage from '@/components/TitlePage'
 import {
-	sluglify,
-	unsluglify,
 	getCategories,
-	getCategoryName,
 	getCategorySlug,
 	getCategoryTitleFromSlug,
 	getIndexPageByCategory,
 	getPosts,
-	SUPPORTED_LOCALES
+    DEFAULT_LOCALE,
+    SUPPORTED_LOCALES
 } from '@/utils'
 import { siteConfig } from '@/data/site.config'
 import Pagination from '@/components/Pagination'
 import Code from '@/components/mdx/Code'
 import SButton from '@/components/mdx/SButton'
-import { components } from '../../components/mixins/AutoImportComponents'
+import { components } from '../../../components/mixins/AutoImportComponents'
 
 export async function getStaticPaths({ paginate }: any) {
 	const categoriesSet = new Set<string>()
@@ -29,27 +27,35 @@ export async function getStaticPaths({ paginate }: any) {
 		})
 	)
 	const categories = Array.from(categoriesSet)
-	const allPosts = await getPosts()
+    
+    return (await Promise.all(
+        SUPPORTED_LOCALES.filter(l => l !== DEFAULT_LOCALE).map(async (locale) => {
+            const allPosts = await getPosts(undefined, locale)
+            
+            return categories.flatMap((category: string) => {
+                const slugNameCategory = getCategorySlug(category)
+                const filteredPosts = allPosts.filter(
+                    (post) => getCategorySlug(post.data.category) === slugNameCategory
+                )
 
-	return categories.flatMap((category: string) => {
-		const slugNameCategory = getCategorySlug(category)
-		const filteredPosts = allPosts.filter(
-			(post) => getCategorySlug(post.data.category) === slugNameCategory
-		)
-
-		return paginate(filteredPosts, {
-			params: {
-				category: slugNameCategory
-			},
-			pageSize: siteConfig.paginationSize
-		})
-	})
+                return paginate(filteredPosts, {
+                    params: {
+                        lang: locale,
+                        category: slugNameCategory
+                    },
+                    pageSize: siteConfig.paginationSize
+                })
+            })
+        })
+    )).flat()
 }
+
 const params = Astro.params
 const { page } = Astro.props
+const locale = params.lang || DEFAULT_LOCALE
 
-const categoryTitle = getCategoryTitleFromSlug(params.category!.toLowerCase())
-const indexPage = await getIndexPageByCategory(params.category!.toLowerCase())
+const categoryTitle = getCategoryTitleFromSlug(params.category!.toLowerCase(), locale)
+const indexPage = await getIndexPageByCategory(params.category!.toLowerCase(), locale)
 const posts = page.data
 ---
 

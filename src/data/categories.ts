@@ -29,5 +29,15 @@ export const CATEGORIES = [
 		title: '영농형 태양광',
 		enTitle: 'Agrivoltaics',
 		slug: 'agrivoltaics'
+	},
+	{
+		title: '탄소중립',
+		enTitle: 'Carbon Neutrality',
+		slug: 'carbon-neutrality'
+	},
+	{
+		title: '에너지',
+		enTitle: 'Energy',
+		slug: 'energy'
 	}
 ] as const

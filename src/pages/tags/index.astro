@@ -71,7 +71,7 @@ const getOpacity = (count: number) => {
                             const isLarge = size > 24;
                             return (
                                 <a
-                                    href={`/tags/${tag}`}
+                                    href={`/tags/${tag.toLowerCase()}`}
                                     class={`
                                         tag-item group relative inline-flex items-center justify-center
                                         transition-all duration-500 ease-out

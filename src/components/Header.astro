@@ -45,7 +45,7 @@ const buildLocalePath = (targetLocale: string) => {
 
 	// Handle Tags mapping
 	if (rest[0] === 'tags') {
-		return `${effectivePrefix}/${rest.join('/')}`
+		return `${effectivePrefix}/${rest.join('/').toLowerCase()}`
 	}
 
 	const newPath = `/${[targetLocale, ...rest].join('/')}`

@@ -1,5 +1,6 @@
 ---
-import { getCategorySlug, getCategories, DEFAULT_LOCALE, getLocalePrefix, SUPPORTED_LOCALES } from '@/utils'
+import { getCategorySlug, getCategories, SUPPORTED_LOCALES, DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+
 export async function getStaticPaths() {
 	const categoriesSet = new Set<string>()
 	await Promise.all(
@@ -10,18 +11,20 @@ export async function getStaticPaths() {
 	)
 	const categories = Array.from(categoriesSet)
 
-	return categories.flatMap((category: string) => {
-		return {
+	return SUPPORTED_LOCALES.filter(l => l !== DEFAULT_LOCALE).flatMap((locale) => {
+		return categories.map((category: string) => ({
 			params: {
+				lang: locale,
 				category: getCategorySlug(category)
 			}
-		}
+		}))
 	})
 }
+
 const params = Astro.params
-const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
+const currentLocale = params.lang || DEFAULT_LOCALE
 const localePrefix = getLocalePrefix(currentLocale)
 
-// Encode the URL to handle non-ASCII characters (like Korean) in redirect headers
+// Encode the URL to handle non-ASCII characters if any
 return Astro.redirect(encodeURI(`${localePrefix}/${params.category}/1`))
 ---
