@@ -14,7 +14,7 @@ import {
 
 export async function getStaticPaths({ paginate }: GetStaticPathsOptions) {
 	const localizedPages = await Promise.all(
-		SUPPORTED_LOCALES.map(async (locale) => {
+		SUPPORTED_LOCALES.filter((loc) => loc !== DEFAULT_LOCALE).map(async (locale) => {
 			const posts = await getPosts(undefined, locale)
 			return paginate(posts, {
 				pageSize: 9,
