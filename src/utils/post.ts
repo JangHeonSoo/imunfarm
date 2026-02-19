@@ -1,21 +1,23 @@
 import { getCollection } from 'astro:content'
 import { CATEGORIES } from '@/data/categories.ts'
 import { unsluglify } from './sluglify.ts'
+import { DEFAULT_LOCALE } from './locale'
 
-export const getAllCollection = async () => {
+export const getAllCollection = async (locale: string = DEFAULT_LOCALE) => {
 	const allPosts = [
 		await getCollection('blogs'),
 		await getCollection('physics'),
 		await getCollection('soft-dev'),
 		await getCollection('blog')
 	]
-	return allPosts.flat().filter((c) => {
-		return c.data.title !== undefined && c.data.post
-	})
+	return allPosts
+		.flat()
+		.filter((c) => c.data.title !== undefined && c.data.post)
+		.filter((post) => post.id.startsWith(`${locale}/`))
 }
 
-export const getCategories = async () => {
-	const posts = await getAllCollection()
+export const getCategories = async (locale: string = DEFAULT_LOCALE) => {
+	const posts = await getAllCollection(locale)
 	const categories = new Set(posts.map((post) => getCategoryName(post.data.category)))
 	return Array.from(categories)
 }
@@ -36,25 +38,26 @@ export const getCategoryName = (cat: string | any) => {
 	return cat
 }
 
-export const getPosts = async (max?: number) => {
-	return (await getAllCollection())
+export const getPosts = async (max?: number, locale: string = DEFAULT_LOCALE) => {
+	return (await getAllCollection(locale))
 		.filter((post) => !post.data.draft && !post.data.index)
 		.map((post) => {
-			post.data.pubDate = post.data.pubDate || post.data.date
-			if (post.data.pubDate === undefined) {
-				post.data.pubDate = new Date()
-			}
+			const rawDate = post.data.pubDate ?? post.data.date
+			post.data.pubDate = rawDate ? new Date(rawDate) : new Date()
 			if (post.data.tags === undefined) {
 				post.data.tags = []
 			}
 			return post
 		})
-		.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+		.sort(
+			(a, b) =>
+				(b.data.pubDate ?? new Date(0)).valueOf() - (a.data.pubDate ?? new Date(0)).valueOf()
+		)
 		.slice(0, max)
 }
 
-export const getTags = async () => {
-	const posts = await getPosts()
+export const getTags = async (locale: string = DEFAULT_LOCALE) => {
+	const posts = await getPosts(undefined, locale)
 	const tags = new Set()
 	posts.forEach((post) => {
 		post.data.tags.forEach((tag) => {
@@ -65,22 +68,22 @@ export const getTags = async () => {
 	return Array.from(tags)
 }
 
-export const getIndexPageByCategory = async (category: string) => {
-	const posts = await getAllCollection()
+export const getIndexPageByCategory = async (category: string, locale: string = DEFAULT_LOCALE) => {
+	const posts = await getAllCollection(locale)
 	return posts.find(
 		(post) => post.data.index && getCategoryName(post.data.category).toLowerCase() === category
 	)
 }
 
-export const getPostByTag = async (tag: string) => {
-	const posts = await getPosts()
+export const getPostByTag = async (tag: string, locale: string = DEFAULT_LOCALE) => {
+	const posts = await getPosts(undefined, locale)
 	const lowercaseTag = tag.toLowerCase()
 	return posts.filter((post) => {
 		return post.data.tags.some((postTag) => postTag.toLowerCase() === lowercaseTag)
 	})
 }
 
-export const filterPostsByCategory = async (category: string) => {
-	const posts = await getPosts()
+export const filterPostsByCategory = async (category: string, locale: string = DEFAULT_LOCALE) => {
+	const posts = await getPosts(undefined, locale)
 	return posts.filter((post) => getCategoryName(post.data.category).toLowerCase() === category)
 }

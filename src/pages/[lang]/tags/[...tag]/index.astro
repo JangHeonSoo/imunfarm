@@ -1,0 +1,35 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+import ListPosts from '@/components/ListPosts'
+import TitlePage from '@/components/TitlePage'
+import {
+	DEFAULT_LOCALE,
+	SUPPORTED_LOCALES,
+	getTags,
+	getPostByTag
+} from '@/utils'
+
+export async function getStaticPaths() {
+	const localizedTags = await Promise.all(
+		SUPPORTED_LOCALES.map(async (locale) => {
+			const tags = await getTags(locale)
+			return tags.map((tag) => ({
+				params: { lang: locale, tag },
+				props: { tag }
+			}))
+		})
+	)
+
+	return localizedTags.flat()
+}
+
+const { tag } = Astro.props
+const locale = Astro.params.lang ?? DEFAULT_LOCALE
+
+const posts = await getPostByTag(tag, locale)
+---
+
+<BaseLayout title={tag}>
+	<TitlePage title={tag} />
+	<ListPosts posts={posts} />
+</BaseLayout>

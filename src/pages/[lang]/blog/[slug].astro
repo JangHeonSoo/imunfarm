@@ -1,0 +1,129 @@
+---
+import { type CollectionEntry } from 'astro:content'
+import BlogPost from '@/layouts/BlogPost'
+import Code from '@/components/mdx/Code'
+import ListRelatedPosts from '@/components/ListRelatedPosts'
+import Share from '@/components/Share'
+import TableOfContents from '@/components/TableOfContents'
+import {
+	DEFAULT_LOCALE,
+	SUPPORTED_LOCALES,
+	getPosts,
+	stripLocaleFromSlug
+} from '@/utils'
+import SButton from '@/components/mdx/SButton'
+import Disqus from '@/components/Disqus'
+import { disqusConfig } from '@/data/disqus.config'
+import { components } from '../../../components/mixins/AutoImportComponents'
+
+export async function getStaticPaths() {
+	const localizedPosts = await Promise.all(
+		SUPPORTED_LOCALES.map(async (locale) => {
+			const posts = await getPosts(undefined, locale)
+			return posts.map((post) => ({
+				params: {
+					lang: locale,
+					slug: stripLocaleFromSlug(post.slug, locale)
+				},
+				props: post
+			}))
+		})
+	)
+
+	return localizedPosts.flat()
+}
+
+type Props = CollectionEntry<'blog'>
+
+const post = Astro.props
+const locale = Astro.params.lang ?? DEFAULT_LOCALE
+const posts = await getPosts(undefined, locale)
+const MAX_POSTS = 3
+const getRelatedPosts = (post: Props) => {
+	const lowercaseTags = post.data.tags?.map((tag: string) => tag.toLowerCase()) || []
+	const relatedPosts = posts.filter(
+		(p) => p.slug !== post.slug && p.data.tags?.some((t: string) => lowercaseTags.includes(t.toLowerCase()))
+	)
+	return relatedPosts.slice(0, MAX_POSTS)
+}
+
+const relatedPosts = getRelatedPosts(post)
+
+const { Content, headings, remarkPluginFrontmatter } = await post.render()
+
+const disqusEnabled = disqusConfig.enabled
+---
+
+<BlogPost
+	id={post.id}
+	data={post.data}
+	headings={headings}
+	readTime={remarkPluginFrontmatter.minutesRead}
+>
+	<div class='grid grid-cols-1 md:grid-cols-[20%_auto] gap-10 mt-8'>
+		<!-- aside  -->
+		<aside class='md:flex flex-col gap-8 hidden'>
+			<Share />
+			<div class='sticky top-24 self-start hidden md:block transition-all duration-200'>
+				{headings && headings.length > 0 && <TableOfContents {headings} />}
+			</div>
+		</aside>
+
+		<!-- post -->
+		<article class='max-w-full w-full'>
+			<div class='prose prose-lg md:prose-xl dark:prose-invert mb-12 min-w-full'>
+				<Content components={{ ...components, pre: Code, SButton }} />
+			</div>
+
+			<!-- related posts -->
+			<footer>
+				<h2 class='font-bold text-lg dark:text-white mb-6'>Related Posts</h2>
+				<ListRelatedPosts posts={relatedPosts} />
+			</footer>
+		</article>
+	</div>
+
+	{disqusEnabled && <Disqus />}
+</BlogPost>
+
+<script is:inline>
+	// Auto-inject in-article ads between content sections
+	(function() {
+		const prose = document.querySelector('div.prose');
+		if (!prose) return;
+
+		const headings = prose.querySelectorAll('h2, h3');
+		if (headings.length < 2) return;
+
+		const interval = Math.max(3, Math.floor(headings.length / 2));
+		let adsInserted = 0;
+		const maxAds = 2;
+
+		headings.forEach((heading, index) => {
+			if (adsInserted >= maxAds) return;
+			if ((index + 1) % interval === 0) {
+				const adContainer = document.createElement('div');
+				adContainer.className = 'in-article-ad-container my-8';
+				adContainer.innerHTML = `
+					<ins class="adsbygoogle"
+						style="display:block; text-align:center;"
+						data-ad-layout="in-article"
+						data-ad-format="fluid"
+						data-ad-client="ca-pub-9192660979184684"
+						data-ad-slot="3171759407"></ins>
+				`;
+				heading.parentNode.insertBefore(adContainer, heading);
+				adsInserted++;
+			}
+		});
+
+		if (adsInserted > 0) {
+			const adElements = document.querySelectorAll('.in-article-ad-container ins.adsbygoogle');
+			adElements.forEach(() => {
+				try {
+					(window.adsbygoogle = window.adsbygoogle || []).push({});
+				} catch (e) {}
+			});
+		}
+	})();
+</script>

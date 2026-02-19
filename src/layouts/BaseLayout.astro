@@ -54,37 +54,5 @@ const { title, description, image, articleDate } = Astro.props
 		</style>
 		<MermaidModule />
 
-		<script>
-		function globalLangFilter() {
-			const lang = localStorage.getItem('site-lang') || 'ko'
-			const allItems = document.querySelectorAll('[data-lang]')
-			const isHome = window.location.pathname === '/' || window.location.pathname === ''
-			let recentCount = 0
-
-			allItems.forEach(el => {
-				const itemLang = el.getAttribute('data-lang')
-				const isRecent = el.getAttribute('data-post-type') === 'recent'
-				const isFeatured = el.getAttribute('data-post-type') === 'featured'
-				const show = itemLang === lang && (!isHome || !isRecent || recentCount < 6)
-
-				if (show && isRecent) recentCount++
-
-				// Hide the grid wrapper (FadeIn or direct parent) to prevent layout gaps
-				const wrapper = (el as HTMLElement).closest('.grid > *') || el
-				;(wrapper as HTMLElement).style.display = show ? '' : 'none'
-
-				// For featured posts, also hide the entire section wrapper
-				if (isFeatured) {
-					const section = (el as HTMLElement).closest('.max-w-6xl > div') as HTMLElement
-					if (section) section.style.display = itemLang === lang ? '' : 'none'
-				}
-			})
-		}
-
-		// Run immediately and on lang change
-		globalLangFilter()
-		document.addEventListener('langchange', globalLangFilter)
-		document.addEventListener('astro:page-load', globalLangFilter)
-		</script>
 	</body>
 </html>

@@ -12,3 +12,10 @@ export {
 	filterPostsByCategory
 } from './post'
 export { remarkReadingTime } from './readTime'
+export {
+	DEFAULT_LOCALE,
+	SUPPORTED_LOCALES,
+	getLocalePrefix,
+	getLocaleLanguageTag,
+	stripLocaleFromSlug
+} from './locale'

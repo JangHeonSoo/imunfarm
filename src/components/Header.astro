@@ -7,8 +7,8 @@ import Search from '@/components/Search'
 import TagIcon from './icons/TagIcon.astro'
 import ToggleTheme from './ToggleTheme.astro'
 import { siteConfig } from '@/data/site.config'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, getLocalePrefix } from '@/utils'
 
-// ADD YOUR SOCIAL NETWORKS HERE
 const SOCIALNETWORKS = [
 	{
 		name: 'Github',
@@ -22,33 +22,54 @@ const SOCIALNETWORKS = [
 		icon: TwitterIcon
 	}
 ].filter(network => siteConfig.social.github || siteConfig.social.twitter)
+
+const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
+const localePrefix = getLocalePrefix(currentLocale)
+const currentPath = Astro.url.pathname
+
+const buildLocalePath = (targetLocale: string) => {
+	const segments = currentPath.split('/').filter(Boolean)
+	const hasLocalePrefix = SUPPORTED_LOCALES.includes(segments[0] as typeof SUPPORTED_LOCALES[number])
+	const rest = hasLocalePrefix ? segments.slice(1) : segments
+	return `/${[targetLocale, ...rest].join('/')}`
+}
 ---
 
 <header class='fixed top-0 left-0 right-0 w-full h-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-50 border-b border-black/5 dark:border-white/10'>
 	<div class='w-full h-full px-5 md:px-8 lg:px-12 flex justify-between items-center'>
-		<a class='text-2xl font-heading font-bold text-primary-dark dark:text-primary tracking-tight' href='/'>
+		<a class='text-2xl font-heading font-bold text-primary-dark dark:text-primary tracking-tight' href={`${localePrefix}/`}>
 			IMUN<span class='text-secondary'>.FARM</span>
 		</a>
 
 		<nav class='hidden md:flex items-center gap-8'>
-			<HeaderLink href='/' class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
-				홈
+			<HeaderLink href={`${localePrefix}/`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
+				{currentLocale === 'en' ? 'Home' : '홈'}
 			</HeaderLink>
-			<HeaderLink href='/about' class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
+			<HeaderLink href={`${localePrefix}/about`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
 				About
 			</HeaderLink>
-			<HeaderLink href='/contact' class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
-				협찬문의
+			<HeaderLink href={`${localePrefix}/contact`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
+				{currentLocale === 'en' ? 'Contact' : '협찬문의'}
 			</HeaderLink>
-			<HeaderLink href='/tags' class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
+			<HeaderLink href={`${localePrefix}/tags`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
 				Tags
 			</HeaderLink>
 			
 			<div class='flex items-center gap-3'>
-				<!-- Language Toggle -->
-				<div id="lang-toggle" class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-full p-0.5 text-xs font-bold cursor-pointer select-none border border-gray-200 dark:border-gray-700">
-					<button id="lang-ko" class="px-2.5 py-1 rounded-full transition-all duration-200">KO</button>
-					<button id="lang-en" class="px-2.5 py-1 rounded-full transition-all duration-200">EN</button>
+				<!-- Language Toggle (URL-based) -->
+				<div class='flex items-center gap-2 text-xs font-bold uppercase tracking-wider'>
+					{SUPPORTED_LOCALES.map((locale: (typeof SUPPORTED_LOCALES)[number]) => (
+						<a
+							href={buildLocalePath(locale)}
+							class={
+								locale === currentLocale
+									? 'text-primary'
+									: 'text-gray-500 hover:text-primary'
+							}
+						>
+							{locale.toUpperCase()}
+						</a>
+					))}
 				</div>
 				<Search />
 				<ToggleTheme />
@@ -68,16 +89,26 @@ const SOCIALNETWORKS = [
 	class='md:hidden fixed top-20 right-0 w-64 h-screen bg-white dark:bg-gray-800 shadow-xl transform translate-x-full transition-transform duration-300 z-40'
 >
 	<nav class='flex flex-col p-6 gap-4'>
-		<HeaderLink href='/' class='text-lg'>홈</HeaderLink>
-		<HeaderLink href='/about' class='text-lg'>About</HeaderLink>
-		<HeaderLink href='/contact' class='text-lg'>협찬문의</HeaderLink>
-		<HeaderLink href='/tags' class='text-lg'>Tags</HeaderLink>
+		<HeaderLink href={`${localePrefix}/`} class='text-lg'>{currentLocale === 'en' ? 'Home' : '홈'}</HeaderLink>
+		<HeaderLink href={`${localePrefix}/about`} class='text-lg'>About</HeaderLink>
+		<HeaderLink href={`${localePrefix}/contact`} class='text-lg'>{currentLocale === 'en' ? 'Contact' : '협찬문의'}</HeaderLink>
+		<HeaderLink href={`${localePrefix}/tags`} class='text-lg'>Tags</HeaderLink>
 		<!-- Mobile Language Toggle -->
 		<div class="flex items-center gap-2 mt-2">
 			<span class="text-sm text-gray-500 dark:text-gray-400">Language:</span>
-			<div id="lang-toggle-mobile" class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full p-0.5 text-xs font-bold cursor-pointer select-none border border-gray-200 dark:border-gray-600">
-				<button id="lang-ko-mobile" class="px-2.5 py-1 rounded-full transition-all duration-200">KO</button>
-				<button id="lang-en-mobile" class="px-2.5 py-1 rounded-full transition-all duration-200">EN</button>
+			<div class="flex items-center gap-3 text-sm font-bold uppercase">
+				{SUPPORTED_LOCALES.map((locale: (typeof SUPPORTED_LOCALES)[number]) => (
+					<a
+						href={buildLocalePath(locale)}
+						class={
+							locale === currentLocale
+								? 'text-primary'
+								: 'text-gray-500 hover:text-primary'
+						}
+					>
+						{locale.toUpperCase()}
+					</a>
+				))}
 			</div>
 		</div>
 	</nav>
@@ -110,51 +141,12 @@ const SOCIALNETWORKS = [
 			})
 		})
 	}
-
-	function initLangToggle() {
-		const lang = localStorage.getItem('site-lang') || 'ko'
-		updateLangUI(lang)
-
-		// Desktop buttons
-		document.getElementById('lang-ko')?.addEventListener('click', () => setLang('ko'))
-		document.getElementById('lang-en')?.addEventListener('click', () => setLang('en'))
-		// Mobile buttons
-		document.getElementById('lang-ko-mobile')?.addEventListener('click', () => setLang('ko'))
-		document.getElementById('lang-en-mobile')?.addEventListener('click', () => setLang('en'))
-	}
-
-	function setLang(lang: string) {
-		localStorage.setItem('site-lang', lang)
-		updateLangUI(lang)
-		document.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }))
-	}
-
-	function updateLangUI(lang: string) {
-		const activeClass = 'bg-primary text-white shadow-sm'
-		const inactiveClass = 'text-gray-500 dark:text-gray-400'
-
-		const ids = [
-			{ ko: 'lang-ko', en: 'lang-en' },
-			{ ko: 'lang-ko-mobile', en: 'lang-en-mobile' }
-		]
-
-		ids.forEach(({ ko, en }) => {
-			const koBtn = document.getElementById(ko)
-			const enBtn = document.getElementById(en)
-			if (!koBtn || !enBtn) return
-
-			// Reset
-			koBtn.className = `px-2.5 py-1 rounded-full transition-all duration-200 ${lang === 'ko' ? activeClass : inactiveClass}`
-			enBtn.className = `px-2.5 py-1 rounded-full transition-all duration-200 ${lang === 'en' ? activeClass : inactiveClass}`
-		})
-	}
 	
 	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', () => { initMobileMenu(); initLangToggle(); })
+		document.addEventListener('DOMContentLoaded', initMobileMenu)
 	} else {
 		initMobileMenu()
-		initLangToggle()
 	}
 	
-	document.addEventListener('astro:page-load', () => { initMobileMenu(); initLangToggle(); })
+	document.addEventListener('astro:page-load', initMobileMenu)
 </script>

@@ -9,7 +9,6 @@ const {
 	data: { title, description, pubDate, heroImage, category },
 	readTime,
 	slug,
-	lang = 'ko',
 	displayAsRows = false
 } = Astro.props
 
@@ -17,7 +16,7 @@ const categorySlug = sluglify(getCategoryName(category).toLowerCase())
 const categoryTitle = getCategoryTitleFromSlug(categorySlug)
 ---
 
-<article class='bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-card transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-pointer group' data-lang={lang}>
+<article class='bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-card transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-pointer group'>
 	{heroImage && (
 		<a href={`/${categorySlug}/${slug}/`} class='relative block h-60 overflow-hidden'>
 			<Image

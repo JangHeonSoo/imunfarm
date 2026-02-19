@@ -1,0 +1,141 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+import FadeIn from '../../../components/FadeIn.astro'
+import {
+	DEFAULT_LOCALE,
+	SUPPORTED_LOCALES,
+	getLocalePrefix,
+	getPosts
+} from '@/utils'
+
+export async function getStaticPaths() {
+	return SUPPORTED_LOCALES.map((lang) => ({
+		params: { lang }
+	}))
+}
+
+const locale = Astro.params.lang ?? DEFAULT_LOCALE
+const localePrefix = getLocalePrefix(locale)
+
+const posts = await getPosts(undefined, locale)
+const tagCounts = new Map<string, number>()
+
+posts.forEach(post => {
+	post.data.tags?.forEach((tag: string) => {
+		tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)
+	})
+})
+
+const sortedTags = Array.from(tagCounts.entries())
+	.sort((a, b) => b[1] - a[1])
+
+const maxCount = Math.max(...Array.from(tagCounts.values()), 1)
+const minCount = Math.min(...Array.from(tagCounts.values()), 1)
+
+const getFontSize = (count: number) => {
+	if (maxCount === minCount) return 32
+	const ratio = (count - minCount) / (maxCount - minCount)
+	return Math.round(16 + ratio * 48)
+}
+
+const getOpacity = (count: number) => {
+    if (maxCount === minCount) return 1
+    const ratio = (count - minCount) / (maxCount - minCount)
+    return 0.4 + (ratio * 0.6)
+}
+---
+
+<BaseLayout title='Tags'>
+    
+    <div class="relative h-[40vh] min-h-[400px] flex items-center justify-center overflow-hidden mb-20">
+        <div class="absolute inset-0 z-0">
+             <img src="/images/tags-hero.png" alt="Tags Hero" class="w-full h-full object-cover" />
+             <div class="absolute inset-0 bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm"></div>
+             <div class="absolute inset-0 bg-gradient-to-b from-transparent to-bg-light dark:to-[#0a0910]"></div>
+        </div>
+        
+        <div class="relative z-10 text-center px-4">
+            <FadeIn delay={0.2} direction="up">
+                <span class="block text-primary font-bold tracking-widest uppercase mb-4">Explore Topics</span>
+                <h1 class="text-5xl md:text-7xl font-heading font-extrabold mb-6 text-text-main dark:text-white tracking-tight">
+                    {locale === 'en' 
+                        ? <>Tags & <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Topics</span></>
+                        : <>태그로 보는<br/><span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">농장 이야기</span></>
+                    }
+                </h1>
+            </FadeIn>
+        </div>
+    </div>
+
+	<div class="max-w-6xl mx-auto px-4 pb-20">
+		
+        <FadeIn delay={0.3} direction="up">
+            <div class="bg-white dark:bg-gray-800/50 backdrop-blur-lg rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 p-8 md:p-12 relative overflow-hidden">
+                
+                <div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2"></div>
+                <div class="absolute bottom-0 left-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl -z-10 -translate-x-1/2 translate-y-1/2"></div>
+
+                <div class='flex justify-center flex-wrap gap-x-6 gap-y-8 items-center content-center relative z-10' id="tag-cloud">
+                    {
+                        sortedTags.map(([tag, count], index) => {
+                            const size = getFontSize(count);
+                            const isLarge = size > 24;
+                            return (
+                                <a
+                                    href={`${localePrefix}/tags/${tag}`}
+                                    class={`
+                                        tag-item group relative inline-flex items-center justify-center
+                                        transition-all duration-500 ease-out
+                                        hover:scale-110 hover:z-20
+                                        ${isLarge ? 'font-black' : 'font-medium'}
+                                    `}
+                                    style={`
+                                        font-size: ${size}px;
+                                        opacity: ${getOpacity(count)};
+                                        color: ${isLarge ? 'var(--color-primary)' : 'inherit'};
+                                        animation: float ${3 + Math.random() * 2}s ease-in-out infinite;
+                                        animation-delay: ${Math.random() * 2}s;
+                                    `}
+                                    data-tag={tag.toLowerCase()}
+                                    title={`${count} posts`}
+                                >
+                                    <span class={`
+                                        ${isLarge ? 'text-transparent bg-clip-text bg-gradient-to-br from-primary to-secondary' : 'text-text-main dark:text-gray-300'}
+                                        group-hover:text-primary transition-colors
+                                    `}>
+                                        #{tag}
+                                    </span>
+                                </a>
+                            )
+                        })
+                    }
+                </div>
+            </div>
+        </FadeIn>
+
+		<FadeIn delay={0.5} direction="up">
+			<div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-6 text-center border border-primary/10">
+                    <div class="text-4xl font-bold text-primary mb-2">{sortedTags.length}</div>
+                    <div class="text-sm text-text-muted dark:text-gray-400 font-medium">{locale === 'en' ? 'Total Tags' : '총 태그'}</div>
+                </div>
+                 <div class="bg-gradient-to-br from-secondary/10 to-secondary/5 rounded-2xl p-6 text-center border border-secondary/10">
+                    <div class="text-4xl font-bold text-secondary mb-2">{posts.length}</div>
+                    <div class="text-sm text-text-muted dark:text-gray-400 font-medium">{locale === 'en' ? 'Total Posts' : '총 포스트'}</div>
+                </div>
+                 <div class="col-span-2 bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 flex items-center justify-center border border-gray-100 dark:border-gray-700">
+                    <p class="text-text-muted dark:text-gray-400 text-sm">
+                        {locale === 'en' ? 'Most Popular:' : '가장 인기 있는 태그:'} <span class="font-bold text-primary text-lg ml-2">#{sortedTags[0]?.[0] || 'none'}</span>
+                    </p>
+                </div>
+			</div>
+		</FadeIn>
+	</div>
+</BaseLayout>
+
+<style>
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+</style>

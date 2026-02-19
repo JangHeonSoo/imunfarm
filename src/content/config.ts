@@ -27,7 +27,6 @@ const createBlogSchema = ({ image }: SchemaContext) =>
 				})
 			),
 		tags: z.array(z.string()).default([]),
-		lang: z.enum(['ko', 'en']).default('ko'),
 		comments: z.boolean().default(siteConfig.config.commentsEnabled),
 		draft: z.boolean().default(false),
 		post: z.boolean().default(true)

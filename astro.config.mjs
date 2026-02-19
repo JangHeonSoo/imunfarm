@@ -11,6 +11,13 @@ import rehypeKatex from 'rehype-katex'
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://imun.farm/',
+	i18n: {
+		locales: ['ko', 'en'],
+		defaultLocale: 'ko',
+		routing: {
+			prefixDefaultLocale: false
+		}
+	},
 	devToolbar: {
 		enabled: false
 	},
