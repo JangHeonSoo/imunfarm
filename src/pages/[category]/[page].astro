@@ -8,6 +8,7 @@ import {
 	unsluglify,
 	getCategories,
 	getCategoryName,
+	getCategorySlug,
 	getCategoryTitleFromSlug,
 	getIndexPageByCategory,
 	getPosts
@@ -23,14 +24,14 @@ export async function getStaticPaths({ paginate }: any) {
 	const allPosts = await getPosts()
 
 	return categories.flatMap((category: string) => {
-		const sluglifyNameCategory = sluglify(category!.toLowerCase())
+		const slugNameCategory = getCategorySlug(category)
 		const filteredPosts = allPosts.filter(
-			(post) => sluglify(getCategoryName(post.data.category).toLowerCase()) === sluglifyNameCategory
+			(post) => getCategorySlug(post.data.category) === slugNameCategory
 		)
 
 		return paginate(filteredPosts, {
 			params: {
-				category: sluglify(category.toLowerCase())
+				category: slugNameCategory
 			},
 			pageSize: siteConfig.paginationSize
 		})

@@ -1,12 +1,11 @@
----
-import { sluglify, getCategories, DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+import { getCategorySlug, getCategories, DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
 export async function getStaticPaths() {
 	const categories = await getCategories()
 
 	return categories.flatMap((category: string) => {
 		return {
 			params: {
-				category: sluglify(category.toLowerCase())
+				category: getCategorySlug(category)
 			}
 		}
 	})
