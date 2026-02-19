@@ -20,6 +20,7 @@ const { posts, FirstBig = false } = Astro.props
 				data={post.data}
 				slug={post.slug}
 				readTime={post.readTime}
+				lang={post.data.lang || 'ko'}
 			/>
 		))
 	}

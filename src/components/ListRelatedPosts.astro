@@ -17,7 +17,7 @@ const { posts } = Astro.props
 			posts.map((post) => {
 				const categorySlug = sluglify(getCategoryName(post.data.category).toLowerCase())
 				return (
-					<div class='flex flex-wrap gap-2'>
+					<div class='flex flex-wrap gap-2' data-lang={post.data.lang || 'ko'}>
 						{post.data.heroImage ? (
 							<div class='min-h-full'>
 								<Image
