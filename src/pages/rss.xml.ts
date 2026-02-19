@@ -1,6 +1,8 @@
 import rss from '@astrojs/rss'
 import { getCollection } from 'astro:content'
 import { siteConfig } from '@/site-config'
+import { getPostUrl } from '@/utils/post'
+import { DEFAULT_LOCALE } from '@/utils/locale'
 
 export async function get() {
 	const posts = await getCollection('blog')
@@ -10,7 +12,7 @@ export async function get() {
 		site: import.meta.env.SITE,
 		items: posts.map((post) => ({
 			...post.data,
-			link: `post/${post.slug}/`
+			link: getPostUrl(post.slug, DEFAULT_LOCALE, post.data.category)
 		}))
 	})
 }
