@@ -3,7 +3,7 @@ import { getCollection } from 'astro:content'
 import { siteConfig } from '@/site-config'
 import { getPostUrl, DEFAULT_LOCALE } from '@/utils'
 
-export async function get() {
+export async function GET() {
 	const posts = await getCollection('blog')
 	return rss({
 		title: siteConfig.title,
