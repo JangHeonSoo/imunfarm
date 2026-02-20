@@ -1,0 +1,116 @@
+---
+import type { GetStaticPathsOptions, Page } from 'astro'
+import type { CollectionEntry } from 'astro:content'
+import BaseLayout from '@/layouts/BaseLayout'
+import Pagination from '@/components/Pagination'
+import FadeIn from '../../../components/FadeIn.astro'
+import {
+	DEFAULT_LOCALE,
+	SUPPORTED_LOCALES,
+	getLocalePrefix,
+	getPosts,
+	stripLocaleFromSlug,
+	getCategoryTitleFromSlug,
+	getCategorySlug
+} from '@/utils'
+
+export async function getStaticPaths({ paginate }: GetStaticPathsOptions) {
+	const posts = await getPosts(undefined, DEFAULT_LOCALE)
+	return paginate(posts, {
+		pageSize: 9,
+	})
+}
+
+const { page } = Astro.props as { page: Page<CollectionEntry<'blog'>> }
+const locale = Astro.params.lang ?? DEFAULT_LOCALE
+const localePrefix = getLocalePrefix(locale)
+const dateLocale = locale === 'en' ? 'en-US' : 'ko-KR'
+---
+
+<BaseLayout title='Blog'>
+    <!-- Hero Section -->
+    <div class="relative py-20 mb-12 bg-gradient-to-br from-bg-light to-white dark:from-[#0f172a] dark:to-[#1e293b] overflow-hidden">
+        <div class="absolute inset-0 opacity-10 dark:opacity-20 pattern-grid-lg"></div>
+        <div class="max-w-4xl mx-auto px-4 text-center relative z-10">
+            <FadeIn delay={0.1} direction="up">
+                <span class="inline-block py-1 px-3 rounded-full bg-primary/10 text-primary font-bold text-sm mb-6 tracking-wide uppercase">
+                    Archive
+                </span>
+                <h1 class="text-4xl md:text-6xl font-heading font-black mb-6 text-gray-900 dark:text-white">
+                    Stories & <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Insights</span>
+                </h1>
+                <p class="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                    {locale === 'en' 
+                        ? `Explore all ${page.total} articles about Smart Farming and Agriculture.`
+                        : `총 ${page.total}개의 영농과 스마트팜 이야기를 탐색하세요.`
+                    }
+                </p>
+            </FadeIn>
+        </div>
+    </div>
+
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        <!-- Main Content: Posts Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+            {page.data.map((post, index) => (
+                <FadeIn delay={index * 0.1} direction="up">
+                    <article class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700 group flex flex-col h-full">
+                        {post.data.heroImage && (
+                            <a href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`} class="block overflow-hidden h-56 relative">
+                                <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors z-10"></div>
+                                <img 
+                                    src={post.data.heroImage} 
+                                    alt={post.data.title}
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                                {post.data.category && (
+                                     <div class="absolute top-4 right-4 z-20">
+                                        <span class="px-3 py-1 bg-white/90 dark:bg-black/80 backdrop-blur text-xs font-bold rounded-full shadow-sm">
+                                            {getCategoryTitleFromSlug(getCategorySlug(post.data.category), locale)}
+                                        </span>
+                                    </div>
+                                )}
+                            </a>
+                        )}
+                        <div class="p-6 flex flex-col flex-grow">
+                            <div class="flex items-center gap-2 text-xs text-text-muted dark:text-gray-400 mb-3 font-medium">
+                                <time datetime={post.data.pubDate?.toISOString()}>
+                                    {post.data.pubDate?.toLocaleDateString(dateLocale, { year: 'numeric', month: 'long', day: 'numeric' })}
+                                </time>
+                            </div>
+                            
+                            <h2 class="text-xl font-heading font-bold mb-3 group-hover:text-primary transition-colors leading-tight">
+                                <a href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`}>
+                                    {post.data.title}
+                                </a>
+                            </h2>
+                            
+                            {post.data.description && (
+                                <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-6 flex-grow">
+                                    {post.data.description}
+                                </p>
+                            )}
+                            
+                            <div class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700/50 mt-auto">
+                                <a href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`} class="text-sm font-bold text-primary flex items-center gap-1 group/link">
+                                    Read Article <svg class="w-4 h-4 group-hover/link:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+                </FadeIn>
+            ))}
+        </div>
+
+        <div class="flex justify-center">
+            <Pagination page={page} />
+        </div>
+	</div>
+</BaseLayout>
+
+<style>
+    .pattern-grid-lg {
+        background-image: radial-gradient(currentColor 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+</style>
