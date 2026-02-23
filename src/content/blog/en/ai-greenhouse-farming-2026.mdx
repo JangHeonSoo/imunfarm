@@ -50,6 +50,10 @@ Another study showed that applying AI-based control in a semi-closed greenhouse 
 This was an optimization scenario that factored in outside temperatures, solar radiation, and electricity prices.
 While actual figures vary depending on greenhouse structure, region, and crop, the trend is clear: "efficiency undoubtedly surges compared to manual human control."
 
+![AI climate control sensors monitoring tomato rows](/images/ai-greenhouse-climate-v2.png)
+
+This kind of full-canopy sensing array is what allows the control loop to nudge boilers, vents, and curtains in precise increments across the entire greenhouse block.
+
 ### 2. Predictive control: Looking at "what's next" instead of "right now"
 
 Most conventional control systems are immediately reactive.
@@ -57,6 +61,7 @@ If the temperature breaches 25 degrees, the vents open.
 If CO₂ falls below 600ppm, gas is injected.
 
 AI-based control operates a bit differently.
+
 - It predicts temperature and humidity shifts up to 1-3 hours in advance.
 - It considers external data like electricity price fluctuations, sunlight forecasts, and wind strength.
 - It makes judgments like, "If we heat the facility a bit more right now, we can save on heating costs later."
@@ -74,9 +79,12 @@ It means baking into the model the understanding that 25 degrees on the coast of
 In a greenhouse, temperature, humidity, and CO₂ are the core.
 If these three fall out of sync, everything else becomes practically meaningless.
 
-- <strong>Temperature</strong>: Directly correlates to crop growth speed. Deviating from the optimal temperature lowers yield and quality.
-- <strong>Humidity</strong>: If it's too high, diseases (like mold) spread; if it's too low, transpiration becomes excessive.
-- <strong>CO₂</strong>: The fuel for photosynthesis. In greenhouses, CO₂ is often pushed up to the 800-1,000ppm range.
+- <strong>Temperature</strong>: Directly correlates to crop growth speed. Deviating from the optimal
+  temperature lowers yield and quality.
+- <strong>Humidity</strong>: If it's too high, diseases (like mold) spread; if it's too low,
+  transpiration becomes excessive.
+- <strong>CO₂</strong>: The fuel for photosynthesis. In greenhouses, CO₂ is often pushed up to the
+  800-1,000ppm range.
 
 AI doesn't just apply rigid settings like "maintain 24 degrees."
 It simultaneously observes light, CO₂, and temperature to locate the "peak photosynthetic efficiency zone."
@@ -92,6 +100,10 @@ Attempts to use AI for pest control in smart farm greenhouses are already underw
 By photographing sticky traps, it automatically counts outbreaks of pests like whiteflies and hoverflies, sending alerts the moment they breach threshold levels.
 The approach shifts from "Ah, we got hit" post-infection, to "Let's brace ourselves" the moment signs begin to appear.
 
+![Computer vision rig scanning greenhouse canopy](/images/ai-greenhouse-vision-v2.png)
+
+Vision towers positioned over the rows continuously scan foliage so anomalies are flagged before a human scout could walk the entire greenhouse.
+
 ### Task and labor management
 
 In massive glass greenhouses, human movement is also data.
@@ -100,6 +112,9 @@ Based on this data, the AI recommends "when and which line needs concentrated ma
 
 It becomes even more interesting when combined with robots.
 In the Netherlands and Japan, tomato harvesting robots and leaf removal robots are already traversing the commercialization stage.
+
+![A tomato harvesting robot working in a modern greenhouse](/images/ai-greenhouse-robot-v2.png)
+
 The AI greenhouse control system will eventually design environments considering wide aisles for robots and optimal crop conditions for harvesting.
 
 ---
@@ -109,19 +124,20 @@ The AI greenhouse control system will eventually design environments considering
 The discussion doesn't simply end at "vinyl houses are cheap, glass greenhouses are expensive."
 From an AI perspective, their structural characteristics are quite distinct.
 
-| Category | Vinyl House | Glass Greenhouse |
-|------|------------|----------|
-| Initial Cost | Relatively cheap | Extremely high (steel frames, glass, equipment) |
-| Insulation/Sealing | Prone to drafts, gaps, and leaks | Highly sealed allowing precise control |
-| Sensors/Equipment | Often introduced incrementally | Often fully stacked from the design phase |
-| AI Control Difficulty | Many variables and high irregularity | Relatively stable modeling |
-| Core Use Cases | Korean tomatoes, paprika, strawberries | Dutch-style mega greenhouses, export-oriented |
+| Category              | Vinyl House                            | Glass Greenhouse                                |
+| --------------------- | -------------------------------------- | ----------------------------------------------- |
+| Initial Cost          | Relatively cheap                       | Extremely high (steel frames, glass, equipment) |
+| Insulation/Sealing    | Prone to drafts, gaps, and leaks       | Highly sealed allowing precise control          |
+| Sensors/Equipment     | Often introduced incrementally         | Often fully stacked from the design phase       |
+| AI Control Difficulty | Many variables and high irregularity   | Relatively stable modeling                      |
+| Core Use Cases        | Korean tomatoes, paprika, strawberries | Dutch-style mega greenhouses, export-oriented   |
 
 Focusing purely on AI control, glass greenhouses offer a far "easier modeling environment."
 This is because they are well-sealed, structurally standardized, and largely equipped with unified hardware.
 Conversely, vinyl houses carry a tangled history of modifications, additions, and repairs, meaning every farmer's greenhouse is essentially a unique environment.
 
 This division makes modern research fascinating.
+
 - In glass greenhouses, the focus is on "fully autonomous control and total automation including robots."
 - In vinyl houses, the focus is on "overlaying AI onto existing facilities to maximize efficiency at a minimal cost."
 
@@ -133,6 +149,7 @@ Both require AI, but the strategy and approach differ wildly.
 
 The Korean Rural Development Administration has pushed the slogan "The era of AI farming" for quite some time.
 In the development of second-generation smart farm technology, there are only two core keywords:
+
 <strong>Cloud</strong> and <strong>Machine Learning</strong>.
 
 - Local weather info, greenhouse sensor data, and production records are aggregated in the cloud.
@@ -168,24 +185,25 @@ For a farmer, that’s more than enough to qualify as a "technology worth trying
 If it were a totally perfect story, no greenhouse operation would ever fail.
 There are several realistic walls to climb.
 
-1. <strong>High initial investment</strong>
-   - Factoring in sensors, controllers, communication equipment, and cloud subscription fees, the burden on farmers is heavy.
-   - While the physical vinyl house itself is cheap, bolting AI onto it often requires foundational equipment upgrades first.
+1. <strong>High initial investment</strong>- Factoring in sensors, controllers, communication
+   equipment, and cloud subscription fees, the burden on farmers is heavy. - While the physical
+   vinyl house itself is cheap, bolting AI onto it often requires foundational equipment upgrades
+   first.
 
-2. <strong>Energy Prices</strong>
-   - Even if AI trims energy usage by 20%, if the basic cost of energy spikes by 50%, the savings are effectively neutered.
-   - "Energy-independent greenhouses" coupled with renewables like solar and geothermal are becoming an increasingly vital keyword.
+2. <strong>Energy Prices</strong>- Even if AI trims energy usage by 20%, if the basic cost of energy
+   spikes by 50%, the savings are effectively neutered. - "Energy-independent greenhouses" coupled
+   with renewables like solar and geothermal are becoming an increasingly vital keyword.
 
-3. <strong>Data and Security</strong>
-   - Greenhouse operation data goes up to the cloud.
-   - Server outages, hacking, or ransomware immediately translate to production halts.
-   - We are entering an era where farms need to discuss cybersecurity.
+3. <strong>Data and Security</strong>- Greenhouse operation data goes up to the cloud. - Server
+   outages, hacking, or ransomware immediately translate to production halts. - We are entering an
+   era where farms need to discuss cybersecurity.
 
-4. <strong>The Technology Gap</strong>
-   - Massive glass greenhouses or export farms absorb these technologies rapidly.
-   - Small vinyl house farmers can easily stall out at the stage of "checking the smartphone app, but putting in the same settings every day anyway."
+4. <strong>The Technology Gap</strong>- Massive glass greenhouses or export farms absorb these
+   technologies rapidly. - Small vinyl house farmers can easily stall out at the stage of "checking
+   the smartphone app, but putting in the same settings every day anyway."
 
 Because of this, the trend is shifting towards <strong>"phased introduction of semi-automation."</strong>
+
 - First, entrust monitoring and alarms to the AI.
 - Next, automate specific equipment (boilers, vents).
 - Finally, transition into fully integrated automated control.
@@ -198,23 +216,25 @@ Predicting the future is always risky.
 Still, looking at current data and trends, a general picture begins to form.
 
 1. <strong>AI climate control becomes a default option</strong>
-   Newly built glass greenhouses are highly likely to feature AI-based integrated control out of the box.
-   For vinyl houses, budget sensors and subscription services will rapidly proliferate.
+   Newly built glass greenhouses are highly likely to feature AI-based integrated control out of the
+   box. For vinyl houses, budget sensors and subscription services will rapidly proliferate.
 
 2. <strong>Predictive maintenance becomes routine</strong>
-   Trends move towards receiving alerts that say "the boiler is about to break," or reasoning that "the ventilation motor's current pattern is weird, let's fix it beforehand."
+   Trends move towards receiving alerts that say "the boiler is about to break," or reasoning that
+   "the ventilation motor's current pattern is weird, let's fix it beforehand."
 
 3. <strong>The gap between 'farms with data' and 'farms without' widens</strong>
-   Production data will emerge as a crucial reliability metric for loans, insurance, and contract farming.
-   Data, ultimately, becomes a physical asset.
+   Production data will emerge as a crucial reliability metric for loans, insurance, and contract
+   farming. Data, ultimately, becomes a physical asset.
 
 4. <strong>The role of field experts shifts</strong>
-   Instead of manually pressing buttons, greenhouse managers will evolve into personnel who "interpret AI recommendations and establish strategy."
-   A form of an 'Agricultural Operations PM'.
+   Instead of manually pressing buttons, greenhouse managers will evolve into personnel who
+   "interpret AI recommendations and establish strategy." A form of an 'Agricultural Operations PM'.
 
 5. <strong>Policy and regulations will catch up</strong>
-   Rules regarding greenhouse energy efficiency standards, data standardization, and security guidelines are bound to be drafted.
-   Agriculture is growing nearly as complex as the IT infrastructure industry.
+   Rules regarding greenhouse energy efficiency standards, data standardization, and security
+   guidelines are bound to be drafted. Agriculture is growing nearly as complex as the IT
+   infrastructure industry.
 
 ---
 
