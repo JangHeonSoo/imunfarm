@@ -22,7 +22,9 @@ export function createRedis(env?: Env) {
     }
 
     async function call(command: string[]): Promise<unknown> {
-        if (!UPSTASH_URL || !UPSTASH_TOKEN) return null
+        if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+            throw new Error(`Missing Redis credentials. UPSTASH_URL or TOKEN is undefined. Check Cloudflare Pages environment variables.`)
+        }
         const res = await fetch(`${UPSTASH_URL}`, {
             method: 'POST',
             headers: {
