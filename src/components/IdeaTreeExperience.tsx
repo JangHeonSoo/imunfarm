@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import styles from './IdeaTreeExperience.module.css'
 
@@ -25,121 +26,32 @@ type FruitStyle = CSSProperties & {
 	'--fruit-depth': string
 }
 
-const VOTE_STORAGE_KEY = 'imunfarm_idea_tree_votes'
+const VOTE_STORAGE_KEY = 'imunfarm_voted_ideas'
 
-const MOCK_IDEAS: Idea[] = [
-	{
-		id: 'ai-soil-narrative',
-		title: 'AI로 토양 건강 진단하고 재생기록 만들기',
-		summary:
-			'센서와 衛星 데이터를 결합해 토양의 현재 상태를 시각화하고, 독자가 직접 가꾸는 방법을 제안하는 리포트',
-		votes: 148,
-		createdAt: '2025-02-12',
-		tags: ['AI', '토양'],
-		category: '재생농업'
-	},
-	{
-		id: 'windbreak-lab',
-		title: '바람길을 디자인하는 목초 방풍림 실험',
-		summary:
-			'풍력 데이터를 활용해 방풍림 형태를 최적화한 뒤, 목초와 공존시키는 과정을 다루는 케이스 스터디',
-		votes: 112,
-		createdAt: '2025-02-05',
-		tags: ['기후', '설계'],
-		category: '에코 디자인'
-	},
-	{
-		id: 'night-irrigation-grid',
-		title: '야간 관개 전력망을 위한 초저전력 스마트 노드',
-		summary:
-			'전력 피크를 피해 야간에만 작동하는 관개 노드를 설계하고, 실제 밭에서의 적용성과 한계를 분석',
-		votes: 173,
-		createdAt: '2025-01-26',
-		tags: ['IoT'],
-		category: '에너지'
-	},
-	{
-		id: 'ai-weather-protocol',
-		title: '초미세 기상 데이터로 파종 타이밍을 맞추는 프로토콜',
-		summary: '센티미터 스케일 기상 예측을 활용한 파종/수확 캘린더 자동화 실험기',
-		votes: 205,
-		createdAt: '2025-01-13',
-		tags: ['기상', '데이터'],
-		category: '데이터 농업'
-	},
-	{
-		id: 'moss-bioreactor',
-		title: '이끼 바이오리액터로 그린수소와 퇴비를 동시에',
-		summary: '소규모 농가에서도 구축 가능한 모듈식 이끼 바이오리액터 설계와 냉각 시스템',
-		votes: 96,
-		createdAt: '2025-02-01',
-		tags: ['수소', '바이오'],
-		category: '循環'
-	},
-	{
-		id: 'micro-climate-lab',
-		title: '비닐하우스 안 작은 기후를 해석하는 오픈소스 키트',
-		summary: 'NDVI 카메라와 CO₂ 센서를 묶어 마이크로클라이밋을 가시화하는 키트를 제작',
-		votes: 134,
-		createdAt: '2025-01-30',
-		tags: ['오픈소스'],
-		category: 'Fab'
-	},
-	{
-		id: 'forest-ai-writing',
-		title: 'AI에게 숲속 인터뷰를 맡기면 생기는 일',
-		summary: 'LLM이 직접 농부의 일상을 인터뷰하고, 편집자는 이를 큐레이션하는 실험',
-		votes: 82,
-		createdAt: '2025-02-15',
-		tags: ['LLM'],
-		category: '콘텐츠'
-	},
-	{
-		id: 'agri-osmotic-cooling',
-		title: '증발냉각을 이용한 이동식 저장 돔',
-		summary: '태양광과 증발냉각을 조합한 이동식 저장소 프로토타입 제작 후기',
-		votes: 142,
-		createdAt: '2025-01-19',
-		tags: ['하드웨어'],
-		category: '어그테크'
-	},
-	{
-		id: 'seedling-capsule',
-		title: '드론으로 뿌리는 씨앗 캡슐의 생존율 실험',
-		summary: '캡슐 재질, 토양 수분, 발아율을 데이터로 비교하며 프로토타입을 개선',
-		votes: 187,
-		createdAt: '2025-01-02',
-		tags: ['드론', '프로토타입'],
-		category: '재조림'
-	},
-	{
-		id: 'biochar-rain',
-		title: 'Biochar를 빗물과 섞어 살포했더니',
-		summary: '소규모 농장에서 biochar 슬러리를 직접 만들어 관개 시스템에 투입한 기록',
-		votes: 121,
-		createdAt: '2025-02-08',
-		tags: ['Biochar'],
-		category: '탄소'
-	},
-	{
-		id: 'tiny-farm-server',
-		title: '농장 상태를 읽어주는 Tiny Web Server',
-		summary: 'LoRa 센서 허브와 WebUSB를 묶어, PC 없이도 현장에서 데이터 뷰를 여는 방법',
-		votes: 88,
-		createdAt: '2025-01-23',
-		tags: ['LoRa', '웹'],
-		category: '네트워크'
-	},
-	{
-		id: 'lunar-calendar',
-		title: '달 주기를 반영한 작부 설계 도구',
-		summary: '위치기반 달 위상 데이터를 토지 설계에 입히는 인터랙티브 툴 만들기',
-		votes: 76,
-		createdAt: '2025-02-18',
-		tags: ['UX'],
-		category: '도구'
-	}
-]
+/* ── API response type ── */
+type ApiIdea = {
+	id: string
+	title: string
+	author: string
+	date: string
+	votes: number
+}
+
+const mapApiToIdea = (api: ApiIdea): Idea => ({
+	id: api.id,
+	title: api.title,
+	summary: api.author || '익명의 씨앗',
+	votes: api.votes,
+	createdAt: api.date,
+})
+
+type HarvestedIdea = {
+	period: string
+	ideaId: string
+	title: string
+	status: 'published' | 'writing'
+	blogLink: string | null
+}
 
 const ANCHOR_POINTS: Array<{ x: number; y: number }> = [
 	{ x: 20, y: 15 },
@@ -165,20 +77,21 @@ const pseudoRandom = (seed: string) => {
 	return (Math.sin(base) + 1) / 2
 }
 
-const loadVotes = () => {
+/* ── localStorage 투표 기록 (24시간 만료) ── */
+const getLocalVotes = (): Record<string, number> => {
 	try {
 		const raw = localStorage.getItem(VOTE_STORAGE_KEY)
-		if (!raw) return new Set<string>()
-		return new Set(JSON.parse(raw) as string[])
-	} catch {
-		return new Set<string>()
-	}
+		if (!raw) return {}
+		const parsed = JSON.parse(raw) as Record<string, number>
+		const now = Date.now()
+		return Object.fromEntries(Object.entries(parsed).filter(([, ts]) => now - ts < 86400000))
+	} catch { return {} }
 }
-
-const persistVotes = (votes: Set<string>) => {
-	try {
-		localStorage.setItem(VOTE_STORAGE_KEY, JSON.stringify(Array.from(votes)))
-	} catch { }
+const setLocalVote = (id: string) => {
+	try { const v = getLocalVotes(); v[id] = Date.now(); localStorage.setItem(VOTE_STORAGE_KEY, JSON.stringify(v)) } catch { /**/ }
+}
+const removeLocalVote = (id: string) => {
+	try { const v = getLocalVotes(); delete v[id]; localStorage.setItem(VOTE_STORAGE_KEY, JSON.stringify(v)) } catch { /**/ }
 }
 
 const formatNumber = new Intl.NumberFormat('ko-KR')
@@ -290,18 +203,43 @@ const ParticleField = ({ reduceMotion }: { reduceMotion: boolean }) => {
 }
 
 const IdeaTreeExperience = () => {
-	const [ideas, setIdeas] = useState<Idea[]>(() => sortIdeas(MOCK_IDEAS))
-	const [votes, setVotes] = useState<Set<string>>(new Set())
+	const [ideas, setIdeas] = useState<Idea[]>([])
+	const [votedIds, setVotedIds] = useState<Set<string>>(new Set())
 	const [activeIdea, setActiveIdea] = useState<string | null>(null)
 	const [modalOpen, setModalOpen] = useState(false)
+	const [loading, setLoading] = useState(true)
+	const [submitting, setSubmitting] = useState(false)
 	const [toast, setToast] = useState<ToastState>(null)
-	const [form, setForm] = useState({ title: '', summary: '', category: '' })
+	const [form, setForm] = useState({ title: '', author: '' })
+	const [harvested, setHarvested] = useState<HarvestedIdea[]>([])
 	const treeSectionRef = useRef<HTMLDivElement>(null)
 	const titleInputRef = useRef<HTMLInputElement>(null)
 	const reduceMotion = usePrefersReducedMotion()
 
+	const fetchIdeas = useCallback(async () => {
+		try {
+			const res = await fetch('/api/ideas')
+			if (res.ok) {
+				const data = (await res.json()) as ApiIdea[]
+				setIdeas(sortIdeas(data.map(mapApiToIdea)))
+			}
+		} catch (e) {
+			console.error('[IdeaTree] fetch error', e)
+		} finally {
+			setLoading(false)
+		}
+	}, [])
+
 	useEffect(() => {
-		setVotes(loadVotes())
+		fetchIdeas()
+		setVotedIds(new Set(Object.keys(getLocalVotes())))
+	}, [fetchIdeas])
+
+	useEffect(() => {
+		fetch('/data/selected-ideas.json')
+			.then((res) => res.json())
+			.then((data) => setHarvested(data as HarvestedIdea[]))
+			.catch(() => { })
 	}, [])
 
 	useEffect(() => {
@@ -340,48 +278,61 @@ const IdeaTreeExperience = () => {
 
 	const topIdeaId = ideas[0]?.id ?? null
 
-	const handleVote = (id: string) => {
-		if (votes.has(id)) {
-			setToast({ type: 'info', message: '이미 추천한 열매예요.' })
-			return
+	const handleVote = async (id: string) => {
+		const alreadyVoted = votedIds.has(id)
+		try {
+			const res = await fetch(`/api/ideas/${id}/vote`, { method: alreadyVoted ? 'DELETE' : 'POST' })
+			const data = (await res.json()) as { votes?: number; error?: string; success?: boolean }
+			if (res.ok && data.votes !== undefined) {
+				setIdeas((prev) =>
+					sortIdeas(prev.map((idea) => (idea.id === id ? { ...idea, votes: data.votes! } : idea)))
+				)
+				if (alreadyVoted) {
+					setVotedIds((prev) => { const n = new Set(prev); n.delete(id); return n })
+					removeLocalVote(id)
+					setToast({ type: 'info', message: '추천을 취소했어요.' })
+				} else {
+					setVotedIds((prev) => new Set([...prev, id]))
+					setLocalVote(id)
+					setActiveIdea(id)
+					setToast({ type: 'success', message: '추천했어요.' })
+				}
+			} else {
+				setToast({ type: 'info', message: data.error || '오류가 발생했습니다.' })
+			}
+		} catch {
+			setToast({ type: 'info', message: '네트워크 오류가 발생했습니다.' })
 		}
-		setIdeas((prev) =>
-			sortIdeas(prev.map((idea) => (idea.id === id ? { ...idea, votes: idea.votes + 1 } : idea)))
-		)
-		setVotes((prev) => {
-			const next = new Set(prev)
-			next.add(id)
-			persistVotes(next)
-			return next
-		})
-		setActiveIdea(id)
-		setToast({ type: 'success', message: '추천했어요.' })
 	}
 
-	const handleSubmit = (event: React.FormEvent) => {
+	const handleSubmit = async (event: React.FormEvent) => {
 		event.preventDefault()
 		const trimmedTitle = form.title.trim()
-		if (trimmedTitle.length < 4) {
-			setToast({ type: 'info', message: '제목은 4자 이상 입력해 주세요.' })
+		if (trimmedTitle.length < 5) {
+			setToast({ type: 'info', message: '제목은 5자 이상 입력해 주세요.' })
 			return
 		}
-		setIdeas((prev) =>
-			sortIdeas([
-				{
-					id: `${Date.now()}`,
-					title: trimmedTitle,
-					summary: form.summary.trim() || '새롭게 심어진 아이디어. 곧 이야기가 자랍니다.',
-					votes: 1,
-					createdAt: new Date().toISOString(),
-					tags: form.category ? [form.category] : [],
-					category: form.category || '커뮤니티'
-				},
-				...prev
-			])
-		)
-		setForm({ title: '', summary: '', category: '' })
-		setModalOpen(false)
-		setToast({ type: 'success', message: '새로운 열매가 매달렸어요.' })
+		setSubmitting(true)
+		try {
+			const res = await fetch('/api/ideas', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ title: trimmedTitle, author: form.author.trim() }),
+			})
+			const data = (await res.json()) as ApiIdea & { error?: string }
+			if (res.ok) {
+				setIdeas((prev) => sortIdeas([mapApiToIdea({ ...data, votes: 0 }), ...prev]))
+				setForm({ title: '', author: '' })
+				setModalOpen(false)
+				setToast({ type: 'success', message: '새로운 열매가 매달렸어요.' })
+			} else {
+				setToast({ type: 'info', message: data.error || '등록에 실패했습니다.' })
+			}
+		} catch {
+			setToast({ type: 'info', message: '네트워크 오류가 발생했습니다.' })
+		} finally {
+			setSubmitting(false)
+		}
 	}
 
 	const scrollToTree = () => {
@@ -421,7 +372,7 @@ const IdeaTreeExperience = () => {
 				onClick={() => handleVote(idea.id)}
 				onMouseEnter={() => setActiveIdea(idea.id)}
 				onFocus={() => setActiveIdea(idea.id)}
-				aria-pressed={votes.has(idea.id)}
+				aria-pressed={votedIds.has(idea.id)}
 				aria-label={`${idea.title} - 추천 ${idea.votes}표`}
 			>
 				<span className={styles.fruitLabel}>{idea.title}</span>
@@ -434,19 +385,13 @@ const IdeaTreeExperience = () => {
 					</p>
 				</div>
 				{topIdeaId === idea.id && <span className={styles.harvestBadge}>수확 가능</span>}
-			</button>
+			</button >
 		)
 	}
 
 	return (
 		<section className={clsx(styles.page, reduceMotion && styles.reduceMotion)}>
 			<div className={styles.heroStrip}>
-				<p className={styles.heroKicker}>COMMUNITY SEED PROGRAM</p>
-				<h1>어떤 주제로 글을 작성할까요?</h1>
-				<p>
-					반짝이는 빛을 눌러 추천하거나, 새로운 아이디어를 제안해 주세요. 가장 밝게 빛나는 열매가
-					다음 글이 됩니다.
-				</p>
 				<div className={styles.heroCtas}>
 					<button type='button' className={styles.primaryCta} onClick={() => setModalOpen(true)}>
 						아이디어 제안하기
@@ -467,6 +412,42 @@ const IdeaTreeExperience = () => {
 				</div>
 			</div>
 
+			{/* ── Harvested section ── */}
+			{harvested.length > 0 && (
+				<div className={styles.harvestedSection}>
+					<div className={styles.harvestedHeader}>
+						<h2>수확된 열매</h2>
+					</div>
+					<div className={styles.harvestedGrid}>
+						{harvested.map((item) => {
+							const isPublished = item.status === 'published'
+							const Tag = isPublished && item.blogLink ? 'a' : 'div'
+							return (
+								<Tag
+									key={item.ideaId}
+									className={clsx(styles.harvestCard, !isPublished && styles.harvestCardDisabled)}
+									{...(isPublished && item.blogLink ? { href: item.blogLink } : {})}
+								>
+									<span
+										className={clsx(
+											styles.harvestDot,
+											isPublished ? styles.harvestDotPublished : styles.harvestDotWriting
+										)}
+									/>
+									<div className={styles.harvestInfo}>
+										<p className={styles.harvestTitle}>{item.title}</p>
+										<p className={styles.harvestMeta}>
+											{item.period} · {isPublished ? '포스팅 완료' : '집필 중'}
+										</p>
+									</div>
+									{isPublished && <span className={styles.harvestArrow}>→</span>}
+								</Tag>
+							)
+						})}
+					</div>
+				</div>
+			)}
+
 			{toast && (
 				<div
 					className={clsx(styles.toast, toast.type === 'success' && styles.toastPositive)}
@@ -476,72 +457,64 @@ const IdeaTreeExperience = () => {
 				</div>
 			)}
 
-			{modalOpen && (
-				<div
-					className={styles.modalOverlay}
-					role='dialog'
-					aria-modal='true'
-					aria-labelledby='idea-modal-title'
-				>
-					<div className={styles.modalCard}>
-						<div className={styles.modalHeader}>
-							<h3 id='idea-modal-title'>아이디어 제안하기</h3>
-							<button type='button' onClick={() => setModalOpen(false)} aria-label='닫기'>
-								×
-							</button>
-						</div>
-						<form onSubmit={handleSubmit}>
-							<label>
-								<span>제목 *</span>
-								<input
-									type='text'
-									ref={titleInputRef}
-									value={form.title}
-									onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-									required
-									minLength={4}
-									maxLength={80}
-								/>
-							</label>
-							<label>
-								<span>짧은 설명</span>
-								<textarea
-									value={form.summary}
-									onChange={(event) =>
-										setForm((prev) => ({ ...prev, summary: event.target.value }))
-									}
-									rows={4}
-									maxLength={200}
-									placeholder='어떤 실험이나 이야기를 듣고 싶은가요?'
-								/>
-							</label>
-							<label>
-								<span>카테고리</span>
-								<input
-									type='text'
-									value={form.category}
-									onChange={(event) =>
-										setForm((prev) => ({ ...prev, category: event.target.value }))
-									}
-									placeholder='예: 재생농업, AI, 하드웨어'
-								/>
-							</label>
-							<div className={styles.modalActions}>
-								<button
-									type='button'
-									onClick={() => setModalOpen(false)}
-									className={styles.secondaryCta}
-								>
-									닫기
-								</button>
-								<button type='submit' className={styles.primaryCta}>
-									제안 등록
+			{modalOpen && typeof document !== 'undefined'
+				? createPortal(
+					<div
+						className={styles.modalOverlay}
+						role='dialog'
+						aria-modal='true'
+						aria-labelledby='idea-modal-title'
+					>
+						<div className={styles.modalCard}>
+							<div className={styles.modalHeader}>
+								<h3 id='idea-modal-title'>아이디어 제안하기</h3>
+								<button type='button' onClick={() => setModalOpen(false)} aria-label='닫기'>
+									×
 								</button>
 							</div>
-						</form>
-					</div>
-				</div>
-			)}
+							<form onSubmit={handleSubmit}>
+								<label>
+									<span>제목 *</span>
+									<input
+										type='text'
+										ref={titleInputRef}
+										value={form.title}
+										onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+										required
+										minLength={5}
+										maxLength={100}
+									/>
+								</label>
+								<label>
+									<span>닉네임</span>
+									<input
+										type='text'
+										value={form.author}
+										onChange={(event) =>
+											setForm((prev) => ({ ...prev, author: event.target.value }))
+										}
+										maxLength={20}
+										placeholder='선택사항 (미입력시 익명의 씨앗)'
+									/>
+								</label>
+								<div className={styles.modalActions}>
+									<button
+										type='button'
+										onClick={() => setModalOpen(false)}
+										className={styles.secondaryCta}
+									>
+										닫기
+									</button>
+									<button type='submit' className={styles.primaryCta} disabled={submitting}>
+										{submitting ? '등록 중...' : '제안 등록'}
+									</button>
+								</div>
+							</form>
+						</div>
+					</div>,
+					document.body
+				)
+				: null}
 		</section>
 	)
 }
