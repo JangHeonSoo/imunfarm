@@ -1,0 +1,15 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+import IdeaAdmin from '../components/IdeaAdmin.tsx'
+
+const SEO = {
+	title: 'Idea Admin | IMUN.FARM',
+	description: '아이디어 관리 페이지',
+}
+---
+
+<BaseLayout {...SEO}>
+	<section class='col-span-full w-full relative py-16'>
+		<IdeaAdmin client:load />
+	</section>
+</BaseLayout>

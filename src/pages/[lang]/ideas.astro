@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout';
-import SeedlingBoard from '@/components/SeedlingBoard';
+import IdeaTreeExperience from '@/components/IdeaTreeExperience';
 import FadeIn from '../../components/FadeIn.astro';
 import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from '@/utils';
 
@@ -55,7 +55,7 @@ const SEO = {
 
         {/* The Premium Board */}
         <FadeIn delay={0.2} direction="up" className="w-full">
-            <SeedlingBoard client:load lang={lang} />
+            <IdeaTreeExperience client:load lang={lang} />
         </FadeIn>
         
     </main>

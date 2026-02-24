@@ -37,10 +37,10 @@ type ApiIdea = {
 	votes: number
 }
 
-const mapApiToIdea = (api: ApiIdea): Idea => ({
+const mapApiToIdea = (api: ApiIdea, lang = 'ko'): Idea => ({
 	id: api.id,
 	title: api.title,
-	summary: api.author || '익명의 씨앗',
+	summary: api.author || (lang === 'en' ? 'Anonymous Seed' : '익명의 씨앗'),
 	votes: api.votes,
 	createdAt: api.date,
 })
@@ -94,10 +94,10 @@ const removeLocalVote = (id: string) => {
 	try { const v = getLocalVotes(); delete v[id]; localStorage.setItem(VOTE_STORAGE_KEY, JSON.stringify(v)) } catch { /**/ }
 }
 
-const formatNumber = new Intl.NumberFormat('ko-KR')
+const formatNumber = (lang = 'ko') => new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'ko-KR')
 
-const formatDate = (value: string) =>
-	new Intl.DateTimeFormat('ko-KR', { month: 'short', day: 'numeric' }).format(new Date(value))
+const formatDate = (value: string, lang = 'ko') =>
+	new Intl.DateTimeFormat(lang === 'en' ? 'en-US' : 'ko-KR', { month: 'short', day: 'numeric' }).format(new Date(value))
 
 const computePositions = (ideas: Idea[]): PositionedIdea[] => {
 	return ideas.map((idea, index) => {
@@ -202,7 +202,31 @@ const ParticleField = ({ reduceMotion }: { reduceMotion: boolean }) => {
 	return <canvas ref={canvasRef} className={styles.particleCanvas} aria-hidden='true' />
 }
 
-const IdeaTreeExperience = () => {
+const IdeaTreeExperience = ({ lang = 'ko' }: { lang?: string }) => {
+	const isEn = lang === 'en'
+	const t = {
+		suggestBtn: isEn ? 'Suggest an Idea' : '아이디어 제안하기',
+		modalTitle: isEn ? 'Submit an Idea' : '아이디어 제안하기',
+		closeBtn: isEn ? 'Close' : '닫기',
+		titleLabel: isEn ? 'Title *' : '제목 *',
+		nicknameLabel: isEn ? 'Nickname' : '닉네임',
+		placeholder: isEn ? 'Optional (anonymous if blank)' : '선택사항 (미입력시 익명의 씨앗)',
+		submit: isEn ? 'Submit' : '제안 등록',
+		submitting: isEn ? 'Submitting...' : '등록 중...',
+		harvestedTitle: isEn ? 'Harvested Ideas' : '수확된 열매',
+		published: isEn ? 'Published' : '포스팅 완료',
+		writing: isEn ? 'Writing' : '집필 중',
+		voted: (n: number) => isEn ? `${formatNumber(lang).format(n)} votes` : `${formatNumber(lang).format(n)} 추천`,
+		toastVoted: isEn ? 'Voted!' : '추천했어요.',
+		toastUnvoted: isEn ? 'Vote cancelled.' : '추천을 취소했어요.',
+		toastError: isEn ? 'An error occurred.' : '오류가 발생했습니다.',
+		toastNetwork: isEn ? 'Network error.' : '네트워크 오류가 발생했습니다.',
+		toastMinLength: isEn ? 'Please write at least 5 characters.' : '제목은 5자 이상 입력해 주세요.',
+		toastPosted: isEn ? 'A new idea has been planted!' : '새로운 열매가 매달렸어요.',
+		toastFailed: isEn ? 'Failed to submit.' : '등록에 실패했습니다.',
+		harvestable: isEn ? 'Top Idea' : '수확 가능',
+		tooltipVotes: (n: number) => isEn ? `${formatNumber(lang).format(n)} votes` : `${formatNumber(lang).format(n)}명이 추천`,
+	}
 	const [ideas, setIdeas] = useState<Idea[]>([])
 	const [votedIds, setVotedIds] = useState<Set<string>>(new Set())
 	const [activeIdea, setActiveIdea] = useState<string | null>(null)
@@ -221,7 +245,7 @@ const IdeaTreeExperience = () => {
 			const res = await fetch('/api/ideas')
 			if (res.ok) {
 				const data = (await res.json()) as ApiIdea[]
-				setIdeas(sortIdeas(data.map(mapApiToIdea)))
+				setIdeas(sortIdeas(data.map(api => mapApiToIdea(api, lang))))
 			}
 		} catch (e) {
 			console.error('[IdeaTree] fetch error', e)
@@ -290,18 +314,18 @@ const IdeaTreeExperience = () => {
 				if (alreadyVoted) {
 					setVotedIds((prev) => { const n = new Set(prev); n.delete(id); return n })
 					removeLocalVote(id)
-					setToast({ type: 'info', message: '추천을 취소했어요.' })
+					setToast({ type: 'info', message: t.toastUnvoted })
 				} else {
 					setVotedIds((prev) => new Set([...prev, id]))
 					setLocalVote(id)
 					setActiveIdea(id)
-					setToast({ type: 'success', message: '추천했어요.' })
+					setToast({ type: 'success', message: t.toastVoted })
 				}
 			} else {
-				setToast({ type: 'info', message: data.error || '오류가 발생했습니다.' })
+				setToast({ type: 'info', message: data.error || t.toastError })
 			}
 		} catch {
-			setToast({ type: 'info', message: '네트워크 오류가 발생했습니다.' })
+			setToast({ type: 'info', message: t.toastNetwork })
 		}
 	}
 
@@ -309,7 +333,7 @@ const IdeaTreeExperience = () => {
 		event.preventDefault()
 		const trimmedTitle = form.title.trim()
 		if (trimmedTitle.length < 5) {
-			setToast({ type: 'info', message: '제목은 5자 이상 입력해 주세요.' })
+			setToast({ type: 'info', message: t.toastMinLength })
 			return
 		}
 		setSubmitting(true)
@@ -321,15 +345,15 @@ const IdeaTreeExperience = () => {
 			})
 			const data = (await res.json()) as ApiIdea & { error?: string }
 			if (res.ok) {
-				setIdeas((prev) => sortIdeas([mapApiToIdea({ ...data, votes: 0 }), ...prev]))
+				setIdeas((prev) => sortIdeas([mapApiToIdea({ ...data, votes: 0 }, lang), ...prev]))
 				setForm({ title: '', author: '' })
 				setModalOpen(false)
-				setToast({ type: 'success', message: '새로운 열매가 매달렸어요.' })
+				setToast({ type: 'success', message: t.toastPosted })
 			} else {
-				setToast({ type: 'info', message: data.error || '등록에 실패했습니다.' })
+				setToast({ type: 'info', message: data.error || t.toastFailed })
 			}
 		} catch {
-			setToast({ type: 'info', message: '네트워크 오류가 발생했습니다.' })
+			setToast({ type: 'info', message: t.toastNetwork })
 		} finally {
 			setSubmitting(false)
 		}
@@ -373,18 +397,18 @@ const IdeaTreeExperience = () => {
 				onMouseEnter={() => setActiveIdea(idea.id)}
 				onFocus={() => setActiveIdea(idea.id)}
 				aria-pressed={votedIds.has(idea.id)}
-				aria-label={`${idea.title} - 추천 ${idea.votes}표`}
+				aria-label={`${idea.title} - ${t.voted(idea.votes)}`}
 			>
 				<span className={styles.fruitLabel}>{idea.title}</span>
-				<span className={styles.fruitVotes}>{formatNumber.format(idea.votes)} 추천</span>
+				<span className={styles.fruitVotes}>{t.voted(idea.votes)}</span>
 				<div className={clsx(styles.tooltip, idea.coords.y < 35 && styles.tooltipBelow)} role='tooltip'>
 					<p className={styles.tooltipTitle}>{idea.title}</p>
 					<p className={styles.tooltipBody}>{idea.summary}</p>
 					<p className={styles.tooltipMeta}>
-						{formatNumber.format(idea.votes)}명이 추천 · {formatDate(idea.createdAt)}
+						{t.tooltipVotes(idea.votes)} · {formatDate(idea.createdAt, lang)}
 					</p>
 				</div>
-				{topIdeaId === idea.id && <span className={styles.harvestBadge}>수확 가능</span>}
+				{topIdeaId === idea.id && <span className={styles.harvestBadge}>{t.harvestable}</span>}
 			</button >
 		)
 	}
@@ -394,7 +418,7 @@ const IdeaTreeExperience = () => {
 			<div className={styles.heroStrip}>
 				<div className={styles.heroCtas}>
 					<button type='button' className={styles.primaryCta} onClick={() => setModalOpen(true)}>
-						아이디어 제안하기
+						{t.suggestBtn}
 					</button>
 				</div>
 			</div>
@@ -416,7 +440,7 @@ const IdeaTreeExperience = () => {
 			{harvested.length > 0 && (
 				<div className={styles.harvestedSection}>
 					<div className={styles.harvestedHeader}>
-						<h2>수확된 열매</h2>
+						<h2>{t.harvestedTitle}</h2>
 					</div>
 					<div className={styles.harvestedGrid}>
 						{harvested.map((item) => {
@@ -467,14 +491,14 @@ const IdeaTreeExperience = () => {
 					>
 						<div className={styles.modalCard}>
 							<div className={styles.modalHeader}>
-								<h3 id='idea-modal-title'>아이디어 제안하기</h3>
-								<button type='button' onClick={() => setModalOpen(false)} aria-label='닫기'>
+								<h3 id='idea-modal-title'>{t.modalTitle}</h3>
+								<button type='button' onClick={() => setModalOpen(false)} aria-label={t.closeBtn}>
 									×
 								</button>
 							</div>
 							<form onSubmit={handleSubmit}>
 								<label>
-									<span>제목 *</span>
+									<span>{t.titleLabel}</span>
 									<input
 										type='text'
 										ref={titleInputRef}
@@ -486,7 +510,7 @@ const IdeaTreeExperience = () => {
 									/>
 								</label>
 								<label>
-									<span>닉네임</span>
+									<span>{t.nicknameLabel}</span>
 									<input
 										type='text'
 										value={form.author}
@@ -494,7 +518,7 @@ const IdeaTreeExperience = () => {
 											setForm((prev) => ({ ...prev, author: event.target.value }))
 										}
 										maxLength={20}
-										placeholder='선택사항 (미입력시 익명의 씨앗)'
+										placeholder={t.placeholder}
 									/>
 								</label>
 								<div className={styles.modalActions}>
@@ -503,10 +527,10 @@ const IdeaTreeExperience = () => {
 										onClick={() => setModalOpen(false)}
 										className={styles.secondaryCta}
 									>
-										닫기
+										{t.closeBtn}
 									</button>
 									<button type='submit' className={styles.primaryCta} disabled={submitting}>
-										{submitting ? '등록 중...' : '제안 등록'}
+										{submitting ? t.submitting : t.submit}
 									</button>
 								</div>
 							</form>
