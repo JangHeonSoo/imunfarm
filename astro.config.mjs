@@ -1,4 +1,5 @@
 import { defineConfig } from 'astro/config'
+import cloudflare from '@astrojs/cloudflare'
 import react from '@astrojs/react'
 import mdx from '@astrojs/mdx'
 import sitemap from '@astrojs/sitemap'
@@ -12,6 +13,7 @@ import rehypeKatex from 'rehype-katex'
 export default defineConfig({
 	site: 'https://imun.farm/',
 	output: 'hybrid',
+	adapter: cloudflare(),
 	i18n: {
 		locales: ['ko', 'en'],
 		defaultLocale: 'ko',
