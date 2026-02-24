@@ -63,7 +63,9 @@ export default defineConfig({
 			},
 			drafts: true
 		}),
-		sitemap(),
+		sitemap({
+			filter: (page) => !page.includes('/farm-admin-0224')
+		}),
 		tailwind()
 	],
 	experimental: {
