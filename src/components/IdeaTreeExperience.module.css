@@ -9,14 +9,16 @@
 	position: relative;
 	margin: 0 auto;
 	width: 100%;
-	padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1.5rem, 5vw, 3.75rem) clamp(3rem, 6vw, 5rem);
+	padding: clamp(1.5rem, 3vw, 3rem) clamp(1.5rem, 5vw, 3.75rem) clamp(3rem, 6vw, 5rem);
 	font-family: var(--font-sans);
 	color: var(--fg);
 }
 
 :global(.light) :local(.page) {
-	--fg: #18221b;
-	--muted: rgba(24, 34, 27, 0.65);
+	--fg: #1a2b21;
+	--muted: rgba(24, 34, 27, 0.72);
+	--accent: #c4960e;
+	--accent-2: #1a8a6a;
 	background: transparent;
 	color: var(--fg);
 }
@@ -81,8 +83,8 @@
 
 .heroStrip {
 	text-align: center;
-	margin: 0 auto clamp(1.5rem, 6vw, 3rem);
-	padding: clamp(1rem, 3vw, 1.75rem);
+	margin: 0 auto clamp(1rem, 3vw, 1.75rem);
+	padding: clamp(0.75rem, 2vw, 1.25rem);
 	max-width: 780px;
 }
 
@@ -101,19 +103,22 @@
 }
 
 .heroStrip h1 {
-	font-size: clamp(3rem, 7vw, 5.5rem);
-	line-height: 0.95;
+	font-size: clamp(2.2rem, 5.5vw, 4.5rem);
+	line-height: 1.05;
 	font-weight: 900;
-	margin: 0 auto 1rem;
-	letter-spacing: -0.04em;
-	text-shadow: 0 18px 45px rgba(0, 0, 0, 0.5);
+	margin: 0 auto 0.75rem;
+	letter-spacing: -0.035em;
+	text-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+	word-break: keep-all;
+	text-wrap: balance;
 }
 
 .heroStrip p {
-	max-width: 720px;
-	margin: 0 auto 1.5rem;
+	max-width: 600px;
+	margin: 0 auto 1.25rem;
 	color: var(--muted);
-	font-size: 1.15rem;
+	font-size: clamp(0.9rem, 2vw, 1.05rem);
+	line-height: 1.65;
 }
 
 .heroCtas {
@@ -137,14 +142,23 @@
 }
 
 .primaryCta {
-	background: linear-gradient(125deg, rgba(248, 203, 120, 0.95), rgba(116, 222, 191, 0.85));
-	color: #0c140f;
-	box-shadow: 0 15px 30px rgba(12, 11, 6, 0.55);
+	background: linear-gradient(135deg, #ff6b6b, #ffa94d, #ff6b6b);
+	background-size: 200% 200%;
+	animation: shimmer 3s ease-in-out infinite;
+	color: #fff;
+	font-size: 1.05rem;
+	padding: 1.1rem 2.4rem;
+	box-shadow:
+		0 0 20px rgba(255, 107, 107, 0.35),
+		0 8px 25px rgba(0, 0, 0, 0.25);
+	position: relative;
 }
 
 .primaryCta:hover {
-	transform: translateY(-3px);
-	box-shadow: 0 20px 40px rgba(12, 11, 6, 0.65);
+	transform: translateY(-3px) scale(1.03);
+	box-shadow:
+		0 0 30px rgba(255, 107, 107, 0.5),
+		0 12px 35px rgba(0, 0, 0, 0.3);
 }
 
 .secondaryCta {
@@ -163,8 +177,12 @@
 	border-radius: 2.2rem;
 	background: rgba(1, 6, 10, 0.55);
 	border: 1px solid rgba(255, 255, 255, 0.08);
-	box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.4);
+	box-shadow:
+		inset 0 0 80px rgba(0, 0, 0, 0.4),
+		0 30px 80px -20px rgba(0, 0, 0, 0.45);
 	backdrop-filter: blur(12px);
+	-webkit-mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 60%, transparent 100%);
+	mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 60%, transparent 100%);
 }
 
 .treeSection::before {
@@ -182,7 +200,6 @@
 	border-radius: inherit;
 	min-height: 540px;
 	padding: clamp(2rem, 5vw, 4rem);
-	overflow: hidden;
 }
 
 .treeLayout {
@@ -197,11 +214,12 @@
 	height: var(--fruit-size, 2.4rem);
 	border: none;
 	background: transparent;
-	mix-blend-mode: screen;
 	padding: 0;
-	filter: drop-shadow(0 0 25px hsla(var(--spark-hue, 40), 100%, 78%, 0.55));
+	filter: drop-shadow(0 0 20px hsla(var(--spark-hue, 10), 100%, 72%, 0.75));
 	cursor: pointer;
-	transition: transform 0.35s ease;
+	transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+	animation: fruitBreathe 3.5s ease-in-out infinite;
+	animation-delay: calc(var(--fruit-depth, 0.5) * -3s);
 }
 
 .fruit::before {
@@ -209,43 +227,52 @@
 	position: absolute;
 	left: 50%;
 	top: 50%;
-	width: 120%;
-	height: 120%;
+	width: 100%;
+	height: 100%;
 	transform: translate(-50%, -50%);
 	border-radius: 50%;
-	background: radial-gradient(
-		circle,
-		hsla(var(--spark-hue, 40), 95%, 90%, 0.95),
-		hsla(var(--spark-hue, 40), 95%, 78%, 0.35) 55%,
-		transparent 80%
-	);
-	opacity: calc(var(--fruit-glow, 0.55) + 0.15);
-	filter: blur(1.75px);
+	background: radial-gradient(circle,
+			hsla(var(--spark-hue, 40), 90%, 95%, 1) 0%,
+			hsla(var(--spark-hue, 40), 95%, 80%, 0.85) 35%,
+			hsla(var(--spark-hue, 40), 90%, 65%, 0.3) 65%,
+			transparent 85%);
+	opacity: calc(var(--fruit-glow, 0.55) + 0.3);
+	filter: blur(0.5px);
+	z-index: 1;
 }
 
+/* soft outer halo */
 .fruit::after {
 	content: '';
 	position: absolute;
 	left: 50%;
-	top: 52%;
-	width: 60%;
-	height: 210%;
-	transform: translate(-50%, -58%) rotate(var(--streak-angle, 18deg));
-	background: linear-gradient(
-		180deg,
-		hsla(var(--spark-hue, 40), 100%, 92%, 0.95),
-		hsla(var(--spark-hue, 40), 90%, 75%, 0.4),
-		transparent 80%
-	);
-	filter: blur(calc(4px * var(--fruit-depth, 0.8)));
-	opacity: calc(var(--fruit-glow, 0.55) + 0.25);
-	animation: tailDrift 6s ease-in-out infinite;
+	top: 50%;
+	width: 180%;
+	height: 180%;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	background: radial-gradient(circle,
+			hsla(var(--spark-hue, 40), 100%, 85%, 0.35) 0%,
+			transparent 70%);
+	opacity: calc(var(--fruit-glow, 0.55) * 0.8);
+	filter: blur(3px);
+	animation: none;
+	z-index: 1;
 }
 
 .fruitActive,
 .fruit:hover,
 .fruit:focus-visible {
-	transform: scale(1.18);
+	transform: scale(1.22);
+	animation-play-state: paused;
+	filter: drop-shadow(0 0 30px hsla(var(--spark-hue, 10), 100%, 78%, 0.9));
+	z-index: 50;
+}
+
+.fruit:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 4px;
+	border-radius: 50%;
 }
 
 .fruitLabel,
@@ -260,20 +287,35 @@
 .tooltip {
 	position: absolute;
 	left: 50%;
-	bottom: calc(100% + 0.8rem);
-	transform: translateX(-50%);
-	width: min(260px, 65vw);
-	background: rgba(5, 9, 12, 0.78);
+	bottom: calc(100% + 1rem);
+	transform: translateX(-50%) translateY(6px);
+	width: min(280px, 70vw);
+	background: rgba(5, 9, 12, 0.82);
 	color: #fdf7e9;
-	border-radius: 1.5rem;
-	padding: 1rem 1.1rem;
-	border: 1px solid rgba(255, 255, 255, 0.12);
-	backdrop-filter: blur(12px);
-	box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+	border-radius: 1.2rem;
+	padding: 1rem 1.15rem 0.9rem;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(16px) saturate(1.3);
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 	opacity: 0;
 	visibility: hidden;
-	transition: opacity 0.25s ease;
-	z-index: 2;
+	transition: opacity 0.2s ease, transform 0.2s ease;
+	z-index: 30;
+	pointer-events: none;
+}
+
+/* caret triangle */
+.tooltip::after {
+	content: '';
+	position: absolute;
+	bottom: -5px;
+	left: 50%;
+	transform: translateX(-50%) rotate(45deg);
+	width: 10px;
+	height: 10px;
+	background: rgba(5, 9, 12, 0.82);
+	border-right: 1px solid rgba(255, 255, 255, 0.1);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .fruit:hover .tooltip,
@@ -281,36 +323,68 @@
 .fruit[data-active='true'] .tooltip {
 	opacity: 1;
 	visibility: visible;
+	transform: translateX(-50%) translateY(0);
+}
+
+/* Flip tooltip below fruit when near top edge */
+.tooltipBelow {
+	bottom: auto;
+	top: calc(100% + 1rem);
+	transform: translateX(-50%) translateY(-6px);
+}
+
+.tooltipBelow::after {
+	bottom: auto;
+	top: -5px;
+	border-right: none;
+	border-bottom: none;
+	border-left: 1px solid rgba(255, 255, 255, 0.1);
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fruit:hover .tooltipBelow,
+.fruit:focus-visible .tooltipBelow,
+.fruit[data-active='true'] .tooltipBelow {
+	transform: translateX(-50%) translateY(0);
 }
 
 .tooltipTitle {
 	font-weight: 700;
-	margin-bottom: 0.35rem;
+	font-size: 0.95rem;
+	margin-bottom: 0.3rem;
+	line-height: 1.35;
 }
 
 .tooltipBody {
-	font-size: 0.9rem;
-	color: rgba(253, 247, 233, 0.75);
-	margin-bottom: 0.35rem;
+	font-size: 0.85rem;
+	color: rgba(253, 247, 233, 0.7);
+	margin-bottom: 0.4rem;
+	line-height: 1.5;
 }
 
 .tooltipMeta {
-	font-size: 0.8rem;
-	color: rgba(245, 220, 163, 0.95);
+	font-size: 0.75rem;
+	color: var(--accent);
+	font-weight: 600;
+	letter-spacing: 0.02em;
 }
 
 .harvestBadge {
 	position: absolute;
 	left: 50%;
-	top: -0.8rem;
+	top: -1rem;
 	transform: translateX(-50%);
-	font-size: 0.65rem;
+	font-size: 0.7rem;
 	text-transform: uppercase;
-	padding: 0.15rem 0.6rem;
-	background: rgba(255, 255, 255, 0.85);
-	color: #1f2018;
+	padding: 0.3rem 0.85rem;
+	background: linear-gradient(120deg, #ff6b6b, #ffa94d);
+	color: #fff;
 	border-radius: 999px;
 	letter-spacing: 0.08em;
+	font-weight: 800;
+	white-space: nowrap;
+	box-shadow: 0 0 18px rgba(255, 107, 107, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+	animation: badgePulse 2s ease-in-out infinite;
 }
 
 .toast {
@@ -318,18 +392,22 @@
 	left: 50%;
 	bottom: 2rem;
 	transform: translateX(-50%);
-	background: rgba(10, 15, 17, 0.9);
+	background: rgba(10, 15, 17, 0.92);
 	color: #f6fff8;
-	padding: 0.85rem 1.3rem;
+	padding: 0.85rem 1.5rem;
 	border-radius: 999px;
-	box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+	box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
 	font-weight: 600;
+	font-size: 0.9rem;
 	z-index: 999;
+	animation: toastSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+	backdrop-filter: blur(8px);
 }
 
 .toastPositive {
 	background: linear-gradient(120deg, var(--accent), var(--accent-2));
 	color: #0c1311;
+	box-shadow: 0 12px 35px rgba(247, 206, 123, 0.25);
 }
 
 .modalOverlay {
@@ -344,53 +422,95 @@
 }
 
 .modalCard {
-	background: rgba(6, 10, 14, 0.85);
-	border-radius: 1.8rem;
-	padding: 2rem;
+	background: rgba(6, 10, 14, 0.9);
+	border-radius: 1.5rem;
+	padding: 0;
 	border: 1px solid rgba(255, 255, 255, 0.1);
-	box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
-	backdrop-filter: blur(14px);
+	box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(20px) saturate(1.3);
+	width: 100%;
+	max-width: 520px;
+	animation: modalFadeIn 0.25s ease-out;
+	overflow: hidden;
+}
+
+.modalCard::before {
+	content: '';
+	display: block;
+	height: 3px;
+	background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent));
+	opacity: 0.85;
 }
 
 .modalCard form {
 	display: flex;
 	flex-direction: column;
-	gap: 1rem;
+	gap: 1.15rem;
+	padding: 0 2.25rem 2.25rem;
 }
 
 .modalHeader {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-bottom: 1rem;
+	padding: 1.75rem 2.25rem 1.25rem;
 	color: var(--fg);
+}
+
+.modalHeader h3 {
+	font-size: 1.35rem;
+	font-weight: 800;
+	letter-spacing: -0.02em;
 }
 
 .modalHeader button {
 	border: none;
-	background: transparent;
-	font-size: 1.4rem;
+	background: rgba(255, 255, 255, 0.08);
+	width: 2.2rem;
+	height: 2.2rem;
+	border-radius: 50%;
+	font-size: 1.2rem;
+	line-height: 1;
 	color: var(--muted);
 	cursor: pointer;
+	transition: background 0.2s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.modalHeader button:hover {
+	background: rgba(255, 255, 255, 0.15);
 }
 
 .modalCard label {
 	display: flex;
 	flex-direction: column;
-	font-size: 0.9rem;
+	font-size: 0.85rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
 	color: var(--muted);
-	gap: 0.4rem;
+	gap: 0.5rem;
 }
 
 .modalCard input,
 .modalCard textarea {
-	border-radius: 1rem;
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	padding: 0.85rem 1rem;
-	font-size: 1rem;
-	background: rgba(255, 255, 255, 0.07);
+	border-radius: 0.75rem;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	padding: 0.9rem 1.1rem;
+	font-size: 0.95rem;
+	background: rgba(255, 255, 255, 0.05);
 	color: var(--fg);
 	font-family: inherit;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.modalCard input:focus,
+.modalCard textarea:focus {
+	outline: none;
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px rgba(247, 206, 123, 0.15);
 }
 
 .modalCard textarea {
@@ -401,15 +521,105 @@
 	display: flex;
 	justify-content: flex-end;
 	gap: 0.75rem;
+	padding-top: 0.5rem;
+}
+
+/* ── Light-mode modal ── */
+:global(.light) :local(.modalOverlay) {
+	background: rgba(0, 0, 0, 0.35);
+}
+
+:global(.light) :local(.modalCard) {
+	background: rgba(255, 255, 255, 0.92);
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	box-shadow: 0 30px 80px rgba(0, 0, 0, 0.18);
+	backdrop-filter: blur(20px) saturate(1.4);
+}
+
+:global(.light) :local(.modalHeader) {
+	color: #1a2b21;
+}
+
+:global(.light) :local(.modalHeader) button {
+	color: #6b7280;
+	background: rgba(0, 0, 0, 0.06);
+}
+
+:global(.light) :local(.modalHeader) button:hover {
+	background: rgba(0, 0, 0, 0.1);
+}
+
+:global(.light) :local(.modalCard) label {
+	color: #4b5563;
+}
+
+:global(.light) :local(.modalCard) input,
+:global(.light) :local(.modalCard) textarea {
+	background: rgba(0, 0, 0, 0.04);
+	border-color: rgba(0, 0, 0, 0.12);
+	color: #1a2b21;
+}
+
+:global(.light) :local(.modalCard) input::placeholder,
+:global(.light) :local(.modalCard) textarea::placeholder {
+	color: #9ca3af;
+}
+
+:global(.light) :local(.modalCard) input:focus,
+:global(.light) :local(.modalCard) textarea:focus {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px rgba(196, 150, 14, 0.12);
+}
+
+:global(.light) :local(.primaryCta) {
+	background: linear-gradient(135deg, #ff6b6b, #ffa94d, #ff6b6b);
+	background-size: 200% 200%;
+	color: #fff;
+	box-shadow:
+		0 0 16px rgba(255, 107, 107, 0.25),
+		0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+:global(.light) :local(.secondaryCta) {
+	background: rgba(0, 0, 0, 0.05);
+	color: #1a2b21;
+	border-color: rgba(0, 0, 0, 0.12);
+	backdrop-filter: none;
+}
+
+:global(.light) :local(.secondaryCta):hover {
+	background: rgba(0, 0, 0, 0.08);
+}
+
+/* ── Light-mode toast ── */
+:global(.light) :local(.toast) {
+	background: rgba(255, 255, 255, 0.92);
+	color: #1a2b21;
+	box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+	backdrop-filter: blur(12px);
+}
+
+:global(.light) :local(.toastPositive) {
+	background: linear-gradient(120deg, #e8b930, #2a9d7c);
+	color: #fff;
+	box-shadow: 0 12px 35px rgba(42, 157, 124, 0.2);
 }
 
 @media (max-width: 900px) {
 	.page {
-		padding: 2rem 1.25rem 4rem;
+		padding: 1.5rem 1rem 3rem;
 	}
+
 	.treeLayer {
-		padding: 1.5rem;
+		padding: 1.25rem;
+		min-height: 420px;
 	}
+
+	.treeLayout {
+		min-height: 400px;
+		padding-top: clamp(6rem, 14vw, 10rem);
+	}
+
 	.tooltip {
 		display: none;
 	}
@@ -418,9 +628,19 @@
 @media (max-width: 720px) {
 	.heroCtas {
 		flex-direction: column;
+		align-items: center;
 	}
+
 	.heroStrip h1 {
-		font-size: 2.35rem;
+		font-size: 2rem;
+		line-height: 1.15;
+	}
+
+	.primaryCta,
+	.secondaryCta {
+		width: 100%;
+		max-width: 280px;
+		text-align: center;
 	}
 }
 
@@ -428,10 +648,74 @@
 	0% {
 		transform: translate(-50%, -55%) rotate(var(--streak-angle, 0deg));
 	}
+
 	50% {
 		transform: translate(-50%, -50%) rotate(calc(var(--streak-angle, 0deg) + 8deg));
 	}
+
 	100% {
 		transform: translate(-50%, -55%) rotate(var(--streak-angle, 0deg));
+	}
+}
+
+@keyframes fruitBreathe {
+
+	0%,
+	100% {
+		transform: scale(1);
+	}
+
+	50% {
+		transform: scale(1.04);
+	}
+}
+
+@keyframes toastSlideUp {
+	0% {
+		transform: translateX(-50%) translateY(16px);
+		opacity: 0;
+	}
+
+	100% {
+		transform: translateX(-50%) translateY(0);
+		opacity: 1;
+	}
+}
+
+@keyframes modalFadeIn {
+	0% {
+		transform: scale(0.96);
+		opacity: 0;
+	}
+
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes badgePulse {
+
+	0%,
+	100% {
+		box-shadow: 0 0 18px rgba(255, 107, 107, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+	}
+
+	50% {
+		box-shadow: 0 0 28px rgba(255, 107, 107, 0.7), 0 4px 16px rgba(0, 0, 0, 0.3);
+	}
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: 0% 50%;
+	}
+
+	50% {
+		background-position: 100% 50%;
+	}
+
+	100% {
+		background-position: 0% 50%;
 	}
 }

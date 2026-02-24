@@ -142,18 +142,18 @@ const MOCK_IDEAS: Idea[] = [
 ]
 
 const ANCHOR_POINTS: Array<{ x: number; y: number }> = [
-	{ x: 47, y: 18 },
-	{ x: 63, y: 26 },
-	{ x: 34, y: 30 },
-	{ x: 58, y: 40 },
-	{ x: 23, y: 45 },
-	{ x: 70, y: 52 },
-	{ x: 37, y: 55 },
-	{ x: 55, y: 63 },
-	{ x: 30, y: 66 },
-	{ x: 64, y: 72 },
-	{ x: 42, y: 78 },
-	{ x: 54, y: 85 }
+	{ x: 20, y: 15 },
+	{ x: 72, y: 18 },
+	{ x: 45, y: 25 },
+	{ x: 15, y: 38 },
+	{ x: 78, y: 40 },
+	{ x: 50, y: 48 },
+	{ x: 25, y: 58 },
+	{ x: 70, y: 60 },
+	{ x: 42, y: 70 },
+	{ x: 18, y: 78 },
+	{ x: 65, y: 80 },
+	{ x: 48, y: 88 }
 ]
 
 const sortIdeas = (list: Idea[]) => [...list].sort((a, b) => b.votes - a.votes)
@@ -178,7 +178,7 @@ const loadVotes = () => {
 const persistVotes = (votes: Set<string>) => {
 	try {
 		localStorage.setItem(VOTE_STORAGE_KEY, JSON.stringify(Array.from(votes)))
-	} catch {}
+	} catch { }
 }
 
 const formatNumber = new Intl.NumberFormat('ko-KR')
@@ -399,7 +399,7 @@ const IdeaTreeExperience = () => {
 		const size = 1.8 + normalized * 1.8
 		const isActive = activeIdea === idea.id
 		const streakAngle = pseudoRandom(`${idea.id}-angle`) * 120 - 60
-		const sparkHue = 38 + normalized * 22
+		const sparkHue = normalized * 25
 		const depth = 0.6 + pseudoRandom(`${idea.id}-depth`) * 0.4
 		const fruitStyle: FruitStyle = {
 			left: `${idea.coords.x}%`,
@@ -426,7 +426,7 @@ const IdeaTreeExperience = () => {
 			>
 				<span className={styles.fruitLabel}>{idea.title}</span>
 				<span className={styles.fruitVotes}>{formatNumber.format(idea.votes)} 추천</span>
-				<div className={styles.tooltip} role='tooltip'>
+				<div className={clsx(styles.tooltip, idea.coords.y < 35 && styles.tooltipBelow)} role='tooltip'>
 					<p className={styles.tooltipTitle}>{idea.title}</p>
 					<p className={styles.tooltipBody}>{idea.summary}</p>
 					<p className={styles.tooltipMeta}>
@@ -442,7 +442,7 @@ const IdeaTreeExperience = () => {
 		<section className={clsx(styles.page, reduceMotion && styles.reduceMotion)}>
 			<div className={styles.heroStrip}>
 				<p className={styles.heroKicker}>COMMUNITY SEED PROGRAM</p>
-				<h1>어떤 주제로 글을 작성해 드릴까요?</h1>
+				<h1>어떤 주제로 글을 작성할까요?</h1>
 				<p>
 					반짝이는 빛을 눌러 추천하거나, 새로운 아이디어를 제안해 주세요. 가장 밝게 빛나는 열매가
 					다음 글이 됩니다.
@@ -450,9 +450,6 @@ const IdeaTreeExperience = () => {
 				<div className={styles.heroCtas}>
 					<button type='button' className={styles.primaryCta} onClick={() => setModalOpen(true)}>
 						아이디어 제안하기
-					</button>
-					<button type='button' className={styles.secondaryCta} onClick={scrollToTree}>
-						빛나는 열매 보기
 					</button>
 				</div>
 			</div>
