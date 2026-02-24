@@ -18,7 +18,8 @@ pnpm-debug.log*
 
 # environment variables
 .env
-.env.production
+.env.*
+imunfarmredis.env
 
 # macOS-specific files
 .DS_Store

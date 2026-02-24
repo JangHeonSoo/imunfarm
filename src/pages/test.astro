@@ -1,0 +1,15 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+import IdeaTreeExperience from '@/components/IdeaTreeExperience'
+
+const SEO = {
+	title: 'Idea Tree Demo | IMUN.FARM',
+	description: '아이디어 나무 인터랙션을 실험하는 테스트 전용 페이지입니다.'
+}
+---
+
+<BaseLayout {...SEO}>
+	<section class='col-span-full w-full relative py-16'>
+		<IdeaTreeExperience client:load />
+	</section>
+</BaseLayout>

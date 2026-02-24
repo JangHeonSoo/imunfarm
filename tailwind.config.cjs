@@ -7,14 +7,17 @@ module.exports = {
 	theme: {
 		extend: {
 			colors: {
-				white: '#f8f9fa',
-				primary: '#10b981',
-				'primary-dark': '#059669',
-				secondary: '#0ea5e9',
+				white: '#ffffff',
+				primary: '#2d6a4f',
+				'primary-light': '#40916c',
+				'primary-dark': '#1b4332',
+				secondary: '#e76f51',
+				accent: '#bda27e', // Soil Brown
 				'text-main': '#1f2937',
 				'text-muted': '#6b7280',
-				'bg-light': '#f9fafb',
-				'bg-white': '#ffffff'
+				'bg-light': '#f4f1ea', // Warm light cream
+				'bg-white': '#ffffff',
+				'glass-white': 'rgba(255, 255, 255, 0.75)'
 			},
 			fontFamily: {
 				body: ['Inter', ...defaultTheme.fontFamily.sans],

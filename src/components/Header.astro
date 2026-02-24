@@ -64,15 +64,18 @@ const buildHomePath = (targetLocale: string) => {
 
 		<nav class='hidden md:flex items-center gap-8'>
 			<HeaderLink href={`${localePrefix}/`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
-				{currentLocale === 'en' ? 'Home' : '홈'}
+				{currentLocale === 'en' ? 'Blog' : '블로그'}
 			</HeaderLink>
-			<HeaderLink href={`${localePrefix}/about`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
-				About
+			<HeaderLink href={`${localePrefix}/ideas`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
+				{currentLocale === 'en' ? 'Ideas' : '아이디어'}
 			</HeaderLink>
-			<HeaderLink href={`${localePrefix}/contact`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
+			<HeaderLink href={`${localePrefix}/about`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors opacity-60'>
+				{currentLocale === 'en' ? 'About' : '소개'}
+			</HeaderLink>
+			<HeaderLink href={`${localePrefix}/contact`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors opacity-60'>
 				{currentLocale === 'en' ? 'Contact' : '협찬문의'}
 			</HeaderLink>
-			<HeaderLink href={`${localePrefix}/tags`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors'>
+			<HeaderLink href={`${localePrefix}/tags`} class='text-text-main dark:text-gray-300 font-medium hover:text-primary dark:hover:text-primary transition-colors opacity-60'>
 				Tags
 			</HeaderLink>
 			
@@ -110,10 +113,11 @@ const buildHomePath = (targetLocale: string) => {
 	class='md:hidden fixed top-20 right-0 w-64 h-screen bg-white dark:bg-gray-800 shadow-xl transform translate-x-full transition-transform duration-300 z-40'
 >
 	<nav class='flex flex-col p-6 gap-4'>
-		<HeaderLink href={`${localePrefix}/`} class='text-lg'>{currentLocale === 'en' ? 'Home' : '홈'}</HeaderLink>
-		<HeaderLink href={`${localePrefix}/about`} class='text-lg'>About</HeaderLink>
-		<HeaderLink href={`${localePrefix}/contact`} class='text-lg'>{currentLocale === 'en' ? 'Contact' : '협찬문의'}</HeaderLink>
-		<HeaderLink href={`${localePrefix}/tags`} class='text-lg'>Tags</HeaderLink>
+		<HeaderLink href={`${localePrefix}/`} class='text-lg'>{currentLocale === 'en' ? 'Blog' : '블로그'}</HeaderLink>
+		<HeaderLink href={`${localePrefix}/ideas`} class='text-lg'>{currentLocale === 'en' ? 'Ideas' : '아이디어'}</HeaderLink>
+		<HeaderLink href={`${localePrefix}/about`} class='text-lg opacity-60'>{currentLocale === 'en' ? 'About' : '소개'}</HeaderLink>
+		<HeaderLink href={`${localePrefix}/contact`} class='text-lg opacity-60'>{currentLocale === 'en' ? 'Contact' : '협찬문의'}</HeaderLink>
+		<HeaderLink href={`${localePrefix}/tags`} class='text-lg opacity-60'>Tags</HeaderLink>
 		<!-- Mobile Language Toggle -->
 		<div class="flex items-center gap-2 mt-2">
 			<span class="text-sm text-gray-500 dark:text-gray-400">Language:</span>

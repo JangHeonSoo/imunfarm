@@ -11,88 +11,106 @@ export async function getStaticPaths() {
 
 const locale = Astro.params.lang ?? DEFAULT_LOCALE
 const localePrefix = getLocalePrefix(locale)
+const isEn = locale === 'en'
 
 const t = {
-    title: locale === 'en' ? 'Contact & Sponsorship' : '협찬 문의',
-    description: locale === 'en' ? 'Sponsorship and partnership inquiry for IMUN.FARM' : '이문농장 협찬 및 제휴 문의 안내',
-    heroTitle: locale === 'en' ? 'Building the Future of Agriculture Together' : '농업의 미래를 함께 만들어갑니다.',
-    heroDesc: locale === 'en' 
-        ? 'We are looking for partners to join IMUN.FARM in introducing innovative agricultural technologies and products to the world.'
-        : '이문농장과 함께 혁신적인 농업 기술과 제품을 세상에 알릴 파트너를 찾습니다.',
-    partnership: 'Partnership',
-    contactTitle: locale === 'en' ? 'Inquiry for Sponsorship & Partnership' : '협찬 및 제휴 문의',
-    contactDesc: locale === 'en'
-        ? 'We welcome all proposals that can provide value in the agricultural field, such as agricultural machinery, smart farm solutions, and eco-friendly materials.'
-        : '농기계, 스마트팜 솔루션, 친환경 자재 등 농업 현장에서 가치를 발휘할 수 있는 모든 제안을 환영합니다.',
-    cat1: locale === 'en' ? 'Machinery & Equipment' : '농기계 & 장비',
-    cat1Desc: locale === 'en' ? 'Field tests for tractors, drones, automated equipment' : '트랙터, 드론, 자동화 설비 실증 테스트',
-    cat2: locale === 'en' ? 'Eco-friendly Materials' : '친환경 농자재',
-    cat2Desc: locale === 'en' ? 'Fertilizers, seeds, smart farm nutrient solutions' : '비료, 종자, 스마트팜 양액 솔루션',
-    cat3: locale === 'en' ? 'Energy Solutions' : '에너지 솔루션',
-    cat3Desc: locale === 'en' ? 'Agrivoltaics, ESS, energy management' : '영농형 태양광, ESS, 에너지 관리',
-    cat4: locale === 'en' ? 'Content Collaboration' : '콘텐츠 협업',
-    cat4Desc: locale === 'en' ? 'Branded content production for YouTube/Blog' : '유튜브/블로그 브랜디드 콘텐츠 제작',
-    processTitle: locale === 'en' ? 'Procedure' : '진행 절차',
-    step1: locale === 'en' ? 'Inquiry' : '문의 접수',
-    step2: locale === 'en' ? 'Review' : '검토 및 회신',
-    step3: locale === 'en' ? 'Meeting' : '미팅 및 협의',
-    step4: locale === 'en' ? 'Partnership' : '파트너십 체결',
-    ctaTitle: locale === 'en' ? 'Inquire Now' : '지금 바로 문의하세요',
-    ctaDesc: locale === 'en' ? 'A representative will reply within 3 business days.' : '3영업일 이내에 담당자가 직접 회신드립니다.',
-    faqTitle: locale === 'en' ? 'Frequently Asked Questions' : '자주 묻는 질문',
-    q1: locale === 'en' ? 'What about product returns?' : '제품 반환 여부가 궁금합니다',
-    a1: locale === 'en' 
-        ? 'Consumable materials are not returned. High-priced equipment will be returned or purchased after consultation.'
-        : '소모성 자재는 반환하지 않으며, 고가의 장비는 협의 후 반환 또는 매입 결정을 진행합니다.',
-    q2: locale === 'en' ? 'Is an in-person meeting possible?' : '방문 미팅이 가능한가요?',
-    a2: locale === 'en'
-        ? 'Yes, meetings can be arranged at the Gumi farm after pre-scheduling. We recommend checking the site in person.'
-        : '네, 사전 일정을 조율하여 구미 농장 현장에서 미팅 진행이 가능합니다. 현장을 직접 확인하시길 권장드립니다.'
+	title: isEn ? 'Contact | IMUN.FARM' : '협업 문의 | IMUN.FARM',
+	description: isEn ? 'Content collaboration, tech exchange, and sponsorship inquiries for IMUN.FARM' : 'IMUN.FARM 콘텐츠 협업, 기술 교류, 스폰서십 문의 안내',
+	badge: isEn ? 'IMUN.FARM × Collaboration' : 'IMUN.FARM × 협업',
+	heroTitle: isEn ? 'We grow\nknowledge together.' : '지식을 함께\n재배합니다.',
+	heroDesc: isEn
+		? 'Content proposals, tech collaboration, sponsorship — all forms of connection are welcome.'
+		: '콘텐츠 제안, 기술 협업, 스폰서십 — 어떤 형태의 연결도 환영합니다.',
+	trust1: isEn ? 'Reply within 3 days' : '3일 내 회신',
+	trust2: isEn ? 'All genres welcome' : '장르 불문 환영',
+	sectionBadge: 'Collaboration',
+	sectionTitle: isEn ? 'Collaboration & Inquiry' : '협업 및 문의 안내',
+	sectionDesc: isEn
+		? 'From content ideas to technical collaboration and sponsorship — there are many ways to work together.'
+		: '콘텐츠 아이디어부터 기술 협업, 스폰서십까지 — 다양한 방식으로 함께할 수 있습니다.',
+	cat1: isEn ? 'Content Proposal' : '콘텐츠 제안',
+	cat1Desc: isEn ? "Topics or ideas you'd like us to cover" : '다뤘으면 하는 주제, 글감 아이디어를 보내주세요',
+	cat2: isEn ? 'Tech Collaboration' : '기술 협업',
+	cat2Desc: isEn ? 'Open source, projects, and research exchange' : '오픈소스, 프로젝트, 공동 연구 등 기술 교류',
+	cat3: isEn ? 'Sponsorship' : '스폰서십',
+	cat3Desc: isEn ? 'IT product/service introductions and branded content' : 'IT 제품·서비스 소개 및 브랜드 협업 콘텐츠',
+	cat4: isEn ? 'Idea Exchange' : '아이디어 교류',
+	cat4Desc: isEn ? 'Reader feedback and direct suggestions beyond the idea board' : '독자로서의 피드백, 아이디어 보드 외 직접 제안',
+	processTitle: isEn ? 'How it works' : '진행 과정',
+	step1: isEn ? 'Inquiry' : '문의 접수',
+	step2: isEn ? 'Review' : '내용 검토',
+	step3: isEn ? 'Discussion' : '방향 협의',
+	step4: isEn ? 'Start' : '협업 시작',
+	ctaTitle: isEn ? 'Get in touch' : '바로 연락하기',
+	ctaDesc: isEn ? 'Even a rough idea is welcome. We reply within 3 days.' : '가볍게 아이디어를 던져도 좋습니다. 3일 내 회신드립니다.',
+	faqTitle: isEn ? 'FAQ' : '자주 묻는 질문',
+	q1: isEn ? 'How does content collaboration work?' : '콘텐츠 협업은 어떤 방식으로 진행되나요?',
+	a1: isEn
+		? 'We personally use the product/service and write based on our honest experience. Ads are always disclosed, and we don\'t publish anything that doesn\'t match reality.'
+		: '제품/서비스를 직접 사용해보고 솔직한 경험을 기반으로 글을 작성합니다. 광고임을 명시하며, 사실과 다른 내용은 게재하지 않습니다.',
+	q2: isEn ? 'How do I submit a content idea?' : '콘텐츠 제안은 어떻게 하면 되나요?',
+	a2: isEn
+		? 'Send it freely via email, or propose directly on the Ideas page. Even a brief note is completely welcome.'
+		: '이메일로 자유롭게 보내주시거나, 아이디어 페이지에서 직접 제안하실 수 있습니다. 간단한 메모 수준도 환영합니다.',
+	q3: isEn ? 'I\'d like to send feedback as a reader' : '독자로서 피드백을 보내고 싶어요',
+	a3: isEn
+		? 'This is the most welcome type of message. Typos, errors, or improvement suggestions — we read everything carefully and reflect it in our content.'
+		: '가장 환영하는 유형의 연락입니다. 오타, 오류 지적, 보완 요청 등 모두 소중하게 읽고 반영합니다.',
 }
 ---
 
 <BaseLayout title={t.title} description={t.description}>
 	<div class='min-h-screen flex flex-col lg:flex-row relative'>
-		<!-- Left Column: Inspiring Image (Sticky on Desktop) -->
+
+		<!-- Left Column: Sticky image -->
 		<div class='lg:w-1/2 relative min-h-[400px] lg:h-screen lg:sticky lg:top-0 z-0'>
 			<div class='absolute inset-0'>
 				<img
-					src='/images/solar-farm.png'
-					alt='Future Agriculture Partnership'
+					src='/images/ideas-hero-bg.png'
+					alt='IMUN.FARM collaboration'
 					class='w-full h-full object-cover'
 				/>
-				<div class='absolute inset-0 bg-primary-dark/40 mix-blend-multiply'></div>
-				<div
-					class='absolute inset-0 bg-gradient-to-t from-black/80 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-black/50'
-				>
-				</div>
+				<div class='absolute inset-0 bg-gray-950/70'></div>
+				<div class='absolute inset-0 bg-gradient-to-t from-gray-950/90 via-gray-950/30 to-transparent'></div>
 			</div>
 
 			<div class='absolute bottom-10 left-10 right-10 text-white z-10'>
 				<FadeIn delay={0.2} direction='up'>
-					<h1 class='text-4xl lg:text-5xl font-heading font-extrabold mb-4 leading-tight'>
-						{t.heroTitle}
+					<span class='text-primary font-bold tracking-widest uppercase text-sm block mb-4' style='color: #4ade80 !important;'>{t.badge}</span>
+					<h1 class='text-4xl lg:text-5xl font-heading font-extrabold mb-4 leading-tight' style='color: white !important;'>
+						{isEn ? <>We grow<br/>knowledge together.</> : <>지식을 함께<br/>재배합니다.</>}
 					</h1>
-					<p class='text-lg lg:text-xl text-white/90 font-light max-w-md'>
+					<p class='text-lg font-light max-w-md leading-relaxed' style='color: rgba(255,255,255,0.85) !important;'>
 						{t.heroDesc}
 					</p>
+
+					<div class='flex flex-wrap gap-4 mt-8'>
+						<div class='flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 text-sm' style='color: white !important;'>
+							<svg class='w-4 h-4' style='color: #4ade80;' fill='currentColor' viewBox='0 0 20 20'><path fill-rule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z' clip-rule='evenodd'/></svg>
+							<span>{t.trust1}</span>
+						</div>
+						<div class='flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 text-sm' style='color: white !important;'>
+							<svg class='w-4 h-4' style='color: #4ade80;' fill='currentColor' viewBox='0 0 20 20'><path fill-rule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z' clip-rule='evenodd'/></svg>
+							<span>{t.trust2}</span>
+						</div>
+					</div>
 				</FadeIn>
 			</div>
 		</div>
 
-		<!-- Right Column: Content (Scrollable) -->
+		<!-- Right Column: Scrollable content -->
 		<div class='lg:w-1/2 bg-white dark:bg-[#0a0910] relative z-10'>
 			<div class='max-w-2xl mx-auto px-6 py-20 lg:py-32'>
+
+				<!-- Header -->
 				<FadeIn direction='up'>
 					<div class='mb-16'>
-						<span class='text-primary font-bold tracking-widest uppercase text-sm mb-2 block'
-							>{t.partnership}</span
-						>
+						<span class='text-primary font-bold tracking-widest uppercase text-sm mb-2 block'>{t.sectionBadge}</span>
 						<h2 class='text-3xl font-heading font-bold mb-6 text-text-main dark:text-white'>
-							{t.contactTitle}
+							{t.sectionTitle}
 						</h2>
 						<p class='text-text-muted dark:text-gray-400 text-lg leading-relaxed'>
-							{t.contactDesc}
+							{t.sectionDesc}
 						</p>
 					</div>
 				</FadeIn>
@@ -100,50 +118,42 @@ const t = {
 				<!-- Category Grid -->
 				<div class='grid grid-cols-1 md:grid-cols-2 gap-6 mb-16'>
 					<FadeIn delay={0.1} class='h-full'>
-						<div
-							class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/30 transition-colors h-full'
-						>
-							<div class='text-3xl mb-4'>🚜</div>
+						<div class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/40 transition-colors h-full'>
+							<div class='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4'>
+								<svg class='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'/></svg>
+							</div>
 							<h3 class='font-bold text-lg mb-2'>{t.cat1}</h3>
-							<p class='text-sm text-text-muted dark:text-gray-400'>
-								{t.cat1Desc}
-							</p>
+							<p class='text-sm text-text-muted dark:text-gray-400'>{t.cat1Desc}</p>
 						</div>
 					</FadeIn>
 
 					<FadeIn delay={0.2} class='h-full'>
-						<div
-							class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/30 transition-colors h-full'
-						>
-							<div class='text-3xl mb-4'>🌱</div>
+						<div class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/40 transition-colors h-full'>
+							<div class='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4'>
+								<svg class='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4'/></svg>
+							</div>
 							<h3 class='font-bold text-lg mb-2'>{t.cat2}</h3>
-							<p class='text-sm text-text-muted dark:text-gray-400'>
-								{t.cat2Desc}
-							</p>
+							<p class='text-sm text-text-muted dark:text-gray-400'>{t.cat2Desc}</p>
 						</div>
 					</FadeIn>
 
 					<FadeIn delay={0.3} class='h-full'>
-						<div
-							class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/30 transition-colors h-full'
-						>
-							<div class='text-3xl mb-4'>☀️</div>
+						<div class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/40 transition-colors h-full'>
+							<div class='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4'>
+								<svg class='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'/></svg>
+							</div>
 							<h3 class='font-bold text-lg mb-2'>{t.cat3}</h3>
-							<p class='text-sm text-text-muted dark:text-gray-400'>
-								{t.cat3Desc}
-							</p>
+							<p class='text-sm text-text-muted dark:text-gray-400'>{t.cat3Desc}</p>
 						</div>
 					</FadeIn>
 
 					<FadeIn delay={0.4} class='h-full'>
-						<div
-							class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/30 transition-colors h-full'
-						>
-							<div class='text-3xl mb-4'>🤝</div>
+						<div class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/40 transition-colors h-full'>
+							<div class='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4'>
+								<svg class='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z'/></svg>
+							</div>
 							<h3 class='font-bold text-lg mb-2'>{t.cat4}</h3>
-							<p class='text-sm text-text-muted dark:text-gray-400'>
-								{t.cat4Desc}
-							</p>
+							<p class='text-sm text-text-muted dark:text-gray-400'>{t.cat4Desc}</p>
 						</div>
 					</FadeIn>
 				</div>
@@ -153,70 +163,25 @@ const t = {
 					<div class='relative py-10 mb-16 border-t border-b border-gray-100 dark:border-gray-800'>
 						<h3 class='font-heading font-bold text-xl mb-8'>{t.processTitle}</h3>
 						<div class='flex flex-col md:flex-row justify-between relative'>
-							<div
-								class='absolute top-[15px] left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-700 hidden md:block -z-10'
-							>
-							</div>
-
-							<div
-								class='flex md:flex-col items-center gap-4 md:gap-2 mb-6 md:mb-0 bg-white dark:bg-[#0a0910] md:bg-transparent pr-4 md:pr-0'
-							>
-								<div
-									class='w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-md'
-								>
-									1
+							<div class='absolute top-[15px] left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-700 hidden md:block -z-10'></div>
+							{[t.step1, t.step2, t.step3, t.step4].map((label, i) => (
+								<div class='flex md:flex-col items-center gap-4 md:gap-2 mb-6 md:mb-0 bg-white dark:bg-[#0a0910] md:bg-transparent pr-4 md:pr-0'>
+									<div class={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-md ${i === 0 ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300'}`}>
+										{i + 1}
+									</div>
+									<span class='text-sm font-medium'>{label}</span>
 								</div>
-								<span class='text-sm font-medium'>{t.step1}</span>
-							</div>
-							<div
-								class='flex md:flex-col items-center gap-4 md:gap-2 mb-6 md:mb-0 bg-white dark:bg-[#0a0910] md:bg-transparent pr-4 md:pr-0'
-							>
-								<div
-									class='w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 flex items-center justify-center font-bold text-sm'
-								>
-									2
-								</div>
-								<span class='text-sm font-medium'>{t.step2}</span>
-							</div>
-							<div
-								class='flex md:flex-col items-center gap-4 md:gap-2 mb-6 md:mb-0 bg-white dark:bg-[#0a0910] md:bg-transparent pr-4 md:pr-0'
-							>
-								<div
-									class='w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 flex items-center justify-center font-bold text-sm'
-								>
-									3
-								</div>
-								<span class='text-sm font-medium'>{t.step3}</span>
-							</div>
-							<div
-								class='flex md:flex-col items-center gap-4 md:gap-2 bg-white dark:bg-[#0a0910] md:bg-transparent'
-							>
-								<div
-									class='w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 flex items-center justify-center font-bold text-sm'
-								>
-									4
-								</div>
-								<span class='text-sm font-medium'>{t.step4}</span>
-							</div>
+							))}
 						</div>
 					</div>
 				</FadeIn>
 
 				<!-- Email CTA -->
 				<FadeIn direction='up'>
-					<div
-						class='bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden group border border-gray-100 dark:border-gray-700'
-					>
-						<div
-							class='absolute -right-10 -top-10 w-40 h-40 bg-primary/10 dark:bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/20 dark:group-hover:bg-primary/30 transition-colors'
-						>
-						</div>
-
+					<div class='bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden group border border-gray-100 dark:border-gray-700'>
+						<div class='absolute -right-10 -top-10 w-40 h-40 bg-primary/10 dark:bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/20 dark:group-hover:bg-primary/30 transition-colors'></div>
 						<h3 class='text-2xl font-bold mb-2'>{t.ctaTitle}</h3>
-						<p class='text-gray-600 dark:text-gray-400 mb-8 text-sm'>
-							{t.ctaDesc}
-						</p>
-
+						<p class='text-gray-600 dark:text-gray-400 mb-8 text-sm'>{t.ctaDesc}</p>
 						<a
 							href='mailto:denosinfo@gmail.com'
 							class='block w-full text-center py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-primary/20'
@@ -226,58 +191,28 @@ const t = {
 					</div>
 				</FadeIn>
 
-				<!-- FAQ Accordion (Simple JS) -->
+				<!-- FAQ -->
 				<div class='mt-16'>
 					<h3 class='font-heading font-bold text-xl mb-6'>{t.faqTitle}</h3>
 					<div class='space-y-4'>
-						<details class='group border-b border-gray-100 dark:border-gray-800 pb-4'>
-							<summary
-								class='flex justify-between items-center font-medium cursor-pointer list-none'
-							>
-								<span>{t.q1}</span>
-								<span class='transition group-open:rotate-180'>
-									<svg
-										fill='none'
-										height='24'
-										shape-rendering='geometricPrecision'
-										stroke='currentColor'
-										stroke-linecap='round'
-										stroke-linejoin='round'
-										stroke-width='1.5'
-										viewBox='0 0 24 24'
-										width='24'><path d='M6 9l6 6 6-6'></path></svg
-									>
-								</span>
-							</summary>
-							<p class='text-text-muted dark:text-gray-400 mt-3 text-sm leading-relaxed'>
-								{t.a1}
-							</p>
-						</details>
-						<details class='group border-b border-gray-100 dark:border-gray-800 pb-4'>
-							<summary
-								class='flex justify-between items-center font-medium cursor-pointer list-none'
-							>
-								<span>{t.q2}</span>
-								<span class='transition group-open:rotate-180'>
-									<svg
-										fill='none'
-										height='24'
-										shape-rendering='geometricPrecision'
-										stroke='currentColor'
-										stroke-linecap='round'
-										stroke-linejoin='round'
-										stroke-width='1.5'
-										viewBox='0 0 24 24'
-										width='24'><path d='M6 9l6 6 6-6'></path></svg
-									>
-								</span>
-							</summary>
-							<p class='text-text-muted dark:text-gray-400 mt-3 text-sm leading-relaxed'>
-								{t.a2}
-							</p>
-						</details>
+						{[
+							{ q: t.q1, a: t.a1 },
+							{ q: t.q2, a: t.a2 },
+							{ q: t.q3, a: t.a3 },
+						].map(({ q, a }) => (
+							<details class='group border-b border-gray-100 dark:border-gray-800 pb-4'>
+								<summary class='flex justify-between items-center font-medium cursor-pointer list-none'>
+									<span>{q}</span>
+									<span class='transition group-open:rotate-180'>
+										<svg fill='none' height='24' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' viewBox='0 0 24 24' width='24'><path d='M6 9l6 6 6-6'></path></svg>
+									</span>
+								</summary>
+								<p class='text-text-muted dark:text-gray-400 mt-3 text-sm leading-relaxed'>{a}</p>
+							</details>
+						))}
 					</div>
 				</div>
+
 			</div>
 		</div>
 	</div>

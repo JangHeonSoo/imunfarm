@@ -5,6 +5,11 @@
 		"baseUrl": ".",
 		"verbatimModuleSyntax": true,
 		"paths": {
+			"@/components/WaterButton": ["src/components/WaterButton.tsx"],
+			"@/components/IdeaTreeExperience": ["src/components/IdeaTreeExperience.tsx"],
+			"@/components/SeedlingBoard": ["src/components/SeedlingBoard.tsx"],
+			"@/components/TopIdeaWidget": ["src/components/TopIdeaWidget.tsx"],
+			"@/components/UserProfileCard": ["src/components/UserProfileCard.tsx"],
 			"@/components/*": ["src/components/*.astro"],
 			"@/layouts/*": ["src/layouts/*.astro"],
 			"@/utils": ["src/utils/index.ts"],

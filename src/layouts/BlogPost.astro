@@ -3,6 +3,7 @@ import type { CollectionEntry } from 'astro:content'
 import FormattedDate from '@/components/FormattedDate'
 import BaseLayout from '@/layouts/BaseLayout'
 import Tag from '@/components/Tag'
+import WaterButton from '@/components/WaterButton'
 import Giscus from '@/components/Giscus'
 import type { MarkdownHeading } from 'astro'
 import { Image } from 'astro:assets'
@@ -89,12 +90,12 @@ const breadcrumbSchema = {
 	<article class='min-w-full md:py-4 sm:max-w-none md:max-w-none'>
 		<header class='mb-3 flex flex-col justify-center items-center gap-6'>
 			<div class='flex flex-col gap-2'>
-				<div class='flex items-center justify-center gap-x-1'>
-					<p class='text-center text-sm text-opacity-50'>
-						Published <FormattedDate date={pubDate} />
+				<div class='flex items-center justify-center gap-x-1 bg-primary/10 px-4 py-2 rounded-full mb-4 border border-primary/20 backdrop-blur-sm'>
+					<p class='text-center text-sm font-semibold text-primary-dark dark:text-primary-light'>
+						Imun Farmer &middot; Published: <FormattedDate date={pubDate} />
 					</p>
-					<p class='text-center text-sm text-opacity-50 font-bold'>
-						- {readTime}
+					<p class='text-center text-sm text-primary-dark dark:text-primary-light font-bold'>
+						- 예상 수확: {readTime}
 					</p>
 				</div>
 				<h1 class='text-center text-4xl md:text-6xl md:pb-2.5 font-semibold'>
@@ -129,6 +130,8 @@ const breadcrumbSchema = {
 		<div>
 			<slot />
 		</div>
+		
+		<WaterButton client:load postSlug={data.slug || id.split('/').pop()?.replace(/\.(mdx|md)$/, '') || 'unknown'} />
 	</article>
 	<Giscus enabled={comments} />
 </BaseLayout>

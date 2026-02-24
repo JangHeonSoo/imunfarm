@@ -1,0 +1,437 @@
+.page {
+	--fg: #f7f4ea;
+	--muted: rgba(247, 244, 234, 0.78);
+	--accent: #f7ce7b;
+	--accent-2: #7be6c4;
+	--shadow: 0 45px 140px rgba(0, 0, 0, 0.55);
+	--font-sans:
+		'Pretendard Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	position: relative;
+	margin: 0 auto;
+	width: 100%;
+	padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1.5rem, 5vw, 3.75rem) clamp(3rem, 6vw, 5rem);
+	font-family: var(--font-sans);
+	color: var(--fg);
+}
+
+:global(.light) :local(.page) {
+	--fg: #18221b;
+	--muted: rgba(24, 34, 27, 0.65);
+	background: transparent;
+	color: var(--fg);
+}
+
+:global(.dark) :local(.page) {
+	background: transparent;
+}
+
+.reduceMotion .fruit,
+.reduceMotion .backgroundWash,
+.reduceMotion .heroKicker::after {
+	animation: none !important;
+}
+
+.backgroundLayers {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+}
+
+.backgroundPhoto,
+.backgroundWash {
+	position: absolute;
+	inset: 0;
+}
+
+.backgroundPhoto {
+	background-image: url('/images/idea-tree-forest.jpg');
+	background-size: cover;
+	background-position: center;
+	filter: saturate(1.05) brightness(0.97) blur(1.2px);
+	opacity: 0.95;
+	transform: scale(1.05);
+}
+
+:global(.light) :local(.backgroundPhoto) {
+	filter: saturate(1.08) brightness(1);
+}
+
+:global(.dark) :local(.backgroundPhoto) {
+	filter: saturate(1) brightness(0.78);
+}
+
+.backgroundWash {
+	background:
+		radial-gradient(circle at 35% 20%, rgba(255, 210, 140, 0.45), transparent 55%),
+		radial-gradient(circle at 70% 40%, rgba(82, 167, 160, 0.35), transparent 65%),
+		radial-gradient(circle at 50% 90%, rgba(30, 60, 45, 0.35), transparent 80%),
+		linear-gradient(180deg, rgba(1, 3, 5, 0.6), rgba(4, 8, 12, 0.35));
+	opacity: 0.75;
+	mix-blend-mode: screen;
+	filter: blur(1.2px);
+}
+
+.particleCanvas {
+	position: absolute;
+	inset: 0;
+	opacity: 0.75;
+	mix-blend-mode: screen;
+}
+
+.heroStrip {
+	text-align: center;
+	margin: 0 auto clamp(1.5rem, 6vw, 3rem);
+	padding: clamp(1rem, 3vw, 1.75rem);
+	max-width: 780px;
+}
+
+:global(.light) :local(.heroStrip) {
+	color: #18221b;
+}
+
+.heroKicker {
+	font-size: 0.75rem;
+	letter-spacing: 0.35em;
+	text-transform: uppercase;
+	color: var(--accent);
+	font-weight: 700;
+	margin-bottom: 0.9rem;
+	opacity: 0.85;
+}
+
+.heroStrip h1 {
+	font-size: clamp(3rem, 7vw, 5.5rem);
+	line-height: 0.95;
+	font-weight: 900;
+	margin: 0 auto 1rem;
+	letter-spacing: -0.04em;
+	text-shadow: 0 18px 45px rgba(0, 0, 0, 0.5);
+}
+
+.heroStrip p {
+	max-width: 720px;
+	margin: 0 auto 1.5rem;
+	color: var(--muted);
+	font-size: 1.15rem;
+}
+
+.heroCtas {
+	display: flex;
+	justify-content: center;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+.primaryCta,
+.secondaryCta {
+	font-weight: 700;
+	border-radius: 999px;
+	padding: 1rem 1.9rem;
+	font-size: 1rem;
+	border: 1px solid transparent;
+	transition:
+		transform 0.25s ease,
+		box-shadow 0.35s ease,
+		background 0.35s ease;
+}
+
+.primaryCta {
+	background: linear-gradient(125deg, rgba(248, 203, 120, 0.95), rgba(116, 222, 191, 0.85));
+	color: #0c140f;
+	box-shadow: 0 15px 30px rgba(12, 11, 6, 0.55);
+}
+
+.primaryCta:hover {
+	transform: translateY(-3px);
+	box-shadow: 0 20px 40px rgba(12, 11, 6, 0.65);
+}
+
+.secondaryCta {
+	background: rgba(12, 17, 22, 0.45);
+	color: var(--fg);
+	border-color: rgba(255, 255, 255, 0.25);
+	backdrop-filter: blur(12px);
+}
+
+.secondaryCta:hover {
+	background: rgba(255, 255, 255, 0.15);
+}
+
+.treeSection {
+	position: relative;
+	border-radius: 2.2rem;
+	background: rgba(1, 6, 10, 0.55);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.4);
+	backdrop-filter: blur(12px);
+}
+
+.treeSection::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: linear-gradient(180deg, rgba(0, 3, 6, 0.65), transparent 35%);
+	z-index: 0;
+}
+
+.treeLayer {
+	position: relative;
+	z-index: 1;
+	border-radius: inherit;
+	min-height: 540px;
+	padding: clamp(2rem, 5vw, 4rem);
+	overflow: hidden;
+}
+
+.treeLayout {
+	position: relative;
+	min-height: 520px;
+	padding-top: clamp(9rem, 20vw, 14rem);
+}
+
+.fruit {
+	position: absolute;
+	width: var(--fruit-size, 2.4rem);
+	height: var(--fruit-size, 2.4rem);
+	border: none;
+	background: transparent;
+	mix-blend-mode: screen;
+	padding: 0;
+	filter: drop-shadow(0 0 25px hsla(var(--spark-hue, 40), 100%, 78%, 0.55));
+	cursor: pointer;
+	transition: transform 0.35s ease;
+}
+
+.fruit::before {
+	content: '';
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 120%;
+	height: 120%;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	background: radial-gradient(
+		circle,
+		hsla(var(--spark-hue, 40), 95%, 90%, 0.95),
+		hsla(var(--spark-hue, 40), 95%, 78%, 0.35) 55%,
+		transparent 80%
+	);
+	opacity: calc(var(--fruit-glow, 0.55) + 0.15);
+	filter: blur(1.75px);
+}
+
+.fruit::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	top: 52%;
+	width: 60%;
+	height: 210%;
+	transform: translate(-50%, -58%) rotate(var(--streak-angle, 18deg));
+	background: linear-gradient(
+		180deg,
+		hsla(var(--spark-hue, 40), 100%, 92%, 0.95),
+		hsla(var(--spark-hue, 40), 90%, 75%, 0.4),
+		transparent 80%
+	);
+	filter: blur(calc(4px * var(--fruit-depth, 0.8)));
+	opacity: calc(var(--fruit-glow, 0.55) + 0.25);
+	animation: tailDrift 6s ease-in-out infinite;
+}
+
+.fruitActive,
+.fruit:hover,
+.fruit:focus-visible {
+	transform: scale(1.18);
+}
+
+.fruitLabel,
+.fruitVotes {
+	position: absolute;
+	clip: rect(0 0 0 0);
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+.tooltip {
+	position: absolute;
+	left: 50%;
+	bottom: calc(100% + 0.8rem);
+	transform: translateX(-50%);
+	width: min(260px, 65vw);
+	background: rgba(5, 9, 12, 0.78);
+	color: #fdf7e9;
+	border-radius: 1.5rem;
+	padding: 1rem 1.1rem;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	backdrop-filter: blur(12px);
+	box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 0.25s ease;
+	z-index: 2;
+}
+
+.fruit:hover .tooltip,
+.fruit:focus-visible .tooltip,
+.fruit[data-active='true'] .tooltip {
+	opacity: 1;
+	visibility: visible;
+}
+
+.tooltipTitle {
+	font-weight: 700;
+	margin-bottom: 0.35rem;
+}
+
+.tooltipBody {
+	font-size: 0.9rem;
+	color: rgba(253, 247, 233, 0.75);
+	margin-bottom: 0.35rem;
+}
+
+.tooltipMeta {
+	font-size: 0.8rem;
+	color: rgba(245, 220, 163, 0.95);
+}
+
+.harvestBadge {
+	position: absolute;
+	left: 50%;
+	top: -0.8rem;
+	transform: translateX(-50%);
+	font-size: 0.65rem;
+	text-transform: uppercase;
+	padding: 0.15rem 0.6rem;
+	background: rgba(255, 255, 255, 0.85);
+	color: #1f2018;
+	border-radius: 999px;
+	letter-spacing: 0.08em;
+}
+
+.toast {
+	position: fixed;
+	left: 50%;
+	bottom: 2rem;
+	transform: translateX(-50%);
+	background: rgba(10, 15, 17, 0.9);
+	color: #f6fff8;
+	padding: 0.85rem 1.3rem;
+	border-radius: 999px;
+	box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+	font-weight: 600;
+	z-index: 999;
+}
+
+.toastPositive {
+	background: linear-gradient(120deg, var(--accent), var(--accent-2));
+	color: #0c1311;
+}
+
+.modalOverlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(5, 9, 12, 0.78);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	z-index: 900;
+}
+
+.modalCard {
+	background: rgba(6, 10, 14, 0.85);
+	border-radius: 1.8rem;
+	padding: 2rem;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+	backdrop-filter: blur(14px);
+}
+
+.modalCard form {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.modalHeader {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 1rem;
+	color: var(--fg);
+}
+
+.modalHeader button {
+	border: none;
+	background: transparent;
+	font-size: 1.4rem;
+	color: var(--muted);
+	cursor: pointer;
+}
+
+.modalCard label {
+	display: flex;
+	flex-direction: column;
+	font-size: 0.9rem;
+	color: var(--muted);
+	gap: 0.4rem;
+}
+
+.modalCard input,
+.modalCard textarea {
+	border-radius: 1rem;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	padding: 0.85rem 1rem;
+	font-size: 1rem;
+	background: rgba(255, 255, 255, 0.07);
+	color: var(--fg);
+	font-family: inherit;
+}
+
+.modalCard textarea {
+	resize: none;
+}
+
+.modalActions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+	.page {
+		padding: 2rem 1.25rem 4rem;
+	}
+	.treeLayer {
+		padding: 1.5rem;
+	}
+	.tooltip {
+		display: none;
+	}
+}
+
+@media (max-width: 720px) {
+	.heroCtas {
+		flex-direction: column;
+	}
+	.heroStrip h1 {
+		font-size: 2.35rem;
+	}
+}
+
+@keyframes tailDrift {
+	0% {
+		transform: translate(-50%, -55%) rotate(var(--streak-angle, 0deg));
+	}
+	50% {
+		transform: translate(-50%, -50%) rotate(calc(var(--streak-angle, 0deg) + 8deg));
+	}
+	100% {
+		transform: translate(-50%, -55%) rotate(var(--streak-angle, 0deg));
+	}
+}

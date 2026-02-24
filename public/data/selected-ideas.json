@@ -1,0 +1,16 @@
+[
+    {
+        "period": "26년 1st",
+        "ideaId": "s3",
+        "title": "댓글 시스템에 조합원 뱃지 보이게 해주세요",
+        "status": "published",
+        "blogLink": "/blog/giscus-member-badge"
+    },
+    {
+        "period": "26년 2nd",
+        "ideaId": "s1",
+        "title": "다크모드 토글 애니메이션 귀엽게 변경해주세요!",
+        "status": "writing",
+        "blogLink": null
+    }
+]
