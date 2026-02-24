@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro'
-import redis from '../../../../lib/redis'
+import redis from '../../../lib/redis'
 
 // DELETE /api/ideas/[id] — 아이디어 삭제 (관리용)
 export const DELETE: APIRoute = async ({ params }) => {
