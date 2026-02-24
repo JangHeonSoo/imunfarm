@@ -1,4 +1,3 @@
-import getReadingTime from 'reading-time'
 import { toString } from 'mdast-util-to-string'
 
 /**
@@ -7,9 +6,10 @@ import { toString } from 'mdast-util-to-string'
 export function remarkReadingTime() {
 	return function (tree: unknown, { data }: any) {
 		const textOnPage = toString(tree)
-		const readingTime = getReadingTime(textOnPage)
-		// readingTime.text will give us minutes read as a friendly string,
-		// i.e. "3 min read"
-		data.astro.frontmatter.minutesRead = readingTime.text
+		// Simple reading time calculation: ~200 words per minute
+		const words = textOnPage.trim().split(/\s+/).length
+		const minutes = Math.ceil(words / 200) || 1
+
+		data.astro.frontmatter.minutesRead = `${minutes} min read`
 	}
 }
