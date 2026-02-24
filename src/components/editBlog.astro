@@ -1,5 +1,5 @@
 {
-	process.env.NODE_ENV === 'development' && (
+	import.meta.env.DEV && (
 		<a
 			href={`http://localhost:4321/admin/index.html`}
 			target='_blank'
