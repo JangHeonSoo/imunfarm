@@ -97,7 +97,7 @@ const removeLocalVote = (id: string) => {
 const formatNumber = (lang = 'ko') => new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'ko-KR')
 
 const formatDate = (value: string, lang = 'ko') =>
-	new Intl.DateTimeFormat(lang === 'en' ? 'en-US' : 'ko-KR', { month: 'short', day: 'numeric' }).format(new Date(value))
+	new Intl.DateTimeFormat(lang === 'en' ? 'en-US' : 'ko-KR', { month: 'short', day: 'numeric' }).format(new Date(value.replace(/\./g, '-')))
 
 const computePositions = (ideas: Idea[]): PositionedIdea[] => {
 	return ideas.map((idea, index) => {
