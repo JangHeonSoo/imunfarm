@@ -749,6 +749,30 @@
 	.tooltip {
 		display: none;
 	}
+
+	/* Disable bug-prone composite/blend properties on mobile to ensure visibility */
+	.treeSection {
+		backdrop-filter: none;
+		-webkit-mask-image: none;
+		mask-image: none;
+		background: rgba(1, 6, 10, 0.85);
+		/* Solidify background slightly */
+	}
+
+	.backgroundWash {
+		mix-blend-mode: normal;
+		opacity: 0.4;
+	}
+
+	.particleCanvas {
+		mix-blend-mode: normal;
+		opacity: 0.4;
+	}
+
+	.secondaryCta {
+		backdrop-filter: none;
+		background: rgba(12, 17, 22, 0.85);
+	}
 }
 
 @media (max-width: 720px) {
