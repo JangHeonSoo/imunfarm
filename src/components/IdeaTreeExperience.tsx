@@ -225,6 +225,7 @@ const IdeaTreeExperience = ({ lang = 'ko' }: { lang?: string }) => {
 		toastPosted: isEn ? 'A new idea has been planted!' : '새로운 열매가 매달렸어요.',
 		toastFailed: isEn ? 'Failed to submit.' : '등록에 실패했습니다.',
 		harvestable: isEn ? 'Top Idea' : '수확 가능',
+		harvestedEmpty: isEn ? 'No ideas have been harvested yet. Plant a new seed!' : '아직 수확된 열매가 없어요. 새로운 씨앗을 심어보세요!',
 		tooltipVotes: (n: number) => isEn ? `${formatNumber(lang).format(n)} votes` : `${formatNumber(lang).format(n)}명이 추천`,
 	}
 	const [ideas, setIdeas] = useState<Idea[]>([])
@@ -437,11 +438,11 @@ const IdeaTreeExperience = ({ lang = 'ko' }: { lang?: string }) => {
 			</div>
 
 			{/* ── Harvested section ── */}
-			{harvested.length > 0 && (
-				<div className={styles.harvestedSection}>
-					<div className={styles.harvestedHeader}>
-						<h2>{t.harvestedTitle}</h2>
-					</div>
+			<div className={styles.harvestedSection}>
+				<div className={styles.harvestedHeader}>
+					<h2>{t.harvestedTitle}</h2>
+				</div>
+				{harvested.length > 0 ? (
 					<div className={styles.harvestedGrid}>
 						{harvested.map((item) => {
 							const isPublished = item.status === 'published'
@@ -469,8 +470,13 @@ const IdeaTreeExperience = ({ lang = 'ko' }: { lang?: string }) => {
 							)
 						})}
 					</div>
-				</div>
-			)}
+				) : (
+					<div className={styles.harvestedEmpty}>
+						<span className={styles.harvestedEmptyIcon}>🌱</span>
+						<p>{t.harvestedEmpty}</p>
+					</div>
+				)}
+			</div>
 
 			{toast && (
 				<div
