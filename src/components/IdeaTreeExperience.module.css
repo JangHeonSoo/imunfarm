@@ -845,3 +845,27 @@
 		background-position: 0% 50%;
 	}
 }
+
+.harvestedEmpty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 4rem 2rem;
+	text-align: center;
+	background: rgba(0, 0, 0, 0.2);
+	border-radius: 1rem;
+	border: 1px dashed rgba(255, 255, 255, 0.1);
+	color: var(--muted);
+}
+
+:global(.light) :local(.harvestedEmpty) {
+	background: rgba(0, 0, 0, 0.03);
+	border-color: rgba(0, 0, 0, 0.1);
+}
+
+.harvestedEmptyIcon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+	opacity: 0.8;
+}

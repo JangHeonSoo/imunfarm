@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro'
-import redis from '../../../lib/redis'
+import { createRedis } from '../../../lib/redis'
 
 // Idea 타입
 interface Idea {
@@ -11,8 +11,9 @@ interface Idea {
 }
 
 // GET /api/ideas — 전체 아이디어 목록 (투표수 기준 정렬)
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ locals }) => {
     try {
+        const redis = createRedis((locals as any)?.runtime?.env)
         // Redis에서 아이디어 인덱스 목록 가져오기
         const ids = (await redis.zrevrange('ideas:index', 0, -1, 'WITHSCORES')) as string[] | null
 
@@ -49,8 +50,9 @@ export const GET: APIRoute = async () => {
 }
 
 // POST /api/ideas — 새 아이디어 제출
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
     try {
+        const redis = createRedis((locals as any)?.runtime?.env)
         // IP 추출
         const ip =
             request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||

@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro'
-import redis from '../../../../lib/redis'
+import { createRedis } from '../../../../lib/redis'
 
 // POST /api/ideas/vote/[id] — 투표하기
-export const POST: APIRoute = async ({ params, request, cookies }) => {
+export const POST: APIRoute = async ({ params, request, cookies, locals }) => {
     const { id } = params
     if (!id) {
         return new Response(JSON.stringify({ error: 'Invalid idea id' }), {
@@ -12,6 +12,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
     }
 
     try {
+        const redis = createRedis((locals as any)?.runtime?.env)
         // IP 추출
         const ip =
             request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
@@ -80,11 +81,12 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
 }
 
 // 취소 투표 (DELETE)
-export const DELETE: APIRoute = async ({ params, request, cookies }) => {
+export const DELETE: APIRoute = async ({ params, request, cookies, locals }) => {
     const { id } = params
     if (!id) return new Response(JSON.stringify({ error: 'Invalid id' }), { status: 400 })
 
     try {
+        const redis = createRedis((locals as any)?.runtime?.env)
         const ip =
             request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
             request.headers.get('x-real-ip') ||
