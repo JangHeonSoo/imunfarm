@@ -305,7 +305,7 @@ const IdeaTreeExperience = ({ lang = 'ko' }: { lang?: string }) => {
 	const handleVote = async (id: string) => {
 		const alreadyVoted = votedIds.has(id)
 		try {
-			const res = await fetch(`/api/ideas/${id}/vote`, { method: alreadyVoted ? 'DELETE' : 'POST' })
+			const res = await fetch(`/api/ideas/vote/${id}`, { method: alreadyVoted ? 'DELETE' : 'POST' })
 			const data = (await res.json()) as { votes?: number; error?: string; success?: boolean }
 			if (res.ok && data.votes !== undefined) {
 				setIdeas((prev) =>
