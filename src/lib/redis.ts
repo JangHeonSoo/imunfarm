@@ -3,11 +3,12 @@
  * Uses Upstash REST API: https://upstash.com/docs/redis/features/restapi
  */
 
-const UPSTASH_URL = import.meta.env.UPSTASH_REDIS_REST_URL
-const UPSTASH_TOKEN = import.meta.env.UPSTASH_REDIS_REST_TOKEN
+// Fallback to process.env if import.meta.env is not available (common in some Node/CF hybrid environments)
+const UPSTASH_URL = import.meta.env.UPSTASH_REDIS_REST_URL || (typeof process !== 'undefined' ? process.env.UPSTASH_REDIS_REST_URL : undefined)
+const UPSTASH_TOKEN = import.meta.env.UPSTASH_REDIS_REST_TOKEN || (typeof process !== 'undefined' ? process.env.UPSTASH_REDIS_REST_TOKEN : undefined)
 
 if (!UPSTASH_URL || !UPSTASH_TOKEN) {
-    console.warn('[redis] Missing UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN — votes will not persist.')
+    console.error('[redis] CRITICAL Error: UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN is missing in production environment.')
 }
 
 async function call(command: string[]): Promise<unknown> {
