@@ -42,6 +42,7 @@ export const redis = {
             ? call(['ZREVRANGE', key, String(start), String(stop), 'WITHSCORES'])
             : call(['ZREVRANGE', key, String(start), String(stop)]),
     zscore: (key: string, member: string) => call(['ZSCORE', key, member]),
+    zrem: (key: string, member: string) => call(['ZREM', key, member]),
 }
 
 export default redis
