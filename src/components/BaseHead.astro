@@ -21,8 +21,6 @@ const siteTitle = title?.toLowerCase() === 'home'
 	? siteConfig.title 
 	: `${title} ${titleSeparator} ${siteConfig.title}`
 
-
-import { AstroFont } from 'astro-font'
 ---
 
 <!-- Global Metadata -->
@@ -88,52 +86,3 @@ import { AstroFont } from 'astro-font'
 
 <!-- KaTeX stylesheet -->
 <link href='https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css' rel='stylesheet' />
-
-<AstroFont
-	config={[
-		{
-			preload: false,
-			display: 'swap',
-			name: 'Manrope',
-			fallback: 'sans-serif',
-			src: [
-				{
-					weight: '200',
-					style: 'normal',
-					path: './public/fonts/Manrope-ExtraLight.woff2'
-				},
-				{
-					weight: '300',
-					style: 'normal',
-					path: './public/fonts/Manrope-Light.woff2'
-				},
-				{
-					weight: '400',
-					style: 'normal',
-					path: './public/fonts/Manrope-Regular.woff2'
-				},
-				{
-					weight: '500',
-					style: 'normal',
-					path: './public/fonts/Manrope-Medium.woff2'
-				},
-				{
-					weight: '600',
-					style: 'normal',
-					path: './public/fonts/Manrope-SemiBold.woff2'
-				},
-				{
-					weight: '700',
-					preload: true,
-					style: 'normal',
-					path: './public/fonts/Manrope-Bold.woff2'
-				},
-				{
-					weight: '800',
-					style: 'normal',
-					path: './public/fonts/Manrope-ExtraBold.woff2'
-				}
-			]
-		}
-	]}
-/>
