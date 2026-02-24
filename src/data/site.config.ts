@@ -40,8 +40,8 @@ export const siteConfig: SiteConfig = {
 		name: `Imun Farm`,
 		summary: `경북 구미에서 쌀, 샤인머스켓 포도, 감자, 수박, 메론을 재배하는 농장입니다.`
 	},
-	title: `imun.farm - 농업 지식 공유 블로그`,
-	description: `경북 구미 실전 농업 노하우와 농사 기록`,
+	title: `imun.farm - IMUN(Intelligent & Modern Urban Nature) 지식 농장`,
+	description: `경북 구미 지능형 현대 도시 농장 노하우와 농사 기록`,
 	siteUrl: `https://imun.farm/`,
 	social: {
 		twitter: ``,
