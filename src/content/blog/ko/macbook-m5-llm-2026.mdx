@@ -1,0 +1,124 @@
+---
+title: '맥북 M5로 집에서 LLM 돌리기: 진짜 가능할까?'
+description: 'M5 Pro 및 M5 Max 맥북 프로의 로컬 LLM 구동 성능 분석. 칩 아키텍처 변화, 메모리별 구동 가능 모델, 벤치마크 결과 및 추천 툴까지 상세히 알아봅니다.'
+pubDate: 2026-03-18
+heroImage: '/images/macbook-m5-hero.png'
+category: 'Review'
+tags: ['M5', 'MacBookPro', 'LLM', '로컬AI', '인공지능', 'LMStudio', 'MLX', '추천']
+comments: true
+---
+
+2026년 3월, 집 책상 위에 맥북 한 대로 GPT-4급 모델을 돌리는 시대가 왔다. 그냥 마케팅 문구가 아니다. 실제 벤치마크가 그렇게 말한다.
+
+---
+
+## 1. 왜 M5인가, 이번엔 뭐가 달랐나
+
+애플이 2026년 3월 2일 공개한 M5 Pro / M5 Max는 단순 스펙 업그레이드가 아니다. 칩 구조 자체가 바뀌었다. 두 개의 다이(Die)를 하나의 SoC로 붙이는 <strong>퓨전 아키텍처(Fusion Architecture)</strong>를 처음 도입했고, GPU 코어 하나하나에 <strong>Neural Accelerator</strong>를 심었다. 이게 포인트다.
+
+![실리콘 칩 내부 구조: Neural Accelerator](/images/macbook-m5-chip.png)
+
+LLM 추론에서 가장 중요한 연산은 행렬 곱셈(Matrix Multiplication)이다. Neural Accelerator는 이 연산을 전용으로 처리하는 회로다. 결과적으로 M4 대비 <strong>LLM 프롬프트 처리 속도가 최대 4배</strong> 빨라졌고, M1 세대와 비교하면 최대 8배 차이가 난다.
+
+---
+
+## 2. 스펙으로 보는 실전 LLM 여력
+
+핵심은 통합 메모리(Unified Memory)와 메모리 대역폭이다. LLM은 RAM이 많을수록 큰 모델을 올릴 수 있고, 대역폭이 빠를수록 토큰이 빨리 나온다.
+
+| 칩 | 최대 통합 메모리 | 메모리 대역폭 | 돌릴 수 있는 모델 크기 |
+|---|---|---|---|
+| M5 (베이스) | 32GB | 153 GB/s | 7B~13B (4bit 양자화) |
+| M5 Pro | 64GB | 307 GB/s | 최대 35B (4bit) |
+| M5 Max | 128GB | 614 GB/s | 70B~120B+ (4bit/8bit) |
+
+M5 베이스(맥북 프로 14인치 기본형) 32GB는 Qwen3-8B BF16을 4.4GB로 실행한다. Llama3-8B나 Mistral 7B는 그냥 올라간다. 그런데 사실 32GB 모델은 '가능은 한데 빡빡하다'는 느낌이다.
+
+M5 Pro 64GB부터 쾌적해진다. 35B 모델을 4bit 양자화로 올리면 ~20GB 정도를 쓴다. 코딩용으로 Qwen2.5-Coder 14B, Qwen3.5 35B를 실제로 굴리는 사람들이 많다.
+
+M5 Max 128GB는 차원이 다르다. gpt-oss-120B 모델을 8bit 양자화로 올려서 초당 65~87 토큰을 뽑아낸다. 128GB짜리 맥북 하나로 120B짜리 모델을 쾌적하게 쓸 수 있다는 게 2026년 기준으로도 놀라운 일이다.
+
+---
+
+## 3. 실제 벤치마크: 얼마나 빠른가
+
+Apple MLX 팀이 24GB 통합 메모리 M5 맥북 프로로 직접 테스트한 결과가 있다.
+
+<strong>첫 토큰 생성(TTFT) 속도 — M4 대비 개선폭:</strong>
+
+| 모델 | TTFT 개선 배율 | 토큰 생성 개선 |
+|---|---|---|
+| Qwen3-1.7B (BF16) | 3.57× | 1.27× |
+| Qwen3-30B-A3B (4bit) | 3.52× | 1.25× |
+| gpt-oss-20B (MXFP4) | 3.33× | 1.24× |
+
+14B 모델 기준 첫 토큰 생성이 10초 미만이고, 30B MoE 모델은 3초 미만이다. 참고로 토큰 생성 속도는 메모리 대역폭에 묶이기 때문에 M5의 대역폭 향상(M4 120 GB/s → M5 153 GB/s, 약 28% 향상) 만큼 개선폭도 19~27% 수준에 그친다.
+
+M5 Max 128GB 기준으로는 더 극적이다. gpt-oss-120B 8bit 양자화 모델에서 <strong>프롬프트 처리 1,325~2,710 t/s, 토큰 생성 64~87 t/s</strong>를 기록했다. RTX Pro 6000 96GB GPU와 비교하면 프롬프트 처리는 2~5배 느리지만, 토큰 생성 속도는 30~50% 차이로 좁혀진다. 게다가 맥북은 전력 소모가 비교가 안 되게 낮다.
+
+---
+
+## 4. 어떤 툴을 써야 하나
+
+![로컬 AI 구동 터미널 환경](/images/macbook-m5-terminal.png)
+
+로컬 LLM을 돌리는 툴은 크게 네 가지다.
+
+*   <strong>MLX (Apple 공식 프레임워크)</strong>: Apple이 직접 만든 프레임워크다. M5의 Neural Accelerator를 네이티브로 활용한다. TTFT 기준 가장 빠르고, 병렬 요청 처리에서도 1위다. 다만 터미널 기반이라 진입장벽이 있다.
+*   <strong>LM Studio</strong>: GUI가 있어서 처음 시작하기 좋다. MLX 엔진을 지원하기 시작했고, 응답 속도도 MLX와 거의 동일(~3.7초)하다. LLM을 마치 앱 설치하듯 다운받고 관리할 수 있다.
+*   <strong>Ollama</strong>: 터미널에서 `ollama run llama3`처럼 명령어 하나로 실행 가능하다. REST API를 제공해서 자체 앱에 붙이기 쉽다. 단점은 MLX 최적화가 아직 부족해서 동일 모델 기준 LM Studio보다 응답이 약 50% 느리다.
+*   <strong>llama.cpp</strong>: 바닥부터 직접 제어하고 싶은 사람용이다. GGUF 포맷의 모든 모델이 돌아가고, Metal GPU를 완전히 활용한다. 설정이 복잡하지만 성능은 최상급이다.
+
+초보라면 <strong>LM Studio</strong>, 개발에 붙이려면 <strong>Ollama</strong>, 최고 성능을 짜내려면 <strong>MLX 또는 llama.cpp</strong>.
+
+---
+
+## 5. 메모리별 추천 모델
+
+| 통합 메모리 | 추천 모델 | 용도 |
+|---|---|---|
+| 16GB | Phi-4-mini, Qwen3-1.7B | 간단한 질문, 빠른 응답 |
+| 24GB | Llama3-8B, Qwen3-8B BF16, Mistral 7B | 일반 대화, 문서 요약 |
+| 32GB | Qwen2.5-Coder 14B, GPT-OSS-20B | 코딩, 분석 |
+| 48GB | Qwen3.5-35B (4bit) | 복잡한 추론, 번역 |
+| 64GB (M5 Pro) | Qwen3.5-35B BF16, GPT-OSS-20B | 전문 업무 수준 |
+| 128GB (M5 Max) | gpt-oss-120B (8bit), Qwen3.5-122B (4bit) | GPT-4급 대화 |
+
+M5 Pro 64GB 기준으로 Qwen3.5 35B를 BF16 전체 정밀도로 올릴 수 있다. 성능 타협 없이 35B를 쓸 수 있다는 뜻이다. 실제 커뮤니티에서는 "GPT-OSS 120B와 맞먹는다"는 평가도 나온다.
+
+---
+
+## 6. 솔직히 말하면: 한계도 있다
+
+맥북 프로는 로컬 AI 머신으로 매력적이지만, RTX 5090이나 RTX Pro 6000과는 다른 물건이다.
+
+*   <strong>프롬프트 처리 속도</strong>는 여전히 GPU 서버급에 비해 느리다. gpt-oss-120B 기준 RTX Pro 6000이 4.9배 빠르다.
+*   <strong>메모리 확장이 안 된다.</strong> 구매 시 결정한 용량이 평생이다. 128GB를 넘기려면 Mac Studio Ultra를 사야 한다.
+*   <strong>Llama 405B 같은 초대형 모델</strong>은 여전히 서버급 하드웨어가 필요하다.
+
+그래도 개인 용도로, 프라이버시를 지키며, 인터넷 없이 LLM을 쓰고 싶다면 M5 Pro / M5 Max 맥북 프로는 지금 시장에서 가장 현실적인 선택이다.
+
+---
+
+## 7. 실제로 살 거라면 어떤 구성이 맞나
+
+*   <strong>예산이 한정적이고 코딩/일상 업무가 주:</strong> M5 Pro 48GB. 35B 모델을 4bit로 충분히 쓸 수 있고, 307 GB/s 대역폭으로 속도도 쾌적하다.
+*   <strong>진지하게 LLM 연구나 개발을 할 거라면:</strong> M5 Max 64GB 이상. 대역폭이 두 배라 체감 속도 차이가 크다.
+*   <strong>모델 크기 때문에 고민된다면:</strong> 스토리지를 넉넉히 가져가라. 외장 NVMe로 모델을 저장하면 느리고 번거롭다. M5 Pro부터 기본 1TB, M5 Max는 기본 2TB다. 대형 모델 여러 개를 유지하려면 2TB는 필수다.
+
+---
+
+## 참고 자료
+
+*   Apple Newsroom (2026.03.02) — *Apple introduces MacBook Pro with all-new M5 Pro and M5 Max* (https://www.apple.com/newsroom/2026/03/apple-introduces-macbook-pro-with-all-new-m5-pro-and-m5-max/)
+*   Apple Machine Learning Research (2025.11.20) — *Exploring LLMs with MLX and the Neural Accelerators in M5* (https://machinelearning.apple.com/research/exploring-llms-mlx-m5)
+*   Apple Newsroom KR (2026.03.02) — *Apple, 완전히 새로운 M5 Pro 및 M5 Max를 탑재한 MacBook Pro 소개* (https://www.apple.com/kr/newsroom/2026/03/apple-introduces-macbook-pro-with-all-new-m5-pro-and-m5-max/)
+*   hardware-corner.net (2026.03.10) — *Apple M5 Max for Local LLMs: First Benchmarks vs RTX* (https://www.hardware-corner.net/m5-max-local-llm-benchmarks-20261233/)
+*   2am.tech (2026.01.14) — *Ollama vs. LM Studio: Comparison & When to Choose Which* (https://www.2am.tech/blog/ollama-vs-lm-studio)
+*   dev.to/bspann (2026.03.09) — *Running LLMs Locally on macOS: The Complete 2026 Comparison* (https://dev.to/bspann/running-llms-locally-on-macos-the-complete-2026-comparison-48fc)
+*   Reddit r/LocalLLaMA (2026.03.02) — *What's the best local model I can run with a MacBook M5 Pro?* (https://www.reddit.com/r/LocalLLaMA/comments/1rimncl/)
+*   GeekNews (2026.03.03) — *Apple, M5 Pro/Max 탑재한 MacBook Pro 14/16 공개* (https://news.hada.io/topic?id=27177)
+*   dev.to/ji_ai (2026.03) — *Apple M5 Pro/Max 발표 — LLM 프롬프트 처리 속도 4배, 로컬 AI의 새로운 기준* (https://dev.to/ji_ai/apple-m5-promax-balpyo-llm-peurompeuteu-ceori-sogdo-4bae-rokeol-aiyi-saeroun-gijun-2do5)
+*   LinkedIn Benchmark (2025.12.28) — *5 LLM providers on macOS (LM Studio, Swama, Ollama, MLX, Llama)* (https://www.linkedin.com/pulse/benchmark-4-llm-providers-macos-lm-studio-swama-ollama-karel-svr%C4%8Dek-hqv3f)
+
+#M5 #MacBookPro #LLM #로컬AI #인공지능 #LMStudio #MLX #애플실리콘 #개발자노트 #스마트워크
