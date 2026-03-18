@@ -16,8 +16,6 @@ March 2026. Running a GPT-4-class model on a laptop sitting on your desk at home
 
 Apple released the M5 Pro / M5 Max on March 2, 2026. This is not a simple spec bump — the chip architecture itself changed. For the first time, Apple introduced a <strong>Fusion Architecture</strong>, bonding two dies into a single SoC, and embedded a <strong>Neural Accelerator inside every GPU core</strong>. That is the key difference.
 
-![Silicon Chip Internals: Neural Accelerator](/images/macbook-m5-chip.png)
-
 LLM inference is dominated by matrix multiplication. Neural Accelerators handle exactly that operation in dedicated silicon. The result: <strong>up to 4x faster LLM prompt processing compared to M4</strong>, and up to 8x compared to the M1 generation.
 
 ---
@@ -28,15 +26,15 @@ Unified Memory and memory bandwidth are what define your LLM experience. More RA
 
 | Chip | Max Unified Memory | Memory Bandwidth | Practical Model Size |
 |---|---|---|---|
-| M5 (base) | 32GB | 153 GB/s | 7B–13B (4-bit quant) |
+| M5 (base) | 32GB | 153 GB/s | 7B-13B (4-bit quant) |
 | M5 Pro | 64GB | 307 GB/s | Up to 35B (4-bit) |
-| M5 Max | 128GB | 614 GB/s | 70B–120B+ (4-bit/8-bit) |
+| M5 Max | 128GB | 614 GB/s | 70B-120B+ (4-bit/8-bit) |
 
 The base M5 (14-inch MacBook Pro entry model) with 32GB runs Qwen3-8B in BF16 at just 4.4GB memory usage — Llama3-8B and Mistral 7B load without issues. That said, 32GB feels tight for serious work.
 
 M5 Pro at 64GB is where things get comfortable. A 35B model at 4-bit quantization uses roughly 20GB. Many users report running Qwen2.5-Coder 14B and Qwen3.5 35B daily for coding tasks.
 
-M5 Max at 128GB is a different category entirely. The gpt-oss-120B model in 8-bit quantization runs at 65–87 tokens per second on this machine. Running a 120B-class model interactively on a single laptop is genuinely remarkable in 2026.
+M5 Max at 128GB is a different category entirely. The gpt-oss-120B model in 8-bit quantization runs at 65-87 tokens per second on this machine. Running a 120B-class model interactively on a single laptop is genuinely remarkable in 2026.
 
 ---
 
@@ -52,20 +50,18 @@ Apple's Machine Learning Research team published direct benchmark comparisons be
 | Qwen3-30B-A3B (4-bit) | 3.52× | 1.25× |
 | gpt-oss-20B (MXFP4) | 3.33× | 1.24× |
 
-For a 14B dense model, the first token appears in under 10 seconds. For a 30B MoE model, under 3 seconds. Token generation speed is bounded by memory bandwidth — M5's 28% bandwidth increase (120 GB/s → 153 GB/s vs M4) translates to a 19–27% generation speed improvement.
+For a 14B dense model, the first token appears in under 10 seconds. For a 30B MoE model, under 3 seconds. Token generation speed is bounded by memory bandwidth — M5's 28% bandwidth increase (120 GB/s -> 153 GB/s vs M4) translates to a 19-27% generation speed improvement.
 
-For M5 Max 128GB, the numbers are more striking. On gpt-oss-120B (8-bit quantization): <strong>prompt processing 1,325–2,710 t/s, token generation 64–87 t/s</strong>. Compared to an RTX Pro 6000 96GB, prompt processing is 2–5x slower, but token generation narrows to a 30–50% gap — while consuming a fraction of the power.
+For M5 Max 128GB, the numbers are more striking. On gpt-oss-120B (8-bit quantization): <strong>prompt processing 1,325-2,710 t/s, token generation 64-87 t/s</strong>. Compared to an RTX Pro 6000 96GB, prompt processing is 2-5x slower, but token generation narrows to a 30-50% gap — while consuming a fraction of the power.
 
 ---
 
 ## 4. Which Tool to Use
 
-![Local AI Software Terminal Environment](/images/macbook-m5-terminal.png)
-
 Four main options for running LLMs locally on macOS:
 
 *   <strong>MLX (Apple's native framework)</strong>: Built by Apple, natively leverages M5 Neural Accelerators. Fastest TTFT, best parallel request handling. Terminal-based, with a steeper learning curve.
-*   <strong>LM Studio</strong>: GUI-driven, ideal for exploration. Now supports the MLX inference engine. Single-request latency is essentially tied with MLX at ~3.7 seconds. Download and manage models like installing an app.
+*   <strong>LM Studio</strong>: GUI-driven, ideal for exploration. Now supports the MLX inference engine. Single-request latency is essentially tied with MLX at -3.7 seconds. Download and manage models like installing an app.
 *   <strong>Ollama</strong>: One command to run: `ollama run llama3`. Provides a REST API for easy integration with your own applications. Downside: MLX optimization is incomplete — roughly 50% slower than LM Studio for the same model.
 *   <strong>llama.cpp</strong>: Full manual control, GGUF format support, complete Metal GPU utilization. Best raw performance ceiling, but requires configuration work.
 
