@@ -15,11 +15,13 @@ Truth is, agricultural price prediction is already happening everywhere.<br/>
 
 <strong>KAMIS</strong>, public wholesale markets, local governments, even private apps.
 <br />
-But when it comes to my own field, my own greenhouse — information that directly answers "what to plant, how much, and when to sell" — that's hard to find.
+But when it comes to my own field, my own greenhouse — information that directly answers "what to
+plant, how much, and when to sell" — that's hard to find.
 
 Instead of showing off fancy AI models,<br/>
 
 this article breaks down how to scrape <strong>KAMIS</strong> and wholesale market data to make practical "<strong>crop selection</strong>" and "<strong>shipping timing</strong>" decisions,
+
 <br />
 focused on real actions you can take.
 
@@ -36,6 +38,7 @@ Here are the URLs.
 - Quick price info (consumer prices/simple lookup): https://www.kamis.or.kr/customer/info/retail/period.do?action=daily
 
 The basic structure of <strong>KAMIS</strong> data looks like this.
+
 <br />
 - Product category/subcategory codes (e.g., vegetables, onion, dried onion, etc.)
 <br />
@@ -53,6 +56,7 @@ Averages alone won't help you pick the right crop or time your shipments.
 ### 1-1. Look at These 3 Things at Minimum
 
 Pick a specific product (e.g., onions, garlic, cabbage) on <strong>KAMIS</strong>,
+
 <br />
 and download the last 3-5 years' data to Excel.
 
@@ -78,19 +82,20 @@ No need to overcomplicate things in Excel.<br/>
 - Run 7-day, 14-day, and 30-day <strong>moving averages</strong>.
 
 With <strong>moving averages</strong>,
+
 <br />
-- Days when supply got disrupted by sudden rain<br />
+- Days when supply got disrupted by sudden rain
+<br />
 - One-off spikes/drops from volume flooding a specific market
-<br />
-— this kind of noise gets cleaned up.
+<br />— this kind of noise gets cleaned up.
 
 Looking at the <strong>moving average</strong> curve,
+
 <br />
 "Ah, this product bottoms out around the second week of June every year."
 <br />
 "It starts creeping up from the last week of October."
-<br />
-— these patterns become visible.
+<br />— these patterns become visible.
 
 Just doing this much<br/>
 will help you largely avoid "mindlessly planting based on last year's prices."
@@ -108,10 +113,10 @@ Real on-the-ground data comes from public wholesale market auction records.
 These datasets are available on the public data portal:
 
 - National Agricultural, Marine & Livestock Wholesale Market Auction Price Standard Data<br/>
-  - https://www.data.go.kr/data/15029181/standard.do<br/>
+- https://www.data.go.kr/data/15029181/standard.do<br/>
 - National Public Wholesale Market Real-time Auction Info OpenAPI<br/>
-  - https://www.data.go.kr/data/15141808/openapi.do<br/>
-  - Ministry of Agriculture Public Data Portal "Wholesale Market Real-time Auction Info"
+- https://www.data.go.kr/data/15141808/openapi.do<br/>
+- Ministry of Agriculture Public Data Portal "Wholesale Market Real-time Auction Info"
 
 This data contains fields like:<br/>
 
@@ -281,7 +286,7 @@ And most government/public services operate at "not too complex" levels.
 So for individual farms or small teams, think of it this way:<br/>
 
 - Nail down Tier 1 solidly<br/>
-- If needed, apply Tier 2 to gauge "how much prices might deviate from normal." 
+- If needed, apply Tier 2 to gauge "how much prices might deviate from normal."
 
 ---
 
@@ -332,16 +337,21 @@ This is for a typical small-scale field farming operation.
 2. From public wholesale market auction data, organize annual/monthly average auction prices for 2 markets (Garak and Busan).<br/>
 3. Record your local wholesale market's actual prices (NongHyup, nearby intermediary trader prices) for at least 1 year.<br/>
 4. In Excel, create:<br/>
-   - <strong>Moving averages</strong> (7-day, 30-day)
-     <br />
-   - Monthly seasonal patterns<br/>
-   - Normal year vs. this year curve comparisons<br/>
+
+- <strong>Moving averages</strong> (7-day, 30-day)
+  <br />
+- Monthly seasonal patterns<br/>
+- Normal year vs. this year curve comparisons<br/>
+
 5. For crop selection:<br/>
-   - Calculate average scenario vs. worst scenario net profit,<br/>
-   - First check "can I survive the loss in a worst year?"<br/>
+
+- Calculate average scenario vs. worst scenario net profit,<br/>
+- First check "can I survive the loss in a worst year?"<br/>
+
 6. For shipping timing:<br/>
-   - Mark peak/trough zones from normal-year patterns<br/>
-   - Update this year's auction curve weekly, just checking "where is today relative to the normal year?"
+
+- Mark peak/trough zones from normal-year patterns<br/>
+- Update this year's auction curve weekly, just checking "where is today relative to the normal year?"
 
 This much, without any fancy AI,<br/>
 gets you a move or two ahead of "planting the same as last year based on last year's prices."
@@ -354,13 +364,17 @@ But sketching out where and how to drive the nails beforehand — that's what da
 
 ## References
 
-- <strong>Korea Agricultural Marketing Information Service (KAMIS)</strong> main page, price information service structure and product/wholesale/retail data delivery explanation
+- <strong>Korea Agricultural Marketing Information Service (KAMIS)</strong> main page, price
+  information service structure and product/wholesale/retail data delivery explanation
   <br />
-- <strong>KAMIS</strong> daily wholesale price lookup page, daily wholesale price lookup and Excel download functionality
+- <strong>KAMIS</strong> daily wholesale price lookup page, daily wholesale price lookup and Excel
+  download functionality
   <br />
-- <strong>KAMIS</strong> key agricultural product daily wholesale prices (Garak Market, etc.) page, market/product price information examples
+- <strong>KAMIS</strong> key agricultural product daily wholesale prices (Garak Market, etc.) page,
+  market/product price information examples
   <br />
-- <strong>KAMIS</strong> quick price information (consumer prices) page, period/product simple lookup functionality
+- <strong>KAMIS</strong> quick price information (consumer prices) page, period/product simple
+  lookup functionality
   <br />
 - Korea Agro-Fisheries & Food Trade Corporation (aT) processed food retail price information dataset, retail price information linked to <strong>KAMIS</strong> service<br/>
 - Public Data Portal National Agricultural/Marine/Livestock Wholesale Market Auction Price Standard Data, product/variety/grade daily auction price and trading volume field definitions<br/>
