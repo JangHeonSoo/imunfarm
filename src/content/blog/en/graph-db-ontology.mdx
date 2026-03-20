@@ -15,7 +15,7 @@ comments: true
 
 ## Data Needs "Context" Too
 
-Stacking tables is the old way. Rows and columns look clean, but the problem is **relationships**. "User A bought Product B, Product B belongs to Category C, Category C is managed by Department D…" To untangle this chain in SQL, you need 4 or 5 JOINs. And as data grows, those JOINs kill your system.
+Stacking tables is the old way. Rows and columns look clean, but the problem is relationships. "User A bought Product B, Product B belongs to Category C, Category C is managed by Department D…" To untangle this chain in SQL, you need 4 or 5 JOINs. And as data grows, those JOINs kill your system.
 
 Graph DB started from this problem: "Don't calculate relationships — store them."
 
@@ -23,20 +23,20 @@ Graph DB started from this problem: "Don't calculate relationships — store the
 
 ## What Is a Graph DB?
 
-A graph database is a storage system that represents data using **Nodes** and **Edges**. Nodes are entities (people, products, places), and edges are the relationships between them. For example: "Tom Hanks → [:STARRED_IN] → Cast Away."
+A graph database is a storage system that represents data using Nodes and Edges. Nodes are entities (people, products, places), and edges are the relationships between them. For example: "Tom Hanks → [:STARRED_IN] → Cast Away."
 
-The biggest difference from relational DBs is **Index-Free Adjacency**. RDBMS must scan indexes and compute JOIN operations to find relationships. Graph DBs, on the other hand, have each node directly hold the physical addresses of its connected nodes. This is why multi-hop traversals like "friend of a friend of a friend" are fast, regardless of overall data size.
+The biggest difference from relational DBs is Index-Free Adjacency. RDBMS must scan indexes and compute JOIN operations to find relationships. Graph DBs, on the other hand, have each node directly hold the physical addresses of its connected nodes. This is why multi-hop traversals like "friend of a friend of a friend" are fast, regardless of overall data size.
 
 There are two primary graph models:
 
-- **Labeled Property Graph (LPG):** Attaches labels and properties (key-value pairs) to nodes and edges. Neo4j uses this model.
-- **RDF Graph:** Represents all data as subject-predicate-object triples. This is closely tied to ontologies.
+- Labeled Property Graph (LPG): Attaches labels and properties (key-value pairs) to nodes and edges. Neo4j uses this model.
+- RDF Graph: Represents all data as subject-predicate-object triples. This is closely tied to ontologies.
 
 ---
 
 ## Where Did Neo4j Come From?
 
-Neo4j started in 2000. Founder **Emil Eifrem** hit a wall while building a complex enterprise content management system. It was a system connecting users, permissions, files, and categories — and handling it with a relational DB meant repeating SQL JOINs endlessly, with query performance exploding exponentially as depth increased.
+Neo4j started in 2000. Founder Emil Eifrem hit a wall while building a complex enterprise content management system. It was a system connecting users, permissions, files, and categories — and handling it with a relational DB meant repeating SQL JOINs endlessly, with query performance exploding exponentially as depth increased.
 
 "Why do we have to make what we draw on a whiteboard with simple lines so complicated in a DB?" That single question changed the direction. An early version was released in 2002 and open-sourced in 2007. Today it is the most widely used graph DB by DB-Engines ranking.
 
@@ -44,7 +44,7 @@ Neo4j started in 2000. Founder **Emil Eifrem** hit a wall while building a compl
 
 ## Cypher: A Query Language You Draw
 
-Neo4j uses its own query language called **Cypher** instead of SQL. What makes it unique is its ASCII art syntax. Nodes are written as `(parentheses)`, and relationships as `--[:ARROW]-->`.
+Neo4j uses its own query language called Cypher instead of SQL. What makes it unique is its ASCII art syntax. Nodes are written as `(parentheses)`, and relationships as `--[:ARROW]-->`.
 
 ```cypher
 MATCH (p:Person {name: "Annemarie"})-[:KNOWS]->(friend)-[:LIKES]->(c:Comment)
@@ -59,15 +59,15 @@ This query retrieves the "latest 100 comments liked by friends that Annemarie kn
 
 ## What Is an Ontology?
 
-Ontology is about "how to define the world." It's not just storing data — it defines the **logical structure between concepts**. You embed rules like "mammals are animals" and "cats and dogs are mutually exclusive classes."
+Ontology is about "how to define the world." It's not just storing data — it defines the logical structure between concepts. You embed rules like "mammals are animals" and "cats and dogs are mutually exclusive classes."
 
 There are two core standards for expressing ontologies:
 
-**RDF (Resource Description Framework)** represents data as subject-predicate-object triples. "Seoul → isCapitalOf → South Korea." Every piece of information is broken into this three-part structure.
+RDF (Resource Description Framework) represents data as subject-predicate-object triples. "Seoul → isCapitalOf → South Korea." Every piece of information is broken into this three-part structure.
 
-**OWL (Web Ontology Language)** is a logic language layered on top of RDF. It enables class inheritance, constraints, and automatic reasoning. With OWL, if you input "Alice is a Facilitator" and "Facilitator is a subclass of Role," a reasoning engine automatically infers "Alice is a Role." Neo4j does not provide this automatic reasoning — this is the biggest difference between ontologies and graph DBs.
+OWL (Web Ontology Language) is a logic language layered on top of RDF. It enables class inheritance, constraints, and automatic reasoning. With OWL, if you input "Alice is a Facilitator" and "Facilitator is a subclass of Role," a reasoning engine automatically infers "Alice is a Role." Neo4j does not provide this automatic reasoning — this is the biggest difference between ontologies and graph DBs.
 
-The query language for ontologies is **SPARQL**. It has a structure similar to Cypher but maps patterns to the RDF triple structure.
+The query language for ontologies is SPARQL. It has a structure similar to Cypher but maps patterns to the RDF triple structure.
 
 ---
 
@@ -75,21 +75,21 @@ The query language for ontologies is **SPARQL**. It has a structure similar to C
 
 This isn't just hype. There are concrete examples you can see right now.
 
-**Google Knowledge Graph.** The info panel that appears on the right when you search "Yi Sun-sin" is a knowledge graph result. In June 2025, Google did a major cleanup of its Knowledge Graph, deleting **over 3 billion entities** in just one week — a strategy to remove ambiguous data and improve AI accuracy.
+Google Knowledge Graph. The info panel that appears on the right when you search "Yi Sun-sin" is a knowledge graph result. In June 2025, Google did a major cleanup of its Knowledge Graph, deleting over 3 billion entities in just one week — a strategy to remove ambiguous data and improve AI accuracy.
 
-**Financial Fraud Detection.** Modeling transaction networks between accounts as a graph lets you catch abnormal connection patterns in real time, even when they appear normal on the surface.
+Financial Fraud Detection. Modeling transaction networks between accounts as a graph lets you catch abnormal connection patterns in real time, even when they appear normal on the surface.
 
-**E-commerce Recommendations.** Platforms like eBay model users, purchase history, products, and categories as a graph to deliver real-time recommendations — high-quality, real-time recommendations that relational DBs simply can't handle.
+E-commerce Recommendations. Platforms like eBay model users, purchase history, products, and categories as a graph to deliver real-time recommendations — high-quality, real-time recommendations that relational DBs simply can't handle.
 
-**Healthcare.** Patient data, disease classifications, symptoms, and treatments are defined via ontology and modeled with RDF/OWL for complex medical knowledge. Google Knowledge Graph and Wikidata leverage this approach at massive scale.
+Healthcare. Patient data, disease classifications, symptoms, and treatments are defined via ontology and modeled with RDF/OWL for complex medical knowledge. Google Knowledge Graph and Wikidata leverage this approach at massive scale.
 
 ---
 
 ## GraphRAG: Why AI Is Obsessed With This
 
-There's a reason graph DBs and ontologies are suddenly back in the spotlight: **GraphRAG**.
+There's a reason graph DBs and ontologies are suddenly back in the spotlight: GraphRAG.
 
-Traditional vector-based RAG is good at finding semantic similarity between sentences. But it can't handle **multi-hop reasoning** like "If A is a subsidiary of B, and B manufactures Product C, what is the relationship between A and C?" Vectors calculate numerical distance — they can't traverse logical relationships.
+Traditional vector-based RAG is good at finding semantic similarity between sentences. But it can't handle multi-hop reasoning like "If A is a subsidiary of B, and B manufactures Product C, what is the relationship between A and C?" Vectors calculate numerical distance — they can't traverse logical relationships.
 
 So knowledge graphs were added to the mix. LLMs automatically extract entities and relationships from text to build a graph. When a question comes in, vector search finds the entry point, then the system expands through the graph to gather connected knowledge. Microsoft Research proved that combining these two technologies significantly improves the ability to deliver comprehensive, global-scope answers.
 
@@ -99,7 +99,7 @@ LLMs can also directly convert queries. Natural language questions are automatic
 
 ## How Big Is the Market?
 
-The graph DB market was valued at approximately **$2.7 billion** in 2024. It is expected to grow to **$10.28 billion** by 2032 at a CAGR of 18.2%. More aggressive forecasts project growth from $3.6 billion in 2026 to $20.2 billion in 2034 at a CAGR of **24.13%**.
+The graph DB market was valued at approximately $2.7 billion in 2024. It is expected to grow to $10.28 billion by 2032 at a CAGR of 18.2%. More aggressive forecasts project growth from $3.6 billion in 2026 to $20.2 billion in 2034 at a CAGR of 24.13%.
 
 AI-driven demand is fueling this growth. Neo4j, Oracle, and AWS Amazon Neptune are the major players. Neo4j officially announced expanded Korea-specific services in 2024.
 
@@ -117,7 +117,7 @@ There are situations where graph DBs shine — and situations where they're over
 | Knowledge graphs (AI reasoning enhancement)       | Maximizing transaction throughput                |
 | Codebase dependency analysis                      | Numerical calculations, time-series data         |
 
-The time to use an ontology is different. It's when **automatic reasoning is needed** — specifically, when you need to automatically determine which class an entity belongs to. It's especially powerful in domains like healthcare, law, and complex knowledge systems.
+The time to use an ontology is different. It's when automatic reasoning is needed — specifically, when you need to automatically determine which class an entity belongs to. It's especially powerful in domains like healthcare, law, and complex knowledge systems.
 
 ---
 
@@ -129,20 +129,20 @@ Graph DB stores relationships. Ontology defines meaning. And in the AI era, both
 
 ## References
 
-- **CNF - What is a Graph Database?**: https://www.cncf.co.kr/ebook/graphdb/part1-graph-db-and-neo4j/1-graph-database-overview/1-1-what-is-graph-database/
-- **Ontology, RDF, and OWL Relationships (Brunch)**: https://brunch.co.kr/@oursophy/13
-- **Modeling Complex Relationships with Neo4j (jaenung.net)**: https://www.jaenung.net/tree/813
-- **Microsoft Fabric - Graph Database**: https://learn.microsoft.com/ko-kr/fabric/graph/graph-database
-- **Difference Between OWL and RDF (Tistory)**: https://hyowong.tistory.com/entry/owl과-rdf-차이
-- **GraphRAG White Paper Analysis (Brunch)**: https://brunch.co.kr/@msapai/8
-- **CNF - GraphRAG: Data Connectivity Is the Future of AI**: https://www.cncf.co.kr/blog/graph-rag/
-- **Graph Database Market Report (Fortune Business Insights)**: https://www.fortunebusinessinsights.com/ko/graph-database-market-105916
-- **Graph Database Market Analysis (Data Bridge)**: https://www.databridgemarketresearch.com/ko/reports/global-graph-database-market
-- **Background of Neo4j's Creation (CNF)**: https://www.cncf.co.kr/ebook/graphdb/part1-graph-db-and-neo4j/1-graph-database-overview/1-3-neo4j-background/
-- **Neo4j Overview (devkuma)**: https://www.devkuma.com/docs/neo4j/overview/
-- **Protege vs Neo4j, SPARQL Concepts (Velog)**: https://velog.io/@gathers/Protege와-Neo4j의-차이-그리고-SPARQL-쿼리-개념-정리
-- **Most Popular Graph DB Query Languages (SKAI Worldwide)**: https://blog.skaiworldwide.com/557
-- **Google Knowledge Graph Major Restructuring (Artience)**: https://www.artience.com/blog/google-knowledge-graph-ai-seo-strategy
-- **GraphDB Code Structure Visualization (stoni.space)**: https://stoni.space/posts/ko/graphdb/01-graphdb
-- **Neo4j Korea-Specific Service Expansion (Digital Chosun)**: https://digitalchosun.dizzo.com/site/data/html_dir/2024/05/28/2024052880220.html
-- **CNF - Graph DB Use Cases and Tech Ecosystem**: https://www.cncf.co.kr/ebook/graphdb/part2-graph-db-usecases-ecosystem/
+- CNF - What is a Graph Database?: https://www.cncf.co.kr/ebook/graphdb/part1-graph-db-and-neo4j/1-graph-database-overview/1-1-what-is-graph-database/
+- Ontology, RDF, and OWL Relationships (Brunch): https://brunch.co.kr/@oursophy/13
+- Modeling Complex Relationships with Neo4j (jaenung.net): https://www.jaenung.net/tree/813
+- Microsoft Fabric - Graph Database: https://learn.microsoft.com/ko-kr/fabric/graph/graph-database
+- Difference Between OWL and RDF (Tistory): https://hyowong.tistory.com/entry/owl과-rdf-차이
+- GraphRAG White Paper Analysis (Brunch): https://brunch.co.kr/@msapai/8
+- CNF - GraphRAG: Data Connectivity Is the Future of AI: https://www.cncf.co.kr/blog/graph-rag/
+- Graph Database Market Report (Fortune Business Insights): https://www.fortunebusinessinsights.com/ko/graph-database-market-105916
+- Graph Database Market Analysis (Data Bridge): https://www.databridgemarketresearch.com/ko/reports/global-graph-database-market
+- Background of Neo4j's Creation (CNF): https://www.cncf.co.kr/ebook/graphdb/part1-graph-db-and-neo4j/1-graph-database-overview/1-3-neo4j-background/
+- Neo4j Overview (devkuma): https://www.devkuma.com/docs/neo4j/overview/
+- Protege vs Neo4j, SPARQL Concepts (Velog): https://velog.io/@gathers/Protege와-Neo4j의-차이-그리고-SPARQL-쿼리-개념-정리
+- Most Popular Graph DB Query Languages (SKAI Worldwide): https://blog.skaiworldwide.com/557
+- Google Knowledge Graph Major Restructuring (Artience): https://www.artience.com/blog/google-knowledge-graph-ai-seo-strategy
+- GraphDB Code Structure Visualization (stoni.space): https://stoni.space/posts/ko/graphdb/01-graphdb
+- Neo4j Korea-Specific Service Expansion (Digital Chosun): https://digitalchosun.dizzo.com/site/data/html_dir/2024/05/28/2024052880220.html
+- CNF - Graph DB Use Cases and Tech Ecosystem: https://www.cncf.co.kr/ebook/graphdb/part2-graph-db-usecases-ecosystem/

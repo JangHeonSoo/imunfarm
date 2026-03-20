@@ -18,21 +18,21 @@ Most people think of Gemini as "just a chatbot." Crack it open, though, and you'
 
 Here's the Gemini family tree as of March 2026. Three generations coexist.
 
-<strong>Gemini 3 Family (Latest Previews)</strong>
+Gemini 3 Family (Latest Previews)
 
-- <strong>3.1 Pro Preview</strong> — The most powerful flagship. Scored 77.1% on ARC-AGI-2 benchmark. The previous 3.0 Pro hit 31.1%, so that's a 148% improvement. On SWE-Bench (coding), it reached 80.6%, standing shoulder-to-shoulder with Claude Opus 4.6 (80.9%).
-- <strong>3.1 Flash-Lite Preview</strong> — Lightweight tasks. Still in preview.
-- <strong>3 Flash Preview</strong> — Built for speed. Up to 3x faster than Gemini 2.5 Pro. Scored 33.7% on Humanity's Last Exam—nearly matching GPT-5.2 (34.5%). The real surprise: it hit 81.2% on MMMU-Pro (multimodal reasoning), actually beating 3 Pro's 80.8%.
+- 3.1 Pro Preview — The most powerful flagship. Scored 77.1% on ARC-AGI-2 benchmark. The previous 3.0 Pro hit 31.1%, so that's a 148% improvement. On SWE-Bench (coding), it reached 80.6%, standing shoulder-to-shoulder with Claude Opus 4.6 (80.9%).
+- 3.1 Flash-Lite Preview — Lightweight tasks. Still in preview.
+- 3 Flash Preview — Built for speed. Up to 3x faster than Gemini 2.5 Pro. Scored 33.7% on Humanity's Last Exam—nearly matching GPT-5.2 (34.5%). The real surprise: it hit 81.2% on MMMU-Pro (multimodal reasoning), actually beating 3 Pro's 80.8%.
 
-<strong>Gemini 2.5 Family (Current Mainstay)</strong>
+Gemini 2.5 Family (Current Mainstay)
 
-- <strong>2.5 Pro</strong> — The most stable high-performance option. Context window of 2 million tokens. That's roughly 3,000 pages of a book ingested in one shot.
-- <strong>2.5 Flash</strong> — The sweet spot between speed and cost. Ranked 2nd on LMArena Hard Prompts, right behind 2.5 Pro, at about 1/15th the price.
-- <strong>2.5 Flash-Lite</strong> — Cheapest active model. Optimized for bulk processing.
+- 2.5 Pro — The most stable high-performance option. Context window of 2 million tokens. That's roughly 3,000 pages of a book ingested in one shot.
+- 2.5 Flash — The sweet spot between speed and cost. Ranked 2nd on LMArena Hard Prompts, right behind 2.5 Pro, at about 1/15th the price.
+- 2.5 Flash-Lite — Cheapest active model. Optimized for bulk processing.
 
-<strong>Gemini 2.0 Family (Legacy)</strong>
+Gemini 2.0 Family (Legacy)
 
-- <strong>2.0 Flash / Flash-Lite</strong> — Still perfectly usable. Rock-bottom pricing makes these ideal for simple, repetitive tasks.
+- 2.0 Flash / Flash-Lite — Still perfectly usable. Rock-bottom pricing makes these ideal for simple, repetitive tasks.
 
 ---
 
@@ -40,15 +40,15 @@ Here's the Gemini family tree as of March 2026. Three generations coexist.
 
 Price per 1 million tokens in USD (as of February 2026):
 
-| Model | Input (≤200K) | Output (≤200K) | Input (>200K) | Output (>200K) |
-|---|---|---|---|---|
-| <strong>3.1 Pro Preview</strong> | $2.00 | $12.00 | $4.00 | $18.00 |
-| <strong>3 Flash Preview</strong> | $0.50 | $3.00 | — | — |
-| <strong>2.5 Pro</strong> | $1.25 | $10.00 | $2.50 | $15.00 |
-| <strong>2.5 Flash</strong> | $0.30 | $2.50 | — | — |
-| <strong>2.5 Flash-Lite</strong> | $0.10 | $0.40 | — | — |
-| <strong>2.0 Flash</strong> | $0.10 | $0.40 | — | — |
-| <strong>2.0 Flash-Lite</strong> | $0.075 | $0.30 | — | — |
+| Model           | Input (≤200K) | Output (≤200K) | Input (>200K) | Output (>200K) |
+| --------------- | ------------- | -------------- | ------------- | -------------- |
+| 3.1 Pro Preview | $2.00         | $12.00         | $4.00         | $18.00         |
+| 3 Flash Preview | $0.50         | $3.00          | —             | —              |
+| 2.5 Pro         | $1.25         | $10.00         | $2.50         | $15.00         |
+| 2.5 Flash       | $0.30         | $2.50          | —             | —              |
+| 2.5 Flash-Lite  | $0.10         | $0.40          | —             | —              |
+| 2.0 Flash       | $0.10         | $0.40          | —             | —              |
+| 2.0 Flash-Lite  | $0.075        | $0.30          | —             | —              |
 
 Key detail: Pro-tier pricing doubles once you cross 200K tokens. Watch that boundary when feeding in long documents—otherwise, the bill will sting.
 
@@ -60,29 +60,29 @@ Gemini 2.5 Pro delivers near-flagship performance at roughly 60% of the 3.1 Pro 
 
 Gemini's biggest weapon is its free tier. OpenAI requires a credit card. Claude offers a limited $5 free plan. Google? Just a Google account. No credit card needed.
 
-<strong>Google AI Studio Free Tier Limits (2026)</strong>
+Google AI Studio Free Tier Limits (2026)
 
-| Model | Requests/Min (RPM) | Tokens/Min (TPM) | Requests/Day (RPD) |
-|---|---|---|---|
-| 2.5 Pro | 5 | 250,000 | 100 |
-| 2.5 Flash | 10 | 250,000 | 250 |
-| 2.5 Flash-Lite | 15 | 250,000 | 1,000 |
+| Model          | Requests/Min (RPM) | Tokens/Min (TPM) | Requests/Day (RPD) |
+| -------------- | ------------------ | ---------------- | ------------------ |
+| 2.5 Pro        | 5                  | 250,000          | 100                |
+| 2.5 Flash      | 10                 | 250,000          | 250                |
+| 2.5 Flash-Lite | 15                 | 250,000          | 1,000              |
 
 Even on free tier, you get the full 1-million-token context window and multimodal capabilities. The only restriction is how many requests you can send—not what you can send per request.
 
 Simply registering billing info (without actual charges) bumps you to Tier 1. That takes 2.5 Pro from 5 RPM to 150 RPM, and from 100 RPD to 1,500 RPD. A 30x boost just for connecting a payment method.
 
-<strong>Consumer Subscription Comparison (2026)</strong>
+Consumer Subscription Comparison (2026)
 
-| Feature | Free | AI Plus | AI Pro | AI Ultra |
-|---|---|---|---|---|
-| Monthly Price | $0 | ~$8 | ~$20 | ~$250 |
-| Core Model | Older Flash | Gemini 3 Pro | Gemini 3 Pro (Enhanced) | Deep Think + Agent |
-| Context Window | Limited | 128K | 1M | 1M |
-| Deep Research | ✕ | 12/day | 20/day | 120/day |
-| Image/Video Gen | ✕ | Limited | Expanded | Maximum |
-| Cloud Storage | 15GB | 200GB | 2TB | 30TB |
-| Family Sharing | ✕ | Up to 5 | Up to 5 | Supported |
+| Feature         | Free        | AI Plus      | AI Pro                  | AI Ultra           |
+| --------------- | ----------- | ------------ | ----------------------- | ------------------ |
+| Monthly Price   | $0          | ~$8          | ~$20                    | ~$250              |
+| Core Model      | Older Flash | Gemini 3 Pro | Gemini 3 Pro (Enhanced) | Deep Think + Agent |
+| Context Window  | Limited     | 128K         | 1M                      | 1M                 |
+| Deep Research   | ✕           | 12/day       | 20/day                  | 120/day            |
+| Image/Video Gen | ✕           | Limited      | Expanded                | Maximum            |
+| Cloud Storage   | 15GB        | 200GB        | 2TB                     | 30TB               |
+| Family Sharing  | ✕           | Up to 5      | Up to 5                 | Supported          |
 
 Watch for AI Pro annual billing promotions—monthly cost can drop to roughly the same as AI Plus. Time it right, and you get Pro features at Plus prices.
 
@@ -125,20 +125,20 @@ Build a "Marketing Copywriter" Gem once, and you never need to type "You are a c
 
 Google's Gemini team analyzed user data and found the most effective prompts averaged about 21 words. Too short gives generic answers. Too long dilutes the focus.
 
-<strong>Four Essential Elements</strong>
+Four Essential Elements
 
-- <strong>Persona</strong> — "You are a senior full-stack developer with 10 years of experience."
-- <strong>Task</strong> — "Build a REST API in Python."
-- <strong>Context</strong> — "This is for an MVP at a startup using serverless infrastructure."
-- <strong>Format</strong> — "Present as a table," "Summarize in 3 lines," "Write in Markdown."
+- Persona — "You are a senior full-stack developer with 10 years of experience."
+- Task — "Build a REST API in Python."
+- Context — "This is for an MVP at a startup using serverless infrastructure."
+- Format — "Present as a table," "Summarize in 3 lines," "Write in Markdown."
 
-<strong>Five Practical Tips</strong>
+Five Practical Tips
 
-1. <strong>Break it into steps.</strong> Asking for everything at once produces mediocre results. "First, analyze the trends" → "Now suggest a strategy based on that analysis."
-2. <strong>Request comparisons.</strong> "Give me one emotional version and one feature-focused version." Options are power.
-3. <strong>Specify tone.</strong> "Casual for college students" vs. "Formal for investors." Same content, completely different output.
-4. <strong>Iterate with feedback.</strong> If the first answer is 80%, refine: "Make this shorter," "Add a concrete example." Don't expect perfection on the first try.
-5. <strong>Try meta-prompting.</strong> Ask the AI: "What prompt should I use to get a better answer on this topic?" Paradoxical, but incredibly effective.
+1. Break it into steps. Asking for everything at once produces mediocre results. "First, analyze the trends" → "Now suggest a strategy based on that analysis."
+2. Request comparisons. "Give me one emotional version and one feature-focused version." Options are power.
+3. Specify tone. "Casual for college students" vs. "Formal for investors." Same content, completely different output.
+4. Iterate with feedback. If the first answer is 80%, refine: "Make this shorter," "Add a concrete example." Don't expect perfection on the first try.
+5. Try meta-prompting. Ask the AI: "What prompt should I use to get a better answer on this topic?" Paradoxical, but incredibly effective.
 
 ---
 
@@ -146,11 +146,11 @@ Google's Gemini team analyzed user data and found the most effective prompts ave
 
 Sending every query to the top-tier model is like using a sledgehammer to hang a picture frame. Your quota evaporates, and API costs snowball.
 
-The wisest strategy in 2026 is <strong>model mixing</strong>.
+The wisest strategy in 2026 is model mixing.
 
-- <strong>Simple data cleanup, translation, drafts</strong> — Flash or Flash-Lite. Fast, dirt cheap.
-- <strong>Logic verification, complex analysis, precision coding</strong> — Pro. Save it for the moments that matter.
-- <strong>Bulk batch processing</strong> — 2.0 Flash-Lite at $0.075 per 1M tokens. Industry-low for thousands of repetitive tasks.
+- Simple data cleanup, translation, drafts — Flash or Flash-Lite. Fast, dirt cheap.
+- Logic verification, complex analysis, precision coding — Pro. Save it for the moments that matter.
+- Bulk batch processing — 2.0 Flash-Lite at $0.075 per 1M tokens. Industry-low for thousands of repetitive tasks.
 
 API users should also leverage caching. For 2.5 Pro, cached input costs $0.125 per 1M tokens—10% of the standard $1.25. When reusing system prompts, the savings are enormous.
 
@@ -160,14 +160,14 @@ Hidden bonus of 3.1 Pro: according to JetBrains' AI Director, 3.1 Pro improved q
 
 ## How It Stacks Up Against the Competition
 
-| Feature | Gemini | ChatGPT (OpenAI) | Claude (Anthropic) |
-|---|---|---|---|
-| Free Access | Yes (no card) | No (card required) | Limited ($5) |
-| Free RPM | 5–15 | N/A | Very limited |
-| Max Context | 2M tokens | 128K tokens | 200K tokens |
-| Google Ecosystem | Full Gmail, Drive, Docs, Sheets integration | Limited | Limited |
-| Image Generation | Imagen 4 built-in | DALL-E 3 | None (external) |
-| Coding (SWE-Bench) | 80.6% (3.1 Pro) | — | 80.9% (Opus 4.6) |
+| Feature            | Gemini                                      | ChatGPT (OpenAI)   | Claude (Anthropic) |
+| ------------------ | ------------------------------------------- | ------------------ | ------------------ |
+| Free Access        | Yes (no card)                               | No (card required) | Limited ($5)       |
+| Free RPM           | 5–15                                        | N/A                | Very limited       |
+| Max Context        | 2M tokens                                   | 128K tokens        | 200K tokens        |
+| Google Ecosystem   | Full Gmail, Drive, Docs, Sheets integration | Limited            | Limited            |
+| Image Generation   | Imagen 4 built-in                           | DALL-E 3           | None (external)    |
+| Coding (SWE-Bench) | 80.6% (3.1 Pro)                             | —                  | 80.9% (Opus 4.6)   |
 
 The 2-million-token context window is the largest among commercially available models. That's two 1,500-page books ingested at once. If long-document analysis is your bread and butter, Gemini currently has no rival.
 
@@ -182,7 +182,7 @@ Get a free API key at Google AI Studio (aistudio.google.com). Click "Get API Key
 ```python
 import google.generativeai as genai
 
-genai.configure(api_key="YOUR_API_KEY")
+genai.configure(apikey="YOURAPI_KEY")
 model = genai.GenerativeModel("gemini-2.5-flash")
 response = model.generate_content("Summarize Korea's 2026 economic outlook")
 print(response.text)
