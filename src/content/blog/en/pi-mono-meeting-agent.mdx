@@ -1,0 +1,613 @@
+---
+title: "Building a Windows-Based Meeting Notes Storage & Search Agent with pi-mono"
+description: "Building a Windows-Based Meeting Notes Storage & Search Agent with pi-mono"
+pubDate: 2026-03-23
+heroImage: "/images/pi-mono-meeting-agent-hero.png"
+category: "Tech"
+author: "imunfarm"
+tags: ["Building", "Windows", "Based", "Meeting", "Notes", "Storage", "Search", "Agent"]
+comments: true
+---
+
+# Building a Windows-Based Meeting Notes Storage & Search Agent with pi-mono
+
+Meetings end. Memory fades. Ten minutes after the call, half the decisions are already blurry. That's what meeting notes are for — but manually writing, filing, and hunting through them is its own kind of tax. pi-mono makes it possible to hand all three jobs (save, search, summarize) to a single AI agent.
+
+---
+
+## What is pi-mono
+
+pi-mono is a TypeScript AI agent toolkit built by Mario Zechner (badlogic). It is not a single package but four layered packages stacked on top of each other.
+
+```
+┌─────────────────────────────────────────┐
+│ Your Application │
+├────────────────────┬────────────────────┤
+│ pi-coding-agent │ pi-tui │
+│ Sessions, tools, │ Terminal UI, │
+│ extensions │ markdown, editor │
+├────────────────────┴────────────────────┤
+│ pi-agent-core │
+│ Agent loop, tool execution, events │
+├─────────────────────────────────────────┤
+│ pi-ai │
+│ Streaming, models, multi-provider │
+└─────────────────────────────────────────┘
+```
+
+- pi-ai: Calls any LLM through one unified interface. Anthropic, OpenAI, Google, Groq, Ollama, and 2,000+ more. One-line provider switching, streaming, cost tracking.
+- pi-agent-core: Wraps pi-ai into an agent loop. Define tools, the LLM calls them, results feed back, the loop repeats until the model stops. The `Agent` class handles all of this.
+- pi-coding-agent: Production-ready runtime. JSONL session persistence (tree structure with branching), built-in file tools (read/write/edit/bash), auto-compaction when context windows fill up, and an extension system.
+- pi-tui: Terminal UI with differential rendering. Markdown display with syntax highlighting, multi-line editor with autocomplete, loading spinners.
+
+OpenClaw — a GitHub Copilot competitor — is built on this exact stack. The current npm version of `@mariozechner/pi-agent-core` is 0.61.1.
+
+---
+
+## Agent Architecture
+
+This agent handles three core responsibilities.
+
+1. Save: Persist meeting title, participants, date, and content to SQLite
+2. Search: Full-text search via FTS5 — keyword, date range, or participant lookup
+3. Summarize: LLM compresses long notes into a 3-line digest
+
+On Windows, the data directory sits at `%USERPROFILE%\Documents\MeetingNotes`. The built-in `bash` tool requires Git Bash or WSL on Windows, so this agent uses only pure Node.js `fs`-based custom tools — no shell dependency at all.
+
+---
+
+## Project Setup
+
+### 1. Node.js Environment
+
+```bash
+# Node.js 20+ required (Windows: winget or nvm-windows)
+node -v # confirm v20.x or higher
+
+mkdir meeting-agent && cd meeting-agent
+npm init -y
+npm install @mariozechner/pi-ai @mariozechner/pi-agent-core @mariozechner/pi-coding-agent
+npm install better-sqlite3
+npm install -D typescript @types/node @types/better-sqlite3 tsx
+```
+
+### 2. API Key Setup (Windows PowerShell)
+
+```powershell
+# Session-only (current terminal)
+$env:ANTHROPICAPIKEY = "sk-ant-..."
+
+# Permanent (recommended)
+[System.Environment]::SetEnvironmentVariable("ANTHROPICAPIKEY", "sk-ant-...", "User")
+```
+
+### 3. tsconfig.json
+
+```json
+{
+ "compilerOptions": {
+ "target": "ES2022",
+ "module": "Node16",
+ "moduleResolution": "Node16",
+ "strict": true,
+ "outDir": "./dist"
+ }
+}
+```
+
+---
+
+## SQLite Database Design
+
+### `db.ts` — Storage Initialization
+
+```typescript
+import Database from "better-sqlite3";
+import * as path from "path";
+import * as os from "os";
+import * as fs from "fs";
+
+// Windows: C:\Users\<name>\Documents\MeetingNotes\meetings.db
+const DATA_DIR = path.join(os.homedir(), "Documents", "MeetingNotes");
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+const DBPATH = path.join(DATADIR, "meetings.db");
+
+export const db = new Database(DB_PATH);
+
+// Base table
+db.exec(`
+ CREATE TABLE IF NOT EXISTS meetings (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ title TEXT NOT NULL,
+ content TEXT NOT NULL,
+ participants TEXT NOT NULL DEFAULT '',
+ meeting_date TEXT NOT NULL,
+ created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+ summary TEXT DEFAULT NULL
+ );
+`);
+
+// FTS5 virtual table (trigram tokenizer: supports partial substring search, Korean included)
+db.exec(`
+ CREATE VIRTUAL TABLE IF NOT EXISTS meetings_fts
+ USING fts5(
+ title,
+ content,
+ participants,
+ meeting_date UNINDEXED,
+ content='meetings',
+ content_rowid='id',
+ tokenize='trigram'
+ );
+`);
+
+// Sync triggers
+db.exec(`
+ CREATE TRIGGER IF NOT EXISTS meetings_ai
+ AFTER INSERT ON meetings BEGIN
+ INSERT INTO meetingsfts(rowid, title, content, participants, meetingdate)
+ VALUES (new.id, new.title, new.content, new.participants, new.meeting_date);
+ END;
+
+ CREATE TRIGGER IF NOT EXISTS meetings_ad
+ AFTER DELETE ON meetings BEGIN
+ INSERT INTO meetingsfts(meetingsfts, rowid, title, content, participants, meeting_date)
+ VALUES ('delete', old.id, old.title, old.content, old.participants, old.meeting_date);
+ END;
+
+ CREATE TRIGGER IF NOT EXISTS meetings_au
+ AFTER UPDATE ON meetings BEGIN
+ INSERT INTO meetingsfts(meetingsfts, rowid, title, content, participants, meeting_date)
+ VALUES ('delete', old.id, old.title, old.content, old.participants, old.meeting_date);
+ INSERT INTO meetingsfts(rowid, title, content, participants, meetingdate)
+ VALUES (new.id, new.title, new.content, new.participants, new.meeting_date);
+ END;
+`);
+
+console.log(`[DB] Initialized: ${DB_PATH}`);
+```
+
+The `trigram` tokenizer makes FTS5 work with any language including Korean. Standard `MATCH` only matches word prefixes. Trigram splits text into 3-character grams, allowing substring matching anywhere in the string.
+
+---
+
+## Agent Tool Definitions
+
+### `tools.ts` — Four Custom Tools
+
+```typescript
+import { Type } from "@mariozechner/pi-ai";
+import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { db } from "./db.js";
+
+// ─── 1. Save Meeting Note ─────────────────────────────────────────────────────
+const saveMeetingParams = Type.Object({
+ title: Type.String({ description: "Meeting title" }),
+ content: Type.String({ description: "Meeting content (Markdown recommended)" }),
+ participants: Type.String({ description: "Attendees (comma-separated)" }),
+ meeting_date: Type.String({ description: "Meeting date (YYYY-MM-DD)" }),
+});
+
+export const saveMeetingTool: AgentTool<typeof saveMeetingParams> = {
+ name: "savemeetingnote",
+ label: "Save Meeting Note",
+ description: "Saves meeting content to the database. Title, participants, and date are required.",
+ parameters: saveMeetingParams,
+ execute: async (_id, params) => {
+ const stmt = db.prepare(`
+ INSERT INTO meetings (title, content, participants, meeting_date)
+ VALUES (?, ?, ?, ?)
+ `);
+ const result = stmt.run(
+ params.title,
+ params.content,
+ params.participants,
+ params.meeting_date
+ );
+ return {
+ content: [{ type: "text", text: `Saved. ID: ${result.lastInsertRowid}` }],
+ details: { id: result.lastInsertRowid },
+ };
+ },
+};
+
+// ─── 2. Search Meeting Notes ──────────────────────────────────────────────────
+const searchMeetingParams = Type.Object({
+ query: Type.String({ description: "Search keyword (searches title, content, participants)" }),
+ date_from: Type.Optional(Type.String({ description: "Start date (YYYY-MM-DD)" })),
+ date_to: Type.Optional(Type.String({ description: "End date (YYYY-MM-DD)" })),
+ limit: Type.Optional(Type.Number({ description: "Max results", default: 10 })),
+});
+
+export const searchMeetingTool: AgentTool<typeof searchMeetingParams> = {
+ name: "searchmeetingnotes",
+ label: "Search Meeting Notes",
+ description: "Full-text search across all meeting notes. Supports optional date range filter.",
+ parameters: searchMeetingParams,
+ execute: async (_id, params) => {
+ const limit = params.limit ?? 10;
+ const escaped = params.query.replace(/"/g, '""');
+ const ftsQuery = `"${escaped}"`;
+ let rows: any[];
+
+ if (params.datefrom || params.dateto) {
+ const stmt = db.prepare(`
+ SELECT m.id, m.title, m.participants, m.meeting_date, m.summary,
+ bm25(meetings_fts) as rank
+ FROM meetings_fts
+ JOIN meetings m ON meetings_fts.rowid = m.id
+ WHERE meetings_fts MATCH ?
+ AND m.meeting_date BETWEEN ? AND ?
+ ORDER BY rank
+ LIMIT ?
+ `);
+ rows = stmt.all(
+ ftsQuery,
+ params.date_from ?? "0000-01-01",
+ params.date_to ?? "9999-12-31",
+ limit
+ ) as any[];
+ } else {
+ const stmt = db.prepare(`
+ SELECT m.id, m.title, m.participants, m.meeting_date, m.summary,
+ bm25(meetings_fts) as rank
+ FROM meetings_fts
+ JOIN meetings m ON meetings_fts.rowid = m.id
+ WHERE meetings_fts MATCH ?
+ ORDER BY rank
+ LIMIT ?
+ `);
+ rows = stmt.all(ftsQuery, limit) as any[];
+ }
+
+ if (rows.length === 0) {
+ return {
+ content: [{ type: "text", text: "No results found." }],
+ details: { count: 0 },
+ };
+ }
+
+ const formatted = rows
+ .map((r) => `[ID:${r.id}] ${r.meeting_date} | ${r.title} | ${r.participants}`)
+ .join("\n");
+
+ return {
+ content: [{ type: "text", text: `Found ${rows.length} result(s):\n${formatted}` }],
+ details: { count: rows.length, rows },
+ };
+ },
+};
+
+// ─── 3. Get Single Meeting Note ───────────────────────────────────────────────
+const getMeetingParams = Type.Object({
+ id: Type.Number({ description: "Meeting note ID" }),
+});
+
+export const getMeetingTool: AgentTool<typeof getMeetingParams> = {
+ name: "getmeetingnote",
+ label: "Get Meeting Note",
+ description: "Retrieves the full content of a meeting note by ID.",
+ parameters: getMeetingParams,
+ execute: async (_id, params) => {
+ const row = db
+ .prepare("SELECT * FROM meetings WHERE id = ?")
+ .get(params.id) as any;
+
+ if (!row) {
+ return {
+ content: [{ type: "text", text: `No meeting note found for ID ${params.id}.` }],
+ details: {},
+ };
+ }
+
+ const text = [
+ `# ${row.title}`,
+ `Date: ${row.meeting_date}`,
+ `Participants: ${row.participants}`,
+ `Saved at: ${row.created_at}`,
+ "",
+ row.content,
+ row.summary ? `\n---\nSummary: ${row.summary}` : "",
+ ].join("\n");
+
+ return {
+ content: [{ type: "text", text }],
+ details: { id: row.id, title: row.title },
+ };
+ },
+};
+
+// ─── 4. List Meeting Notes ────────────────────────────────────────────────────
+const listMeetingsParams = Type.Object({
+ limit: Type.Optional(Type.Number({ description: "Results per page", default: 20 })),
+ offset: Type.Optional(Type.Number({ description: "Offset", default: 0 })),
+});
+
+export const listMeetingsTool: AgentTool<typeof listMeetingsParams> = {
+ name: "listmeetingnotes",
+ label: "List Meeting Notes",
+ description: "Returns a list of saved meeting notes, most recent first.",
+ parameters: listMeetingsParams,
+ execute: async (_id, params) => {
+ const limit = params.limit ?? 20;
+ const offset = params.offset ?? 0;
+
+ const rows = db
+ .prepare(
+ `SELECT id, title, participants, meetingdate, createdat
+ FROM meetings
+ ORDER BY meetingdate DESC, createdat DESC
+ LIMIT ? OFFSET ?`
+ )
+ .all(limit, offset) as any[];
+
+ const totalRow = db
+ .prepare("SELECT COUNT(*) as cnt FROM meetings")
+ .get() as any;
+
+ if (rows.length === 0) {
+ return {
+ content: [{ type: "text", text: "No meeting notes saved yet." }],
+ details: { total: 0 },
+ };
+ }
+
+ const formatted = rows
+ .map((r) => `[${r.id}] ${r.meeting_date} ${r.title} (${r.participants})`)
+ .join("\n");
+
+ return {
+ content: [
+ {
+ type: "text",
+ text: `Showing ${rows.length} of ${totalRow.cnt} total:\n${formatted}`,
+ },
+ ],
+ details: { total: totalRow.cnt, rows },
+ };
+ },
+};
+```
+
+Four tools. From the LLM's perspective, the agent has four abilities: save, search, retrieve, and list. The `bm25()` function is built into FTS5 — lower values mean higher relevance.
+
+---
+
+## Agent Main File
+
+### `agent.ts` — Entry Point
+
+```typescript
+import {
+ createAgentSession,
+ SessionManager,
+} from "@mariozechner/pi-coding-agent";
+import { getModel, streamSimple } from "@mariozechner/pi-ai";
+import * as path from "path";
+import * as os from "os";
+import * as fs from "fs";
+import * as readline from "readline";
+import {
+ saveMeetingTool,
+ searchMeetingTool,
+ getMeetingTool,
+ listMeetingsTool,
+} from "./tools.js";
+
+// Session file: C:\Users\<name>\Documents\MeetingNotes\.sessions\
+const SESSION_DIR = path.join(
+ os.homedir(),
+ "Documents",
+ "MeetingNotes",
+ ".sessions"
+);
+fs.mkdirSync(SESSION_DIR, { recursive: true });
+const SESSIONFILE = path.join(SESSIONDIR, "meeting-agent.jsonl");
+
+const SYSTEM_PROMPT = `
+You are a meeting notes management agent.
+When the user describes a meeting, save it using savemeetingnote.
+When the user wants to find past meetings, use searchmeetingnotes.
+When full content is needed, use getmeetingnote(id).
+
+Rules:
+- For saves: always confirm title, date, and participants before calling the tool.
+- If no date is given, use today: ${new Date().toISOString().split("T")[0]}.
+- Present search results concisely.
+- Respond in the same language the user is using.
+`.trim();
+
+async function main() {
+ const model = getModel("anthropic", "claude-opus-4-5");
+
+ const { session } = await createAgentSession({
+ model,
+ thinkingLevel: "off",
+ sessionManager: SessionManager.open(SESSION_FILE),
+ customTools: [
+ saveMeetingTool,
+ searchMeetingTool,
+ getMeetingTool,
+ listMeetingsTool,
+ ],
+ });
+
+ session.agent.state.systemPrompt = SYSTEM_PROMPT;
+ session.agent.streamFn = streamSimple;
+
+ session.subscribe((event) => {
+ switch (event.type) {
+ case "message_update":
+ if (event.assistantMessageEvent.type === "text_delta") {
+ process.stdout.write(event.assistantMessageEvent.delta);
+ }
+ break;
+ case "toolexecutionstart":
+ process.stdout.write(`\n [${event.toolName}] running...\n`);
+ break;
+ case "toolexecutionend":
+ if (event.isError) process.stdout.write(" Error.\n");
+ break;
+ case "agent_end":
+ process.stdout.write("\n");
+ break;
+ }
+ });
+
+ const msgCount = session.messages.length;
+ console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+ console.log(" 📋 Meeting Notes Agent (pi-mono)");
+ console.log(` Model : ${model.id}`);
+ console.log(` Session: ${SESSION_FILE}`);
+ console.log(` History: ${msgCount} messages`);
+ console.log(" Commands: 'exit' quit | 'new' reset | 'list' show all");
+ console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+ const rl = readline.createInterface({
+ input: process.stdin,
+ output: process.stdout,
+ });
+
+ const ask = () => {
+ rl.question("You: ", async (input) => {
+ const trimmed = input.trim();
+
+ if (!trimmed) return ask();
+
+ if (trimmed === "exit") {
+ session.dispose();
+ rl.close();
+ console.log("Bye.");
+ return;
+ }
+
+ if (trimmed === "new") {
+ await session.newSession();
+ console.log("New session started.\n");
+ return ask();
+ }
+
+ if (trimmed === "list") {
+ await session.prompt("Show me the list of saved meeting notes.");
+ return ask();
+ }
+
+ try {
+ process.stdout.write("Agent: ");
+ await session.prompt(trimmed);
+ } catch (err: any) {
+ console.error(`Error: ${err.message}`);
+ }
+
+ ask();
+ });
+ };
+
+ ask();
+}
+
+main();
+```
+
+---
+
+## Running the Agent
+
+```bash
+# Development (tsx)
+npx tsx agent.ts
+
+# Build and run
+npx tsc && node dist/agent.js
+```
+
+### Sample Interaction
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 📋 Meeting Notes Agent (pi-mono)
+ Model : claude-opus-4-5
+ Session: C:\Users\John\Documents\MeetingNotes\.sessions\meeting-agent.jsonl
+ History: 0 messages
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You: We had a deployment planning meeting this morning.
+ Attendees: Alice (dev), Bob (design), Carol (PM).
+ Confirmed v2.0 release on April 5th. QA target: March 28th.
+
+Agent:
+ [savemeetingnote] running...
+Saved. (ID: 1)
+- Title: v2.0 Deployment Planning
+- Date: 2026-03-23
+- Participants: Alice, Bob, Carol
+- Key decision: v2.0 release April 5th confirmed, QA complete by March 28th
+
+You: Find all deployment-related meetings from last month
+
+Agent:
+ [searchmeetingnotes] running...
+Found 1 result: 2026-03-23 | v2.0 Deployment Planning | Alice, Bob, Carol
+```
+
+---
+
+## Extension Ideas
+
+Three directions for further development.
+
+1. Auto-Summary Extension
+
+Using pi-coding-agent's Extension system, trigger an LLM summary automatically after each save and write it back to the `summary` column.
+
+```typescript
+// extensions/auto-summary.ts
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+
+export default function autoSummaryExtension(api: ExtensionAPI): void {
+ api.on("tool_call", async (event, ctx) => {
+ if (event.toolName === "savemeetingnote" && !event.isError) {
+ const savedId = (event.result as any)?.details?.id;
+ if (savedId) {
+ await ctx.session.followUp(
+ `Summarize meeting ID ${savedId} in 3 bullet points and update its summary field.`
+ );
+ }
+ }
+ });
+}
+```
+
+2. Markdown Export Tool
+
+Add an `exportmeetingnote(id, outputPath)` tool that writes a `.md` file. This enables direct integration with Obsidian, Notion, or any Markdown-based knowledge base.
+
+3. Terminal UI with pi-tui
+
+Adding `@mariozechner/pi-tui` brings Markdown rendering, slash command autocomplete, and file path completion to the terminal — roughly 30 lines of additional code on top of what's here.
+
+---
+
+## Windows-Specific Notes
+
+| Item | Notes |
+|------|-------|
+| Node.js version | Must be 20+. Install via winget or nvm-windows |
+| Path separators | Use `path.join()` — handles Windows separators automatically |
+| bash tool | The built-in bash tool requires Git Bash or WSL. This agent avoids it entirely |
+| Encoding | better-sqlite3 defaults to UTF-8. Korean, English, and mixed content all work |
+| JSONL sessions | Append-only format. On unexpected shutdown, at most one line is lost |
+| Environment variables | Use PowerShell `[System.Environment]::SetEnvironmentVariable` for persistent keys |
+
+---
+
+## References
+
+- [pi-mono GitHub Repository](https://github.com/badlogic/pi-mono) — badlogic (Mario Zechner)
+- [How to Build a Custom Agent Framework with PI — Nader Dabit](https://nader.substack.com/p/how-to-build-a-custom-agent-framework) — Layer-by-layer pi-mono tutorial
+- [pi-mono SDK Official Docs](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/sdk.md) — Full AgentSession and SessionManager API reference
+- [What I Learned Building an Opinionated Coding Agent — mariozechner.at](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/) — Design philosophy and architecture decisions
+- [Pi: The Minimal Agent Within OpenClaw — Armin Ronacher](https://lucumr.pocoo.org/2026/1/31/pi/) — Analysis of Pi as the OpenClaw engine
+- [SQLite FTS5 Full-Text Search Guide — javaexpert.tistory.com](https://javaexpert.tistory.com/1589) — TypeScript better-sqlite3 FTS5 implementation examples
+- [@mariozechner/pi-agent-core on npm](https://www.npmjs.com/package/@mariozechner/pi-agent-core) — Latest version 0.61.1
