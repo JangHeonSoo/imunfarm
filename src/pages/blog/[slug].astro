@@ -5,12 +5,7 @@ import Code from '@/components/mdx/Code'
 import ListRelatedPosts from '@/components/ListRelatedPosts'
 import Share from '@/components/Share'
 import TableOfContents from '@/components/TableOfContents'
-import {
-	DEFAULT_LOCALE,
-	SUPPORTED_LOCALES,
-	getPosts,
-	stripLocaleFromSlug
-} from '@/utils'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, getPosts, stripLocaleFromSlug } from '@/utils'
 import SButton from '@/components/mdx/SButton'
 import Disqus from '@/components/Disqus'
 import { disqusConfig } from '@/data/disqus.config'
@@ -35,7 +30,9 @@ const MAX_POSTS = 3
 const getRelatedPosts = (post: Props) => {
 	const lowercaseTags = post.data.tags?.map((tag: string) => tag.toLowerCase()) || []
 	const relatedPosts = posts.filter(
-		(p) => p.slug !== post.slug && p.data.tags?.some((t: string) => lowercaseTags.includes(t.toLowerCase()))
+		(p) =>
+			p.slug !== post.slug &&
+			p.data.tags?.some((t: string) => lowercaseTags.includes(t.toLowerCase()))
 	)
 	return relatedPosts.slice(0, MAX_POSTS)
 }
@@ -81,42 +78,59 @@ const disqusEnabled = disqusConfig.enabled
 
 <script is:inline>
 	// Auto-inject in-article ads between content sections
-	(function() {
-		const prose = document.querySelector('div.prose');
-		if (!prose) return;
+	;(function () {
+		const prose = document.querySelector('div.prose')
+		if (!prose) return
 
-		const headings = prose.querySelectorAll('h2, h3');
-		if (headings.length < 2) return;
+		const headings = prose.querySelectorAll('h2, h3')
+		if (headings.length < 2) return
 
-		const interval = Math.max(3, Math.floor(headings.length / 2));
-		let adsInserted = 0;
-		const maxAds = 2;
+		const interval = Math.max(3, Math.floor(headings.length / 2))
+		let adsInserted = 0
+		const maxAds = 2
 
 		headings.forEach((heading, index) => {
-			if (adsInserted >= maxAds) return;
+			if (adsInserted >= maxAds) return
 			if ((index + 1) % interval === 0) {
-				const adContainer = document.createElement('div');
-				adContainer.className = 'in-article-ad-container my-8';
+				const adContainer = document.createElement('div')
+				adContainer.className = 'in-article-ad-container my-8'
 				adContainer.innerHTML = `
 					<ins class="adsbygoogle"
-						style="display:block; text-align:center;"
-						data-ad-layout="in-article"
-						data-ad-format="fluid"
+						style="display:block"
 						data-ad-client="ca-pub-9192660979184684"
-						data-ad-slot="3171759407"></ins>
-				`;
-				heading.parentNode.insertBefore(adContainer, heading);
-				adsInserted++;
+						data-ad-slot="3171759407"
+						data-ad-format="auto"
+						data-full-width-responsive="true"></ins>
+				`
+				heading.parentNode.insertBefore(adContainer, heading)
+				adsInserted++
 			}
-		});
+		})
 
 		if (adsInserted > 0) {
-			const adElements = document.querySelectorAll('.in-article-ad-container ins.adsbygoogle');
-			adElements.forEach(() => {
+			const adElements = document.querySelectorAll('.in-article-ad-container ins.adsbygoogle')
+			adElements.forEach((el, idx) => {
 				try {
-					(window.adsbygoogle = window.adsbygoogle || []).push({});
-				} catch (e) {}
-			});
+					;(window.adsbygoogle = window.adsbygoogle || []).push({})
+				} catch (e) {
+					if (location.search.includes('ad_debug=1')) {
+						console.warn('[ads-debug] push failed', idx, e)
+					}
+				}
+			})
+
+			if (location.search.includes('ad_debug=1')) {
+				setTimeout(() => {
+					const states = Array.from(
+						document.querySelectorAll('.in-article-ad-container ins.adsbygoogle')
+					).map((node, i) => ({
+						index: i,
+						status: node.getAttribute('data-ad-status'),
+						style: node.getAttribute('style')
+					}))
+					console.log('[ads-debug] in-article states', states)
+				}, 2500)
+			}
 		}
-	})();
+	})()
 </script>
