@@ -79,7 +79,7 @@ const postCount = allPosts.length
 		<section id='stories' class='reveal'>
 			<div class='section-head'>
 				<span class='eyebrow'>Stories</span>
-				<h2 class='section-title'>{isEn ? 'Latest Field Notes' : '이문농장 기록'}</h2>
+				<h2 class='section-title'>{isEn ? 'Latest Field Notes' : 'Posts'}</h2>
 			</div>
 			<div class='story-stream' aria-label={isEn ? 'Recent posts' : '최근 포스팅'}>
 				{
@@ -636,6 +636,10 @@ const postCount = allPosts.length
 	#stories .section-head {
 		grid-template-columns: auto 1fr;
 		align-items: center;
+	}
+
+	#stories .eyebrow {
+		color: var(--text);
 	}
 
 	.eyebrow {
