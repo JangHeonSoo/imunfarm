@@ -69,11 +69,11 @@
 
 	/* prose styles here */
 	.prose h1,
-	h2,
-	h3,
-	h4,
-	h5,
-	h6 {
+	.prose h2,
+	.prose h3,
+	.prose h4,
+	.prose h5,
+	.prose h6 {
 		@apply text-zinc-800 dark:text-zinc-100 !important;
 	}
 
