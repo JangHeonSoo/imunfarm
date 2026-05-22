@@ -25,51 +25,51 @@ const heroImageURL = heroImage ? new URL(heroImage.src, Astro.site).href : undef
 
 // Article JSON-LD
 const articleSchema = {
-	"@context": "https://schema.org",
-	"@type": "Article",
-	"headline": title,
-	"description": description,
-	"image": heroImageURL,
-	"datePublished": articleDate,
-	"dateModified": articleDate,
-	"author": {
-		"@type": "Organization",
-		"name": siteConfig.author.name,
-		"url": siteConfig.siteUrl
+	'@context': 'https://schema.org',
+	'@type': 'Article',
+	headline: title,
+	description: description,
+	image: heroImageURL,
+	datePublished: articleDate,
+	dateModified: articleDate,
+	author: {
+		'@type': 'Organization',
+		name: siteConfig.author.name,
+		url: siteConfig.siteUrl
 	},
-	"publisher": {
-		"@type": "Organization",
-		"name": siteConfig.author.name,
-		"url": siteConfig.siteUrl
+	publisher: {
+		'@type': 'Organization',
+		name: siteConfig.author.name,
+		url: siteConfig.siteUrl
 	},
-	"mainEntityOfPage": {
-		"@type": "WebPage",
-		"@id": canonicalURL
+	mainEntityOfPage: {
+		'@type': 'WebPage',
+		'@id': canonicalURL
 	},
-	"keywords": tags.join(", ")
+	keywords: tags.join(', ')
 }
 
 // BreadcrumbList JSON-LD
 const breadcrumbSchema = {
-	"@context": "https://schema.org",
-	"@type": "BreadcrumbList",
-	"itemListElement": [
+	'@context': 'https://schema.org',
+	'@type': 'BreadcrumbList',
+	itemListElement: [
 		{
-			"@type": "ListItem",
-			"position": 1,
-			"name": "Home",
-			"item": siteConfig.siteUrl
+			'@type': 'ListItem',
+			position: 1,
+			name: 'Home',
+			item: siteConfig.siteUrl
 		},
 		{
-			"@type": "ListItem",
-			"position": 2,
-			"name": "Blog",
-			"item": `${siteConfig.siteUrl}blog/`
+			'@type': 'ListItem',
+			position: 2,
+			name: 'Blog',
+			item: `${siteConfig.siteUrl}blog/`
 		},
 		{
-			"@type": "ListItem",
-			"position": 3,
-			"name": title
+			'@type': 'ListItem',
+			position: 3,
+			name: title
 		}
 	]
 }
@@ -80,25 +80,33 @@ const breadcrumbSchema = {
 	description={description}
 	image={heroImage?.src}
 	articleDate={articleDate}
-	postSlug={data.slug || id.split('/').pop()?.replace(/\.(mdx|md)$/, '')}
+	postSlug={data.slug ||
+		id
+			.split('/')
+			.pop()
+			?.replace(/\.(mdx|md)$/, '')}
 	postCategory={data.category}
 >
 	<!-- JSON-LD Structured Data -->
-	<script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
-	<script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
+	<script type='application/ld+json' set:html={JSON.stringify(articleSchema)} />
+	<script type='application/ld+json' set:html={JSON.stringify(breadcrumbSchema)} />
 
-	<article class='min-w-full md:py-4 sm:max-w-none md:max-w-none'>
-		<header class='mb-3 flex flex-col justify-center items-center gap-6'>
+	<article class='article-shell min-w-full sm:max-w-none md:max-w-none'>
+		<header class='article-hero mb-3 flex flex-col justify-center items-center gap-6'>
 			<div class='flex flex-col gap-2'>
-				<div class='flex items-center justify-center gap-x-1 bg-primary/10 px-4 py-2 rounded-full mb-4 border border-primary/20 backdrop-blur-sm'>
-					<p class='text-center text-sm font-semibold text-primary-dark dark:text-primary-light'>
+				<div
+					class='flex items-center justify-center gap-x-1 bg-white/5 px-4 py-2 rounded-full mb-4 border border-white/15 backdrop-blur-sm'
+				>
+					<p class='text-center text-sm font-semibold text-[#d8ff4f]'>
 						Imun Farmer &middot; Published: <FormattedDate date={pubDate} />
 					</p>
-					<p class='text-center text-sm text-primary-dark dark:text-primary-light font-bold'>
+					<p class='text-center text-sm text-[#d8ff4f] font-bold'>
 						- 예상 수확: {readTime}
 					</p>
 				</div>
-				<h1 class='text-center text-4xl md:text-6xl md:pb-2.5 font-semibold'>
+				<h1
+					class='text-center text-4xl md:text-6xl md:pb-2.5 font-black text-[#f2f4ea] tracking-[-0.06em]'
+				>
 					{title}
 				</h1>
 			</div>
@@ -118,7 +126,7 @@ const breadcrumbSchema = {
 						quality={100}
 						format='jpg'
 						loading='eager'
-						class='rounded-md w-full max-h-[300px]  md:max-h-[500px] my-8 object-cover'
+						class='rounded-[28px] w-full max-h-[300px] md:max-h-[500px] my-8 object-cover border border-white/10 shadow-[0_32px_90px_rgba(0,0,0,0.28)]'
 						alt={`img of ${title}`}
 					/>
 				)
@@ -130,11 +138,67 @@ const breadcrumbSchema = {
 		<div>
 			<slot />
 		</div>
-		
-		<WaterButton client:load postSlug={data.slug || id.split('/').pop()?.replace(/\.(mdx|md)$/, '') || 'unknown'} />
+
+		<WaterButton
+			client:load
+			postSlug={data.slug ||
+				id
+					.split('/')
+					.pop()
+					?.replace(/\.(mdx|md)$/, '') ||
+				'unknown'}
+		/>
 	</article>
 	<Giscus enabled={comments} />
 </BaseLayout>
+
+<style>
+	.article-shell {
+		position: relative;
+		margin-top: 2rem;
+		padding: clamp(5rem, 9vw, 8rem) 0 3rem;
+	}
+
+	.article-hero {
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: 34px;
+		padding: clamp(2rem, 5vw, 4.5rem);
+		background:
+			radial-gradient(circle at 20% 15%, rgba(216, 255, 79, 0.12), transparent 24rem),
+			linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025));
+		backdrop-filter: blur(14px);
+		box-shadow: 0 32px 90px rgba(0, 0, 0, 0.24);
+	}
+
+	:global(.article-shell .prose) {
+		max-width: none;
+		color: rgba(242, 244, 234, 0.78);
+	}
+
+	:global(.article-shell .prose h1),
+	:global(.article-shell .prose h2),
+	:global(.article-shell .prose h3),
+	:global(.article-shell .prose h4) {
+		color: #f2f4ea !important;
+		letter-spacing: -0.04em;
+	}
+
+	:global(.article-shell .prose a) {
+		color: #d8ff4f;
+	}
+
+	:global(.article-shell .prose blockquote) {
+		border-left-color: #d8ff4f;
+		background: rgba(255, 255, 255, 0.045);
+		border-radius: 0 18px 18px 0;
+		padding: 1rem 1.25rem;
+	}
+
+	:global(.article-shell .prose table) {
+		border-radius: 18px;
+		overflow: hidden;
+	}
+</style>
 
 <script src='https://platform.twitter.com/widgets.js' async></script>
 <script>

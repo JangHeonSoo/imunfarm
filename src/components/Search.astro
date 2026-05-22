@@ -6,18 +6,22 @@ import SearchIcon from '@/components/icons/SearchIcon'
 ---
 
 <site-search id='search' class='ms-auto'>
-	<button data-open-modal disabled class='flex items-center justify-center rounded-md gap-1'>
+	<button
+		data-open-modal
+		disabled
+		class='search-button flex items-center justify-center rounded-full border border-white/15 bg-white/5 text-[#f2f4ea] w-9 h-9 gap-1 hover:bg-white/10 transition-colors'
+	>
 		<SearchIcon />
 		<!-- <span class='md:hidden text-2xl'> Search</span> -->
 	</button>
 	<dialog
 		aria-label='search'
-		class='h-full max-h-full w-full max-w-full border border-zinc-400 bg-white dark:bg-[#0a0910ec] shadow backdrop:backdrop-blur sm:mx-auto sm:mb-auto sm:mt-16 sm:h-max sm:max-h-[calc(100%-8rem)] sm:min-h-[15rem] sm:w-5/6 sm:max-w-[48rem] sm:rounded-md opacity-0'
+		class='h-full max-h-full w-full max-w-full border border-white/15 bg-[#070807]/95 text-[#f2f4ea] shadow-2xl backdrop:backdrop-blur sm:mx-auto sm:mb-auto sm:mt-20 sm:h-max sm:max-h-[calc(100%-8rem)] sm:min-h-[15rem] sm:w-5/6 sm:max-w-[48rem] sm:rounded-3xl opacity-0'
 	>
 		<div class='dialog-frame flex flex-col gap-4 p-6 pt-12 sm:pt-6'>
 			<button
 				data-close-modal
-				class='ms-auto cursor-pointer rounded-full bg-black text-white px-4 py-2 dark:bg-white dark:text-black'
+				class='ms-auto cursor-pointer rounded-full bg-[#d8ff4f] text-[#080907] px-4 py-2 font-bold'
 				>Close</button
 			>
 			{
@@ -87,7 +91,7 @@ import SearchIcon from '@/components/icons/SearchIcon'
 				dialog.close()
 				document.body.classList.remove('overflow-hidden')
 				window.removeEventListener('click', onWindowClick)
-				window.addEventListener('keydown', handleEscKey)
+				window.removeEventListener('keydown', handleEscKey)
 			}
 
 			openBtn.addEventListener('click', openModal)
@@ -124,11 +128,27 @@ import SearchIcon from '@/components/icons/SearchIcon'
 </script>
 
 <style is:global>
+	site-search svg {
+		width: 18px;
+		height: 18px;
+	}
+
 	.dark {
 		--pagefind-ui-primary: #eeeeee;
 		--pagefind-ui-text: #eeeeee;
 		--pagefind-ui-background: #152028;
 		--pagefind-ui-border: #152028;
 		--pagefind-ui-tag: #152028;
+	}
+
+	.light,
+	.dark {
+		--pagefind-ui-primary: #eeeeee;
+		--pagefind-ui-text: #eeeeee;
+		--pagefind-ui-background: rgba(255, 255, 255, 0.06);
+		--pagefind-ui-border: rgba(255, 255, 255, 0.14);
+		--pagefind-ui-tag: rgba(216, 255, 79, 0.12);
+		--pagefind-ui-border-width: 1px;
+		--pagefind-ui-border-radius: 18px;
 	}
 </style>

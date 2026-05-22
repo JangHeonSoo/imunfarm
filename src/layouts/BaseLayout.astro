@@ -7,6 +7,7 @@ import ProviderAnimations from '@/components/ProviderAnimations'
 import Mermaid, { MermaidModule } from '../components/mermaid'
 import { siteConfig } from '@/site-config'
 const { title, description, image, articleDate, postSlug, postCategory } = Astro.props
+const { hideHeader = false, hideFooter = false, fullBleed = false } = Astro.props
 ---
 
 <html lang={siteConfig.lang} class='scroll-smooth'>
@@ -39,20 +40,149 @@ const { title, description, image, articleDate, postSlug, postCategory } = Astro
 		</script>
 	</head>
 
-	<body class='bg-bg-light text-text-main dark:bg-[#0a0910] dark:text-white'>
+	<body class='site-body bg-[#070807] text-[#f2f4ea]'>
 		<main
-			class='px-5 sm:mx-auto sm:px-8 lg:px-0 antialiased max-w-7xl grid gap-12 pt-20 overflow-hidden md:overflow-visible'
+			class:list={[
+				'antialiased overflow-x-hidden',
+				fullBleed
+					? 'min-h-screen'
+					: 'px-5 sm:mx-auto sm:px-8 lg:px-0 max-w-7xl grid gap-12 pt-20 overflow-y-hidden md:overflow-visible'
+			]}
 		>
-			<Header postSlug={postSlug} postCategory={postCategory} />
+			{!hideHeader && <Header postSlug={postSlug} postCategory={postCategory} />}
 			<slot />
-			<Footer />
+			{!hideFooter && <Footer />}
 		</main>
-		<style>
+		<style is:global>
 			body {
 				margin-left: calc(100vw - 100%); /* prevent layout shift */
 			}
+
+			.site-body {
+				background:
+					radial-gradient(circle at 18% 12%, rgba(216, 255, 79, 0.11), transparent 30rem),
+					radial-gradient(circle at 84% 4%, rgba(124, 247, 255, 0.08), transparent 28rem), #070807;
+			}
+
+			.site-body::before {
+				content: '';
+				position: fixed;
+				inset: 0;
+				z-index: -1;
+				pointer-events: none;
+				background-image:
+					linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+					linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+				background-size: 48px 48px;
+				opacity: 0.28;
+			}
+
+			.site-body .bg-white,
+			.site-body .bg-gray-50,
+			.site-body .bg-bg-light {
+				background-color: rgba(255, 255, 255, 0.045) !important;
+			}
+
+			.site-body .bg-gray-100,
+			.site-body .bg-gray-200 {
+				background-color: rgba(255, 255, 255, 0.09) !important;
+			}
+
+			.site-body .bg-gray-800,
+			.site-body .bg-gray-900,
+			.site-body .bg-gray-950 {
+				background-color: rgba(7, 8, 7, 0.86) !important;
+			}
+
+			.site-body .border-gray-100,
+			.site-body .border-gray-200,
+			.site-body .border-gray-300,
+			.site-body .border-gray-700,
+			.site-body .border-gray-800 {
+				border-color: rgba(255, 255, 255, 0.12) !important;
+			}
+
+			.site-body [class*='border-white/'] {
+				border-color: rgba(255, 255, 255, 0.12) !important;
+			}
+
+			.site-body .text-text-main,
+			.site-body .text-gray-900,
+			.site-body .text-gray-800,
+			.site-body .text-gray-700 {
+				color: #f2f4ea !important;
+			}
+
+			.site-body .text-text-muted,
+			.site-body .text-gray-600,
+			.site-body .text-gray-500,
+			.site-body .text-gray-400,
+			.site-body .text-gray-300 {
+				color: rgba(242, 244, 234, 0.66) !important;
+			}
+
+			.site-body hr {
+				border-color: rgba(255, 255, 255, 0.12);
+			}
+
+			.in-article-ad-container {
+				margin: 2.5rem 0;
+				padding: 1.25rem;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				border-radius: 24px;
+				background: rgba(255, 255, 255, 0.045);
+				backdrop-filter: blur(14px);
+				min-height: 140px;
+			}
+
+			.in-article-ad-container::before {
+				content: 'Advertisement';
+				display: block;
+				margin-bottom: 0.75rem;
+				color: rgba(242, 244, 234, 0.44);
+				font-size: 11px;
+				letter-spacing: 0.16em;
+				text-transform: uppercase;
+			}
+
+			.prose {
+				color: rgba(242, 244, 234, 0.78) !important;
+			}
+
+			.prose p,
+			.prose li,
+			.prose td,
+			.prose figcaption {
+				color: rgba(242, 244, 234, 0.78) !important;
+			}
+
+			.prose h1,
+			.prose h2,
+			.prose h3,
+			.prose h4,
+			.prose h5,
+			.prose h6,
+			.prose strong,
+			.prose th {
+				color: #f2f4ea !important;
+			}
+
+			.prose a {
+				color: #d8ff4f !important;
+			}
+
+			.prose code {
+				color: #7cf7ff !important;
+				background: rgba(255, 255, 255, 0.08);
+				border-radius: 0.35rem;
+				padding: 0.1rem 0.32rem;
+			}
+
+			.prose pre {
+				background: rgba(0, 0, 0, 0.42) !important;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+			}
 		</style>
 		<MermaidModule />
-
 	</body>
 </html>

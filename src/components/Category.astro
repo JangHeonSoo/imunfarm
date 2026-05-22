@@ -1,5 +1,11 @@
 ---
-import { cn, getCategorySlug, getCategoryTitleFromSlug, DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+import {
+	cn,
+	getCategorySlug,
+	getCategoryTitleFromSlug,
+	DEFAULT_LOCALE,
+	getLocalePrefix
+} from '@/utils'
 
 const { name = 'View All', activeCategory } = Astro.props
 const currentPath = Astro.url.pathname
@@ -17,8 +23,8 @@ const isActive =
 	class={cn(
 		`px-6 py-2.5 rounded-full font-medium transition-all duration-300 shadow-sm`,
 		isActive
-			? `bg-primary text-white shadow-lg shadow-primary/30`
-			: `bg-white dark:bg-gray-800 text-text-muted dark:text-gray-300 hover:bg-primary hover:text-white hover:shadow-lg hover:shadow-primary/30`
+			? `bg-[#d8ff4f] text-[#080907] shadow-lg shadow-[#d8ff4f]/20`
+			: `border border-white/12 bg-white/[0.055] text-[#f2f4ea]/66 hover:border-[#d8ff4f]/40 hover:text-[#d8ff4f] hover:shadow-lg hover:shadow-[#d8ff4f]/10`
 	)}
 >
 	{categoryTitle}

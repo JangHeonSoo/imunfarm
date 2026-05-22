@@ -12,27 +12,30 @@ const { posts } = Astro.props
 const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
 ---
 
-<section class={cn(`flex flex-col md:flex-row sm:justify-between gap-8`)}>
+<section class={cn(`grid gap-4 md:grid-cols-3`)}>
 	{
 		posts.length > 0 ? (
 			posts.map((post) => {
 				const categorySlug = sluglify(getCategoryName(post.data.category).toLowerCase())
 				return (
-					<div class='flex flex-wrap gap-2'>
+					<div class='flex min-w-0 items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.045] p-4'>
 						{post.data.heroImage ? (
-							<div class='min-h-full'>
+							<div class='shrink-0'>
 								<Image
 									src={post.data.heroImage}
 									width={200}
 									height={200}
 									format='webp'
-									class='w-16 h-16 object-cover rounded-full  '
+									class='h-16 w-16 rounded-full object-cover'
 									alt={`img of ${post.data.title}`}
 								/>
 							</div>
 						) : null}
-						<header class='flex justify-center items-center'>
-							<a class='font-medium  hover:underline' href={getPostUrl(post.slug, currentLocale, post.data.category)}>
+						<header class='min-w-0 flex-1'>
+							<a
+								class='block font-medium leading-snug text-[#f2f4ea] hover:text-[#d8ff4f]'
+								href={getPostUrl(post.slug, currentLocale, post.data.category)}
+							>
 								{post.data.title}
 							</a>
 						</header>
@@ -40,7 +43,7 @@ const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
 				)
 			})
 		) : (
-			<span class='text-gray-500'>There are no related posts yet. 😢</span>
+			<span class='text-[#f2f4ea]/50'>There are no related posts yet.</span>
 		)
 	}
 </section>

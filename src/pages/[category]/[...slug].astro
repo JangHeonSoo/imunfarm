@@ -5,7 +5,14 @@ import Code from '@/components/mdx/Code'
 import ListRelatedPosts from '@/components/ListRelatedPosts'
 import Share from '@/components/Share'
 import TableOfContents from '@/components/TableOfContents'
-import { getAllCollection, getPosts, getCategoryName, getCategorySlug, sluglify, stripLocaleFromSlug } from '@/utils'
+import {
+	getAllCollection,
+	getPosts,
+	getCategoryName,
+	getCategorySlug,
+	sluglify,
+	stripLocaleFromSlug
+} from '@/utils'
 import SButton from '@/components/mdx/SButton'
 import Disqus from '@/components/Disqus'
 import { disqusConfig } from '@/data/disqus.config'
@@ -65,7 +72,7 @@ const disqusEnabled = disqusConfig.enabled
 
 			<!-- related posts -->
 			<footer>
-				<h2 class='font-bold text-lg dark:text-white mb-6'>Related Posts</h2>
+				<h2 class='font-bold text-lg text-[#f2f4ea] mb-6'>Related Posts</h2>
 				<ListRelatedPosts posts={relatedPosts} />
 			</footer>
 		</article>
@@ -76,23 +83,23 @@ const disqusEnabled = disqusConfig.enabled
 
 <script is:inline>
 	// Auto-inject in-article ads between content sections
-	(function() {
-		const prose = document.querySelector('div.prose');
-		if (!prose) return;
+	;(function () {
+		const prose = document.querySelector('div.prose')
+		if (!prose) return
 
-		const headings = prose.querySelectorAll('h2, h3');
-		if (headings.length < 2) return;
+		const headings = prose.querySelectorAll('h2, h3')
+		if (headings.length < 2) return
 
 		// Insert an ad after every 3rd heading (or at least after the 2nd heading if fewer)
-		const interval = Math.max(3, Math.floor(headings.length / 2));
-		let adsInserted = 0;
-		const maxAds = 2; // maximum 2 in-article ads per post
+		const interval = Math.max(3, Math.floor(headings.length / 2))
+		let adsInserted = 0
+		const maxAds = 2 // maximum 2 in-article ads per post
 
 		headings.forEach((heading, index) => {
-			if (adsInserted >= maxAds) return;
+			if (adsInserted >= maxAds) return
 			if ((index + 1) % interval === 0) {
-				const adContainer = document.createElement('div');
-				adContainer.className = 'in-article-ad-container my-8';
+				const adContainer = document.createElement('div')
+				adContainer.className = 'in-article-ad-container my-8'
 				adContainer.innerHTML = `
 					<ins class="adsbygoogle"
 						style="display:block; text-align:center;"
@@ -100,19 +107,19 @@ const disqusEnabled = disqusConfig.enabled
 						data-ad-format="fluid"
 						data-ad-client="ca-pub-9192660979184684"
 						data-ad-slot="3171759407"></ins>
-				`;
-				heading.parentNode.insertBefore(adContainer, heading);
-				adsInserted++;
+				`
+				heading.parentNode.insertBefore(adContainer, heading)
+				adsInserted++
 			}
-		});
+		})
 
 		if (adsInserted > 0) {
-			const adElements = document.querySelectorAll('.in-article-ad-container ins.adsbygoogle');
+			const adElements = document.querySelectorAll('.in-article-ad-container ins.adsbygoogle')
 			adElements.forEach(() => {
 				try {
-					(window.adsbygoogle = window.adsbygoogle || []).push({});
+					;(window.adsbygoogle = window.adsbygoogle || []).push({})
 				} catch (e) {}
-			});
+			})
 		}
-	})();
+	})()
 </script>
