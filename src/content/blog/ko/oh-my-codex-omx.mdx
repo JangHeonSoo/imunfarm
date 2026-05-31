@@ -1,0 +1,210 @@
+---
+title: "oh-my-codex (OMX) — Codex CLI를 팀으로 만드는 오케스트레이션 레이어"
+description: "oh-my-codex (OMX) — Codex CLI를 팀으로 만드는 오케스트레이션 레이어"
+pubDate: 2026-05-31
+heroImage: "/images/oh-my-codex-omx-hero.png"
+category: "리뷰"
+author: "imunfarm"
+tags: ["oh", "my", "codex", "OMX", "Codex", "CLI를", "팀으로", "만드는"]
+comments: true
+---
+
+# oh-my-codex (OMX) — Codex CLI를 팀으로 만드는 오케스트레이션 레이어
+
+> 3줄 요약
+> OMX는 OpenAI Codex CLI 위에 얹는 워크플로우 레이어다. Codex를 교체하지 않고, 멀티 에이전트 팀 실행 · 영속 상태 관리 · 표준화된 파이프라인을 추가한다. 한국인 개발자 허예찬(Yeachan Heo)이 만든 오픈소스 프로젝트로, 출시 2주 만에 GitHub 별 16,000개를 돌파했고 2026년 5월 기준 29,600개를 넘어섰다.
+
+---
+
+## 탄생 배경 — 혼자 일하는 Codex의 한계
+
+Codex CLI는 터미널에서 AI 모델을 직접 부르는 강력한 도구다. 그런데 실제로 쓰다 보면 벽이 느껴진다. 구조화된 계획 단계가 없다. 세션이 끊기면 상태가 사라진다. 여러 에이전트를 동시에 돌리는 방법이 없다.
+
+그 공백을 채우기 위해 등장한 게 바로 OMX다. 공식 문서는 이렇게 비유한다 — "oh-my-zsh가 zsh에 한 것을, OMX가 Codex에 한다." zsh 자체를 바꾸지 않고 그 위에 테마·플러그인·훅을 쌓은 것처럼, OMX는 Codex의 코드 생성 엔진을 그대로 두고 일하는 방식만 바꾼다.
+
+2026년 2월 2일 처음 공개됐고, 현재 버전은 v0.18.3 (2026-05-25 기준)이다. TypeScript 92.7%, Rust 4.7%로 작성되었으며 MIT 라이선스를 따른다. npm 패키지명은 `oh-my-codex`, CLI 명령어는 `omx`다.
+
+---
+
+## OMX의 핵심 철학 — Codex는 두뇌, OMX는 사무실
+
+OMX를 이해하는 가장 빠른 방법은 역할 분리를 파악하는 것이다.
+
+| 구성 요소 | 역할 |
+|---|---|
+| Codex CLI | 실제 코드 작성·수정·실행 (두뇌) |
+| OMX role keywords | 재사용 가능한 에이전트 역할 정의 (업무 매뉴얼) |
+| OMX skills | 반복 워크플로우의 자동화 (사무 절차) |
+| `.omx/` 디렉토리 | 계획·로그·메모리·상태 영속 저장 (사무실) |
+
+OMX를 제거하면 그냥 평범한 Codex 세션으로 돌아온다. 이것이 OMX가 "대체"가 아닌 "레이어"라고 불리는 이유다.
+
+---
+
+## Raw Codex vs Codex + OMX — 무엇이 달라지나
+
+| 기능 | Raw Codex CLI | Codex CLI + OMX |
+|---|---|---|
+| 계획 단계 | 없음 | `$deep-interview → $ralplan` 승인 게이트 |
+| 병렬 워커 | 없음 | `omx team N:executor` (tmux 기반) |
+| Git 격리 | 없음 | 워커별 자동 git worktree |
+| 세션 상태 | 없음 (컨텍스트 초기화 시 소실) | `.omx/` 디렉토리에 영속 저장 |
+| 훅 시스템 | 기본 비활성 | `.codex/hooks.json` PreToolUse/PostToolUse |
+| 컨텍스트 리셋 후 메모리 | 소실 | 우선순위 노트패드 + `project-memory.json` 유지 |
+| 전문 에이전트 | 없음 | 33개 전문화 프롬프트 + 36개 워크플로우 스킬 |
+
+---
+
+## 표준 워크플로우 — 4단계 파이프라인
+
+OMX의 핵심은 `$deep-interview → $ralplan → $ultragoal` 로 이어지는 표준 파이프라인이다. 각 단계는 선택이 아닌 게이트다. 이전 단계가 승인되지 않으면 다음으로 넘어가지 않는다.
+
+### `$deep-interview` — 먼저 이해한다
+
+요청이 아직 모호할 때 쓴다. 의도·범위·비목표(non-goal)를 명확히 하는 인터뷰 단계다. 이 단계 없이 바로 코딩을 시작했다가 반쪽짜리 결과물을 받은 경험이 있다면, 이게 왜 있는지 바로 이해된다.
+
+### `$ralplan` — 계획을 승인받는다
+
+명확해진 요청을 구조화된 구현 계획으로 전환한다. 아키텍처 트레이드오프 검토가 포함되고, 사람의 명시적 승인 없이는 실행이 시작되지 않는다. "일단 짜보자"식 접근을 방지하는 안전 게이트다.
+
+### `$prometheus-strict` — 고위험 작업의 계획 강화
+
+고위험 작업에만 쓰는 선택적 단계다. 계획을 인터뷰 기반으로 스트레스 테스트하고, `.omx/plans/prometheus-strict/` 아티팩트를 남긴다.
+
+### `$ultragoal` — 내구성 있는 실행
+
+승인된 계획을 순차적 Codex 목표로 변환하고 `.omx/ultragoal` 레저 체크포인트를 만든다. 세션이 중단돼도 재개할 수 있는 구조다. `$ralph`는 다중 목표 레저 없이 단일 소유자가 끝까지 밀어붙이는 완료 루프다.
+
+```bash
+# 표준 OMX 워크플로우
+$deep-interview "인증 변경 사항 범위 명확화"
+$ralplan "인증 계획 승인 및 트레이드오프 검토"
+$prometheus-strict "고위험 실행 전 계획 강화"
+$ultragoal "승인된 계획을 내구성 있는 Codex 목표로 변환"
+```
+
+---
+
+## 팀 모드 — 병렬 멀티 에이전트 실행
+
+OMX의 팀 모드는 tmux를 기반으로 여러 에이전트를 동시에 돌린다. 각 워커는 자동으로 격리된 git worktree를 받는다. 15개 이상의 파일에 걸친 대규모 리팩토링이나, 단일 세션을 초과하는 장기 작업에서 진가가 드러난다.
+
+```bash
+# 3개의 실행 워커로 팀 실행
+omx team 3:executor "실패한 테스트 검증과 함께 수정"
+
+# 팀 상태 확인
+omx team status <team-name>
+
+# 세션 재개
+omx team resume <team-name>
+```
+
+워커가 충돌을 일으키면 리더가 통합하면서 `integration-report.md`에 충돌 내용을 기록한다. 심지어 `OMXTEAMWORKERCLIMAP`을 설정하면 Claude나 Gemini를 워커로 섞어서 쓸 수도 있다. Codex가 리더를 맡고, 다른 AI가 하청 워커로 들어오는 구조다.
+
+---
+
+## 영속 메모리 — 세션이 끊겨도 기억한다
+
+컨텍스트 윈도우가 초기화되는 건 AI 작업에서 가장 짜증나는 순간 중 하나다. OMX는 `project-memory.json`과 우선순위 노트패드를 통해 이 문제를 구조적으로 해결한다. 세션이 끊겨도 중요한 프로젝트 결정과 태스크 상태가 남는다.
+
+`.omx/` 디렉토리 구조는 이렇다:
+- `plans/` — 승인된 구현 계획
+- `logs/` — 실행 로그
+- `ultragoal/` — 목표 레저 체크포인트
+- `project-memory.json` — 세션 간 영속 메모리
+
+---
+
+## 훅 시스템 — 모든 도구 호출에 개입한다
+
+`PreToolUse`와 `PostToolUse` 훅이 `.codex/hooks.json`에 네이티브로 연결된다. 파괴적인 명령(삭제, 덮어쓰기 등)은 자동으로 경고를 띄우고, 에러가 발생하면 구조화된 가이던스를 내보낸다.
+
+훅 파일 구조는 세 가지 레이어로 나뉜다:
+1. `plugins/oh-my-codex/hooks/hooks.json` — 플러그인 설치 시 공식 훅 등록
+2. `.codex/hooks.json` — 레거시/폴백 네이티브 훅
+3. `.omx/hooks/*.mjs` — OMX 플러그인 훅
+
+---
+
+## 설치와 첫 실행
+
+설치는 두 줄이다.
+
+```bash
+# Codex CLI가 이미 설치된 경우
+npm install -g oh-my-codex
+omx setup
+
+# 처음부터 설치하는 경우
+npm install -g @openai/codex
+npm install -g oh-my-codex
+omx setup
+```
+
+`omx setup`은 33개 에이전트 프롬프트, 36개 워크플로우 스킬 설치, `AGENTS.md` 생성, `.codex/config.toml` 설정, 훅 연결을 한 번에 처리한다. 그 후 `omx doctor`로 상태를 확인한다.
+
+권장 첫 실행 명령은 `omx --madmax --high`다. `--madmax`는 적극적 실행 모드, `--high`는 높은 성능 병렬 처리다.
+
+---
+
+## 핵심 CLI 서페이스 정리
+
+| 명령 | 용도 |
+|---|---|
+| `omx --madmax --high` | 권장 강력 시작 모드 |
+| `omx setup` | 초기 설정 및 업데이트 |
+| `omx doctor` | 설치 상태 진단 |
+| `omx hud --watch` | 라이브 세션 모니터링 |
+| `omx explore --prompt "..."` | 읽기 전용 리포지토리 조회 |
+| `omx sparkshell <command>` | 셸 네이티브 검증 |
+| `omx wiki query --json` | 프로젝트 위키 검색 |
+| `/skills` | 설치된 스킬 목록 확인 |
+
+---
+
+## OMX vs OMC — 헷갈리기 쉬운 두 프로젝트
+
+같은 개발자(허예찬)가 만든 두 프로젝트다. 설계 철학은 같지만 실행 엔진이 다르다.
+
+| | OMX (oh-my-codex) | OMC (oh-my-claudecode) |
+|---|---|---|
+| 실행 엔진 | OpenAI Codex CLI | Claude Code |
+| CLI 접두사 | `omx` | `omc` |
+| npm 패키지 | `oh-my-codex` | `oh-my-claude-sisyphus` |
+| 주 사용자 | Codex CLI 사용자 | Claude Code 사용자 |
+
+Codex를 주로 쓴다면 OMX, Claude Code를 쓴다면 OMC다. 단, OMX의 팀 워커로 Claude CLI를 섞는 것은 가능하다.
+
+---
+
+## OMX가 맞지 않는 경우
+
+OMX를 무조건 써야 하는 도구는 아니다. 단일 파일 수정이나 빠른 버그 픽스에는 계획 게이트가 오히려 마찰이 된다. 탐색적 코딩처럼 구조화된 게이트 없이 자유롭게 실험하고 싶을 때도 불필요하다. Windows에서 프로덕션급 안정성이 필요한 경우도 마찬가지 — OMX는 공식적으로 macOS와 Linux를 타깃으로 한다. Windows는 실험적 지원 수준이다.
+
+---
+
+## 수치로 보는 프로젝트 규모 (2026년 5월 기준)
+
+- GitHub Stars: 29,600개
+- Forks: 2,400개
+- Contributors: 73명
+- 릴리스 횟수: 109회 (v0.18.3이 최신)
+- 전문 에이전트 프롬프트: 33개
+- 워크플로우 스킬: 36개
+- 지원 언어: 16개 언어 (한국어, 영어, 일본어, 중국어 등)
+
+---
+
+## 참고 자료
+
+| 번호 | 출처 | 유형 |
+|---|---|---|
+| 1 | [GitHub — Yeachan-Heo/oh-my-codex (공식)](https://github.com/Yeachan-Heo/oh-my-codex) | 공식 리포지토리 |
+| 2 | [verdent.ai — What is oh-my-codex (OMX)](https://www.verdent.ai/ko/guides/what-is-oh-my-codex-omx) | 기술 가이드 |
+| 3 | [knightli.com — OMX Workflow Layer 해설](https://knightli.com/en/2026/05/25/oh-my-codex-codex-cli-workflow-layer/) | 분석 문서 |
+| 4 | [findskill.ai — 한국 개발자가 만든 Codex의 oh-my-zsh](https://findskill.ai/ko/blog/oh-my-codex-%ED%95%9C%EA%B8%80%EC%84%A4%EB%AA%85/) | 한국어 해설 |
+| 5 | [memoryhub.tistory.com — OMX 23000 스타 돌파 분석](https://memoryhub.tistory.com/) | 기술 블로그 |
+| 6 | [velog — oh-my-codex 사용해보기](https://velog.io/@jkuminga/) | 실습 가이드 |
+| 7 | [sourceforge.net — OMX 프로젝트 미러](https://sourceforge.net/projects/oh-my-codex-omx.mirror/) | 미러 설명 |
+| 8 | [elancer.co.kr — Codex CLI 사용법](https://www.elancer.co.kr/blog/detail/1025) | 한국어 사용법 |

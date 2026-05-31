@@ -1,0 +1,210 @@
+---
+title: "oh-my-codex (OMX) — The Orchestration Layer That Turns Codex Into a Team"
+description: "oh-my-codex (OMX) — The Orchestration Layer That Turns Codex Into a Team"
+pubDate: 2026-05-31
+heroImage: "/images/oh-my-codex-omx-hero.png"
+category: "Review"
+author: "imunfarm"
+tags: ["oh", "my", "codex", "OMX", "The", "Orchestration", "Layer", "That"]
+comments: true
+---
+
+# oh-my-codex (OMX) — The Orchestration Layer That Turns Codex Into a Team
+
+> Summary (3 lines)
+> OMX is a workflow layer placed on top of OpenAI Codex CLI. It does not replace Codex — it adds multi-agent team execution, persistent state management, and standardized pipelines. Created by Korean developer Yeachan Heo, the open-source project surpassed 16,000 GitHub stars within two weeks of launch and has exceeded 29,600 stars as of May 2026.
+
+---
+
+## Why It Exists — The Limits of a Solo Codex
+
+Codex CLI is a powerful tool. But after using it for anything beyond single-file tasks, the limits become clear. There is no structured planning phase. State disappears when the session ends. There is no built-in way to coordinate multiple agents in parallel.
+
+OMX was built to fill exactly that gap. The official docs use a direct analogy — "like oh-my-zsh, but for Codex." Just as oh-my-zsh layered themes, plugins, and hooks on top of zsh without forking it, OMX leaves Codex's code generation engine intact and changes only how work is organized.
+
+First published on February 2, 2026, the current version is v0.18.3 (as of May 25, 2026). The codebase is 92.7% TypeScript and 4.7% Rust, published under the MIT license. The npm package name is `oh-my-codex` and the CLI command is `omx`.
+
+---
+
+## The Core Philosophy — Codex is the Brain, OMX is the Office
+
+The fastest way to understand OMX is to grasp the division of labor.
+
+| Component | Role |
+|---|---|
+| Codex CLI | Actual code writing, editing, and execution (the brain) |
+| OMX role keywords | Reusable agent role definitions (the manual) |
+| OMX skills | Automated recurring workflows (the procedures) |
+| `.omx/` directory | Persistent storage for plans, logs, memory, and runtime state (the office) |
+
+Removing OMX returns you to a plain Codex session. That is why OMX is described as a "layer" rather than a "replacement."
+
+---
+
+## Raw Codex vs Codex + OMX — What Actually Changes
+
+| Feature | Raw Codex CLI | Codex CLI + OMX |
+|---|---|---|
+| Planning phase | None | `$deep-interview → $ralplan` approval gate |
+| Parallel workers | None | `omx team N:executor` (tmux-based) |
+| Git isolation | None | Auto git worktree per worker |
+| Session state | None (lost on context reset) | Persisted in `.omx/` directory |
+| Hook system | Not wired by default | `.codex/hooks.json` PreToolUse/PostToolUse |
+| Memory across context resets | Lost | Priority notepad + `project-memory.json` |
+| Specialized agents | None | 33 specialized prompts + 36 workflow skills |
+
+---
+
+## Standard Workflow — The 4-Stage Pipeline
+
+The core of OMX is the `$deep-interview → $ralplan → $ultragoal` pipeline. Each stage is not optional — it is a gate. Execution cannot proceed without approval from the previous stage.
+
+### `$deep-interview` — Understand First
+
+Used when a request is still vague. This is the interview stage that clarifies intent, scope, and non-goals. Anyone who has ever jumped straight to coding only to receive a half-correct result will immediately understand why this step exists.
+
+### `$ralplan` — Get the Plan Approved
+
+Converts the clarified request into a structured implementation plan with explicit trade-off review. Human approval is enforced; execution does not start without it. It is the safety gate against "let's just try it" approaches.
+
+### `$prometheus-strict` — Harden High-Risk Plans
+
+An optional step reserved for high-risk work. It stress-tests the plan through interview-driven critique and synthesis, and leaves artifacts in `.omx/plans/prometheus-strict/`.
+
+### `$ultragoal` — Durable Execution
+
+Converts the approved plan into sequential Codex goals with `.omx/ultragoal` ledger checkpoints. Sessions can be interrupted and resumed. `$ralph` is an alternative single-owner completion loop without a multi-goal ledger.
+
+```bash
+# Standard OMX workflow
+$deep-interview "clarify the scope of the authentication change"
+$ralplan "approve the auth plan and review tradeoffs"
+$prometheus-strict "stress-test the plan before durable execution"
+$ultragoal "turn the approved plan into durable Codex goals"
+```
+
+---
+
+## Team Mode — Parallel Multi-Agent Execution
+
+OMX team mode uses tmux to run multiple agents simultaneously. Each worker automatically receives its own isolated git worktree. Its value is most apparent in large-scale refactors spanning 15+ files, or in long-running tasks that outlast a single interactive session.
+
+```bash
+# Run a team with 3 executor workers
+omx team 3:executor "fix the failing tests with verification"
+
+# Check team status
+omx team status <team-name>
+
+# Resume a session
+omx team resume <team-name>
+```
+
+When workers produce conflicts, the leader integrates changes and records them in `integration-report.md`. By setting `OMXTEAMWORKERCLIMAP`, Claude or Gemini can be mixed in as workers. Codex acts as the leader, with other AI models serving as subcontractors.
+
+---
+
+## Persistent Memory — Remembers Across Sessions
+
+A context window reset is one of the most frustrating moments in AI-assisted development. OMX addresses this structurally through `project-memory.json` and a priority notepad. Critical project decisions and task state survive session interruptions.
+
+The `.omx/` directory structure:
+- `plans/` — Approved implementation plans
+- `logs/` — Execution logs
+- `ultragoal/` — Goal ledger checkpoints
+- `project-memory.json` — Cross-session persistent memory
+
+---
+
+## Hook System — Intercept Every Tool Call
+
+`PreToolUse` and `PostToolUse` hooks are natively wired through `.codex/hooks.json`. Destructive commands (deletions, overwrites) automatically trigger warnings. Errors surface structured guidance rather than silent failures.
+
+The hook architecture has three layers:
+1. `plugins/oh-my-codex/hooks/hooks.json` — Official hook registrations for plugin installs
+2. `.codex/hooks.json` — Legacy/fallback native hooks
+3. `.omx/hooks/*.mjs` — OMX plugin hooks
+
+---
+
+## Installation and First Run
+
+Installation takes two commands.
+
+```bash
+# If Codex CLI is already installed
+npm install -g oh-my-codex
+omx setup
+
+# Fresh install
+npm install -g @openai/codex
+npm install -g oh-my-codex
+omx setup
+```
+
+`omx setup` installs 33 agent prompts, 36 workflow skills, generates `AGENTS.md`, configures `.codex/config.toml`, and wires hooks in a single pass. Follow with `omx doctor` to verify the install.
+
+The recommended launch command is `omx --madmax --high`. `--madmax` activates aggressive execution mode, `--high` enables high-performance parallel processing.
+
+---
+
+## Core CLI Surfaces
+
+| Command | Purpose |
+|---|---|
+| `omx --madmax --high` | Recommended strong-start mode |
+| `omx setup` | Initial configuration and update |
+| `omx doctor` | Diagnose install health |
+| `omx hud --watch` | Live session monitoring |
+| `omx explore --prompt "..."` | Read-only repository lookup |
+| `omx sparkshell <command>` | Shell-native bounded verification |
+| `omx wiki query --json` | Project wiki search |
+| `/skills` | Browse installed skills |
+
+---
+
+## OMX vs OMC — Two Easily Confused Projects
+
+Two projects from the same developer (Yeachan Heo). Same design philosophy, different execution engines.
+
+| | OMX (oh-my-codex) | OMC (oh-my-claudecode) |
+|---|---|---|
+| Execution engine | OpenAI Codex CLI | Claude Code |
+| CLI prefix | `omx` | `omc` |
+| npm package | `oh-my-codex` | `oh-my-claude-sisyphus` |
+| Target user | Codex CLI users | Claude Code users |
+
+Use OMX if Codex is your primary tool. Use OMC if Claude Code is your primary tool. Mixing Claude CLI workers inside an OMX team is still possible.
+
+---
+
+## When OMX Is Not the Right Tool
+
+OMX is not a universal solution. For targeted single-file changes or quick bug fixes, the planning gates add friction without payoff. For exploratory coding where structured gates would get in the way, it adds unnecessary overhead. On Windows without a WSL2 setup, production-grade reliability cannot be guaranteed — OMX officially targets macOS and Linux. Windows support exists but is explicitly marked as non-default.
+
+---
+
+## Project Scale by the Numbers (May 2026)
+
+- GitHub Stars: 29,600
+- Forks: 2,400
+- Contributors: 73
+- Releases: 109 (v0.18.3 is current)
+- Specialized agent prompts: 33
+- Workflow skills: 36
+- Supported languages: 16 (Korean, English, Japanese, Chinese, and more)
+
+---
+
+## References
+
+| No. | Source | Type |
+|---|---|---|
+| 1 | [GitHub — Yeachan-Heo/oh-my-codex (Official)](https://github.com/Yeachan-Heo/oh-my-codex) | Official repository |
+| 2 | [verdent.ai — What is oh-my-codex (OMX)](https://www.verdent.ai/ko/guides/what-is-oh-my-codex-omx) | Technical guide |
+| 3 | [knightli.com — OMX Workflow Layer](https://knightli.com/en/2026/05/25/oh-my-codex-codex-cli-workflow-layer/) | Analysis document |
+| 4 | [findskill.ai — oh-my-zsh for Codex](https://findskill.ai/ko/blog/oh-my-codex-%ED%95%9C%EA%B8%80%EC%84%A4%EB%AA%85/) | Technical explainer |
+| 5 | [memoryhub.tistory.com — OMX 23k Stars Analysis](https://memoryhub.tistory.com/) | Tech blog |
+| 6 | [velog — Using oh-my-codex Hands-On](https://velog.io/@jkuminga/) | Practical guide |
+| 7 | [sourceforge.net — OMX Project Mirror](https://sourceforge.net/projects/oh-my-codex-omx.mirror/) | Mirror description |
+| 8 | [elancer.co.kr — Codex CLI Usage Guide](https://www.elancer.co.kr/blog/detail/1025) | Usage guide |
