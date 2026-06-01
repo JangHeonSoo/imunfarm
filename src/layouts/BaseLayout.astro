@@ -179,8 +179,27 @@ const { hideHeader = false, hideFooter = false, fullBleed = false } = Astro.prop
 			}
 
 			.prose pre {
-				background: rgba(0, 0, 0, 0.42) !important;
+				background: rgba(7, 8, 7, 0.82) !important;
 				border: 1px solid rgba(255, 255, 255, 0.12);
+				color: #f2f4ea !important;
+			}
+
+			.site-body .prose pre code {
+				background: transparent !important;
+				border-radius: 0;
+				color: #f2f4ea !important;
+				padding: 0;
+			}
+
+			.site-body .prose pre.shiki,
+			.site-body .prose pre.astro-code {
+				background: rgba(7, 8, 7, 0.82) !important;
+				color: #f2f4ea !important;
+			}
+
+			.site-body .prose pre.shiki span,
+			.site-body .prose pre.astro-code span {
+				background: transparent !important;
 			}
 		</style>
 		<MermaidModule />
