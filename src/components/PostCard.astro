@@ -8,14 +8,10 @@ import {
 	DEFAULT_LOCALE
 } from '@/utils'
 import FormattedDate from '@/components/FormattedDate'
-import ArrowUp from '@/components/icons/ArrowUp'
 
 const {
-	id,
 	data: { title, description, pubDate, heroImage, category },
-	readTime,
-	slug,
-	displayAsRows = false
+	slug
 } = Astro.props
 
 const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
@@ -24,71 +20,118 @@ const categoryTitle = getCategoryTitleFromSlug(categorySlug, currentLocale)
 const postUrl = getPostUrl(slug, currentLocale, category)
 ---
 
-<article
-	class='rounded-[26px] overflow-hidden border border-white/12 bg-white/[0.055] shadow-[0_24px_70px_rgba(0,0,0,0.18)] transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ff4f]/35 hover:shadow-[0_30px_90px_rgba(0,0,0,0.28)] cursor-pointer group'
->
-	{
-		heroImage && (
-			<a href={postUrl} class='relative block h-60 overflow-hidden'>
-				<Image
-					src={heroImage}
-					width={600}
-					height={240}
-					format='webp'
-					class='w-full h-full object-cover transition-transform duration-300 group-hover:scale-105'
-					alt={`img of ${title}`}
-				/>
-				<span class='absolute top-5 left-5 border border-white/15 bg-[#070807]/80 text-[#f2f4ea] px-4 py-1.5 rounded-full text-sm font-semibold backdrop-blur'>
-					{categoryTitle}
-				</span>
-			</a>
-		)
-	}
+<article class='imun-post-card group'>
+	<a href={postUrl} class='imun-post-link'>
+		{
+			heroImage && (
+				<div class='imun-post-media'>
+					<Image
+						src={heroImage}
+						width={720}
+						height={420}
+						format='webp'
+						class='w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]'
+						alt={`img of ${title}`}
+					/>
+					<span>{categoryTitle}</span>
+				</div>
+			)
+		}
 
-	<div class='p-8'>
-		<span class='block text-sm text-[#f2f4ea]/50 mb-2.5'>
-			<FormattedDate date={pubDate} />
-		</span>
-
-		<a href={postUrl}>
-			<h3
-				class='text-2xl font-heading font-semibold mb-4 text-[#f2f4ea] group-hover:text-[#d8ff4f] transition-colors'
-			>
-				{title}
-			</h3>
-		</a>
-
-		<p class='text-base text-[#f2f4ea]/64 mb-5 line-clamp-3'>
-			{description}
-		</p>
-
-		<a href={postUrl} class='inline-block text-[#d8ff4f] font-semibold transition-all hover:ml-1'>
-			자세히 보기 →
-		</a>
-	</div>
+		<div class='imun-post-body'>
+			<time><FormattedDate date={pubDate} /></time>
+			<h3>{title}</h3>
+			<p>{description}</p>
+			<strong>{currentLocale === 'en' ? 'Read article' : '자세히 보기'} →</strong>
+		</div>
+	</a>
 </article>
 
-<script>
-	import { animate } from 'motion'
+<style>
+	.imun-post-card {
+		overflow: hidden;
+		border: 1px solid rgba(18, 19, 23, 0.09);
+		border-radius: 28px;
+		background: rgba(255, 255, 255, 0.92);
+		box-shadow: 0 22px 70px rgba(18, 19, 23, 0.06);
+		transition:
+			transform 240ms cubic-bezier(0.19, 1, 0.22, 1),
+			box-shadow 240ms ease,
+			border-color 240ms ease;
+	}
 
-	const images = document.querySelectorAll('img')
+	.imun-post-card:hover {
+		transform: translateY(-4px);
+		border-color: rgba(63, 126, 255, 0.24);
+		box-shadow: 0 32px 100px rgba(18, 19, 23, 0.1);
+	}
 
-	document.addEventListener('DOMContentLoaded', function () {
-		const showAnimations = localStorage.getItem('animations') === 'true'
+	.imun-post-link {
+		display: grid;
+		height: 100%;
+		color: inherit;
+	}
 
-		if (showAnimations) {
-			animate(
-				'.effect',
-				{
-					opacity: [0, 1],
-					clipPath: ['circle(0% at 0% 0%)', 'circle(100% at 50% 50%)']
-				},
-				{ duration: 2, easing: 'ease' }
-			)
-		} else {
-			images.forEach((img) => {
-				img.classList.remove('opacity-0')
-			})
-		}
-	})
-</script>
+	.imun-post-media {
+		position: relative;
+		height: 250px;
+		overflow: hidden;
+		background: #f4f6fb;
+	}
+
+	.imun-post-media span {
+		position: absolute;
+		left: 18px;
+		top: 18px;
+		display: inline-flex;
+		align-items: center;
+		min-height: 32px;
+		border: 1px solid rgba(255, 255, 255, 0.5);
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.82);
+		color: #121317;
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.02em;
+		padding: 0 0.75rem;
+		backdrop-filter: blur(16px);
+	}
+
+	.imun-post-body {
+		padding: 1.55rem;
+	}
+
+	.imun-post-body time {
+		display: block;
+		color: #8a9099;
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.imun-post-body h3 {
+		margin: 0.7rem 0 0.7rem;
+		color: #121317;
+		font-size: clamp(1.45rem, 2.4vw, 2rem);
+		font-weight: 740;
+		line-height: 1.05;
+		letter-spacing: -0.06em;
+		text-wrap: balance;
+	}
+
+	.imun-post-body p {
+		margin: 0;
+		color: #5f6570;
+		font-size: 15px;
+		line-height: 1.65;
+	}
+
+	.imun-post-body strong {
+		display: inline-flex;
+		margin-top: 1.1rem;
+		color: #245fe5;
+		font-size: 14px;
+		font-weight: 750;
+	}
+</style>

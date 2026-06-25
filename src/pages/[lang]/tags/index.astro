@@ -1,181 +1,218 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout'
-import FadeIn from '../../../components/FadeIn.astro'
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES, getLocalePrefix, getPosts } from '@/utils'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, getPosts } from '@/utils'
 
 export async function getStaticPaths() {
-	return SUPPORTED_LOCALES.map((lang) => ({
-		params: { lang }
-	}))
+	return SUPPORTED_LOCALES.map((lang) => ({ params: { lang } }))
 }
 
 const locale = Astro.params.lang ?? DEFAULT_LOCALE
-const localePrefix = getLocalePrefix(locale)
-
+const isEn = locale === 'en'
 const posts = await getPosts(undefined, locale)
 const tagCounts = new Map<string, number>()
-
-posts.forEach((post) => {
-	post.data.tags?.forEach((tag: string) => {
-		tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)
-	})
-})
-
+posts.forEach((post) =>
+	post.data.tags?.forEach((tag: string) => tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1))
+)
 const sortedTags = Array.from(tagCounts.entries()).sort((a, b) => b[1] - a[1])
-
 const maxCount = Math.max(...Array.from(tagCounts.values()), 1)
 const minCount = Math.min(...Array.from(tagCounts.values()), 1)
-
-const getFontSize = (count: number) => {
-	if (maxCount === minCount) return 32
-	const ratio = (count - minCount) / (maxCount - minCount)
-	return Math.round(16 + ratio * 48)
-}
-
-const getOpacity = (count: number) => {
-	if (maxCount === minCount) return 1
-	const ratio = (count - minCount) / (maxCount - minCount)
-	return 0.4 + ratio * 0.6
-}
+const getFontSize = (count: number) =>
+	maxCount === minCount ? 32 : Math.round(16 + ((count - minCount) / (maxCount - minCount)) * 46)
+const getTone = (count: number) =>
+	maxCount === minCount ? 1 : (count - minCount) / (maxCount - minCount)
 ---
 
 <BaseLayout title='Tags'>
-	<div
-		class='relative h-[40vh] min-h-[400px] flex items-center justify-center overflow-hidden mb-20 rounded-[34px] border border-white/12 bg-white/[0.045]'
-	>
-		<div class='absolute inset-0 z-0'>
-			<img src='/images/tags-hero.png' alt='Tags Hero' class='w-full h-full object-cover' />
-			<div class='absolute inset-0 bg-[#070807]/78 backdrop-blur-sm'></div>
-			<div class='absolute inset-0 bg-gradient-to-b from-transparent to-[#070807]'></div>
-		</div>
-
-		<div class='relative z-10 text-center px-4'>
-			<FadeIn delay={0.2} direction='up'>
-				<span class='block text-[#d8ff4f] font-bold tracking-widest uppercase mb-4'
-					>Explore Topics</span
-				>
-				<h1
-					class='text-5xl md:text-7xl font-heading font-extrabold mb-6 text-[#f2f4ea] tracking-[-0.06em]'
-				>
-					{
-						locale === 'en' ? (
-							<>
-								Tags &{' '}
-								<span class='text-transparent bg-clip-text bg-gradient-to-r from-[#d8ff4f] to-[#7cf7ff]'>
-									Topics
-								</span>
-							</>
-						) : (
-							<>
-								태그로 보는
-								<>
-									<br />
-									<span class='text-transparent bg-clip-text bg-gradient-to-r from-[#d8ff4f] to-[#7cf7ff]'>
-										농장 이야기
-									</span>
-								</>
-							</>
-						)
-					}
-				</h1>
-			</FadeIn>
-		</div>
-	</div>
-
-	<div class='max-w-6xl mx-auto px-4 pb-20'>
-		<FadeIn delay={0.3} direction='up'>
-			<div
-				class='bg-white/[0.055] backdrop-blur-lg rounded-[30px] shadow-[0_28px_90px_rgba(0,0,0,0.22)] border border-white/12 p-8 md:p-12 relative overflow-hidden'
-			>
-				<div
-					class='absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2'
-				>
-				</div>
-				<div
-					class='absolute bottom-0 left-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl -z-10 -translate-x-1/2 translate-y-1/2'
-				>
-				</div>
-
-				<div
-					class='flex justify-center flex-wrap gap-x-6 gap-y-8 items-center content-center relative z-10'
-					id='tag-cloud'
-				>
-					{
-						sortedTags.map(([tag, count], index) => {
-							const size = getFontSize(count)
-							const isLarge = size > 24
-							return (
-								<a
-									href={`${localePrefix}/tags/${tag.toLowerCase()}`}
-									class={`
-                                        tag-item group relative inline-flex items-center justify-center
-                                        transition-all duration-500 ease-out
-                                        hover:scale-110 hover:z-20
-                                        ${isLarge ? 'font-black' : 'font-medium'}
-                                    `}
-									style={`
-                                        font-size: ${size}px;
-                                        opacity: ${getOpacity(count)};
-                                        color: ${isLarge ? 'var(--color-primary)' : 'inherit'};
-                                        animation: float ${3 + Math.random() * 2}s ease-in-out infinite;
-                                        animation-delay: ${Math.random() * 2}s;
-                                    `}
-									data-tag={tag.toLowerCase()}
-									title={`${count} posts`}
-								>
-									<span
-										class={`
-                                        ${isLarge ? 'text-transparent bg-clip-text bg-gradient-to-br from-[#d8ff4f] to-[#7cf7ff]' : 'text-[#f2f4ea]/72'}
-                                        group-hover:text-[#d8ff4f] transition-colors
-                                    `}
-									>
-										#{tag}
-									</span>
-								</a>
-							)
-						})
-					}
-				</div>
-			</div>
-		</FadeIn>
-
-		<FadeIn delay={0.5} direction='up'>
-			<div class='mt-16 grid grid-cols-2 md:grid-cols-4 gap-6'>
-				<div class='bg-[#d8ff4f]/10 rounded-2xl p-6 text-center border border-[#d8ff4f]/15'>
-					<div class='text-4xl font-bold text-[#d8ff4f] mb-2'>{sortedTags.length}</div>
-					<div class='text-sm text-[#f2f4ea]/60 font-medium'>
-						{locale === 'en' ? 'Total Tags' : '총 태그'}
-					</div>
-				</div>
-				<div class='bg-[#7cf7ff]/10 rounded-2xl p-6 text-center border border-[#7cf7ff]/15'>
-					<div class='text-4xl font-bold text-[#7cf7ff] mb-2'>{posts.length}</div>
-					<div class='text-sm text-[#f2f4ea]/60 font-medium'>
-						{locale === 'en' ? 'Total Posts' : '총 포스트'}
-					</div>
-				</div>
-				<div
-					class='col-span-2 bg-white/[0.055] rounded-2xl p-6 flex items-center justify-center border border-white/12'
-				>
-					<p class='text-[#f2f4ea]/64 text-sm'>
-						{locale === 'en' ? 'Most Popular:' : '가장 인기 있는 태그:'}
-						<span class='font-bold text-[#d8ff4f] text-lg ml-2'
-							>#{sortedTags[0]?.[0] || 'none'}</span
+	<section class='tags-hero'>
+		<p class='eyebrow'>TAGS</p><h1
+			set:html={isEn ? 'Posts grouped<br />by topic.' : '주제별로<br />글을 모았습니다.'}
+		/><p class='lead'>
+			{
+				isEn
+					? 'Find posts by farmland, smart farms, solar power, subsidies, and other farm topics.'
+					: '농지, 스마트팜, 태양광, 보조금 같은 주제를 태그로 모았습니다.'
+			}
+		</p>
+	</section>
+	<section class='tag-board'>
+		<div class='tag-board-heading'>
+			<p class='eyebrow'>TAG LIST</p><h2>{sortedTags.length} {isEn ? 'tags' : '개의 태그'}</h2><p>
+				{
+					isEn
+						? `${posts.length} posts can be searched by topic.`
+						: `${posts.length}개의 글을 주제별로 찾아볼 수 있습니다.`
+				}
+			</p>
+		</div><div class='tag-cloud'>
+			{
+				sortedTags.map(([tag, count], index) => {
+					const size = getFontSize(count)
+					const tone = getTone(count)
+					return (
+						<a
+							href={`/${locale}/tags/${tag.toLowerCase()}`}
+							class={`tag-item ${tone > 0.46 ? 'is-large' : ''}`}
+							style={`--size:${size}px; --tone:${tone}; --delay:${(index % 9) * 0.08}s`}
 						>
-					</p>
-				</div>
-			</div>
-		</FadeIn>
-	</div>
+							#{tag}
+						</a>
+					)
+				})
+			}
+		</div>
+	</section>
+	<section class='tag-stats'>
+		<div><strong>{sortedTags.length}</strong><span>tags</span></div><div>
+			<strong>{posts.length}</strong><span>posts</span>
+		</div><div><strong>#{sortedTags[0]?.[0] || 'none'}</strong><span>most used</span></div>
+	</section>
 </BaseLayout>
 
 <style>
-	@keyframes float {
+	.tags-hero,
+	.tag-board,
+	.tag-stats {
+		position: relative;
+		z-index: 1;
+		width: min(1180px, calc(100vw - 48px));
+		margin-inline: auto;
+	}
+	.tags-hero {
+		display: grid;
+		min-height: 72dvh;
+		place-items: center;
+		padding: 8rem 0 4rem;
+		text-align: center;
+	}
+	.eyebrow {
+		margin: 0 0 1rem;
+		color: #6ae4ff;
+		font-size: 13px;
+		font-weight: 850;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+	}
+	h1,
+	h2,
+	p {
+		margin: 0;
+	}
+	.tags-hero h1 {
+		color: #f6f7fb;
+		font-size: clamp(58px, 9vw, 126px);
+		font-weight: 890;
+		line-height: 0.92;
+		letter-spacing: -0.085em;
+	}
+	.lead {
+		max-width: 760px;
+		margin: 2rem auto 0;
+		color: rgba(246, 247, 251, 0.68);
+		font-size: clamp(18px, 2vw, 23px);
+		line-height: 1.5;
+	}
+	.tag-board {
+		border: 1px solid rgba(246, 247, 251, 0.1);
+		border-radius: 2rem;
+		background: rgba(246, 247, 251, 0.045);
+		padding: clamp(1.5rem, 4vw, 3rem);
+		backdrop-filter: blur(4px);
+	}
+	.tag-board-heading {
+		display: grid;
+		grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1fr);
+		gap: 2rem;
+		align-items: end;
+		margin-bottom: 3rem;
+	}
+	.tag-board-heading h2 {
+		color: #f6f7fb;
+		font-size: clamp(38px, 5vw, 74px);
+		font-weight: 850;
+		line-height: 0.95;
+		letter-spacing: -0.07em;
+	}
+	.tag-board-heading p {
+		color: rgba(246, 247, 251, 0.62);
+		font-size: 18px;
+		line-height: 1.5;
+	}
+	.tag-cloud {
+		display: flex;
+		min-height: 720px;
+		align-content: center;
+		align-items: center;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: 1.2rem 1.6rem;
+	}
+	.tag-item {
+		display: inline-flex;
+		color: rgba(246, 247, 251, calc(0.32 + var(--tone) * 0.46));
+		font-size: var(--size);
+		font-weight: 650;
+		letter-spacing: -0.045em;
+		line-height: 1;
+		animation: float-tag 4.2s ease-in-out infinite;
+		animation-delay: var(--delay);
+		transition:
+			transform 0.22s ease,
+			color 0.22s ease;
+	}
+	.tag-item.is-large {
+		color: #6ae4ff;
+		font-weight: 850;
+		text-shadow: 0 0 30px rgba(106, 228, 255, 0.12);
+	}
+	.tag-item:hover {
+		color: #f6f7fb;
+		transform: translateY(-6px) scale(1.04);
+	}
+	.tag-stats {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 1rem;
+		padding: clamp(4rem, 8vw, 8rem) 0;
+	}
+	.tag-stats div {
+		min-height: 210px;
+		border: 1px solid rgba(246, 247, 251, 0.1);
+		border-radius: 2rem;
+		background: rgba(246, 247, 251, 0.045);
+		padding: 1.5rem;
+	}
+	.tag-stats strong {
+		display: block;
+		color: #f6f7fb;
+		font-size: clamp(38px, 5vw, 72px);
+		font-weight: 850;
+		line-height: 0.95;
+		letter-spacing: -0.06em;
+	}
+	.tag-stats span {
+		display: block;
+		margin-top: 1rem;
+		color: rgba(246, 247, 251, 0.5);
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	@keyframes float-tag {
 		0%,
 		100% {
 			transform: translateY(0);
 		}
 		50% {
-			transform: translateY(-10px);
+			transform: translateY(-8px);
+		}
+	}
+	@media (max-width: 860px) {
+		.tag-board-heading,
+		.tag-stats {
+			grid-template-columns: 1fr;
+		}
+		.tag-cloud {
+			min-height: auto;
 		}
 	}
 </style>

@@ -1,199 +1,289 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import FadeIn from '../components/FadeIn.astro'
+
+const collaborationTypes = [
+	{
+		title: '콘텐츠 제안',
+		body: '다뤘으면 하는 주제, 보완이 필요한 글, 현장에서 궁금한 질문을 보내주세요.'
+	},
+	{ title: '기술 협업', body: '스마트팜, 농업 데이터, 자동화 관련 내용을 함께 검토합니다.' },
+	{ title: '협찬 문의', body: '농업, 기술, 에너지 관련 제품이나 서비스를 소개할 수 있습니다.' },
+	{ title: '제보', body: '자료, 보도자료, 현장 사례, 수정할 내용을 보내주세요.' }
+]
+
+const steps = ['문의 접수', '내용 검토', '방향 협의', '협업 시작']
 ---
 
-<BaseLayout title='협찬의의 | IMUN.FARM' description='IMUN.FARM 콘텐츠 협업, 기술 교류, 스폰서십 문의 안내'>
-	<div class='min-h-screen flex flex-col lg:flex-row relative'>
+<BaseLayout
+	title='협찬문의 | IMUN.FARM'
+	description='IMUN.FARM 콘텐츠 협업, 기술 교류, 스폰서십 문의 안내'
+>
+	<section class='contact-hero'>
+		<FadeIn direction='up'>
+			<p class='eyebrow'>CONTACT</p>
+			<h1>문의는<br />메일로 보내주세요.</h1>
+			<p class='lead'>
+				글 제안, 제보, 협찬 문의를 받습니다. 내용과 연락처를 함께 보내주시면 확인 후 답변드립니다.
+			</p>
+			<a class='mail-button' href='mailto:denosinfo@gmail.com'>denosinfo@gmail.com →</a>
+		</FadeIn>
+	</section>
 
-		<!-- Left Column: Sticky image -->
-		<div class='lg:w-1/2 relative min-h-[400px] lg:h-screen lg:sticky lg:top-0 z-0'>
-			<div class='absolute inset-0'>
-				<img
-					src='/images/ideas-hero-bg.png'
-					alt='IMUN.FARM 지식 협업'
-					class='w-full h-full object-cover'
-				/>
-				<div class='absolute inset-0 bg-gray-950/70'></div>
-				<div class='absolute inset-0 bg-gradient-to-t from-gray-950/90 via-gray-950/30 to-transparent'></div>
-			</div>
-
-			<div class='absolute bottom-10 left-10 right-10 text-white z-10'>
-				<FadeIn delay={0.2} direction='up'>
-					<span class='text-primary font-bold tracking-widest uppercase text-sm block mb-4'>IMUN.FARM × 협업</span>
-					<h1 class='text-4xl lg:text-5xl font-heading font-extrabold mb-4 leading-tight' style='color: white !important;'>
-						지식을 함께<br />재배합니다.
-					</h1>
-					<p class='text-lg text-white/85 font-light max-w-md leading-relaxed'>
-						콘텐츠 제안, 기술 협업, 스폰서십 — <br />어떤 형태의 연결도 환영합니다.
-					</p>
-
-					<!-- Trust signals -->
-					<div class='flex flex-wrap gap-4 mt-8'>
-						<div class='flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 text-sm'>
-							<svg class='w-4 h-4 text-primary' fill='currentColor' viewBox='0 0 20 20'><path fill-rule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z' clip-rule='evenodd'/></svg>
-							<span>3일 내 회신</span>
-						</div>
-						<div class='flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 text-sm'>
-							<svg class='w-4 h-4 text-primary' fill='currentColor' viewBox='0 0 20 20'><path fill-rule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z' clip-rule='evenodd'/></svg>
-							<span>장르 불문 환영</span>
-						</div>
-					</div>
+	<section class='contact-grid'>
+		{
+			collaborationTypes.map((item, index) => (
+				<FadeIn delay={index * 0.08} direction='up'>
+					<article class='contact-card'>
+						<span>0{index + 1}</span>
+						<h2>{item.title}</h2>
+						<p>{item.body}</p>
+					</article>
 				</FadeIn>
+			))
+		}
+	</section>
+
+	<section class='process-section'>
+		<FadeIn direction='up'>
+			<div class='process-heading'>
+				<p class='eyebrow'>PROCESS</p>
+				<h2>확인 후 답변드립니다.</h2>
 			</div>
+		</FadeIn>
+		<div class='step-row'>
+			{
+				steps.map((step, index) => (
+					<FadeIn delay={index * 0.06} direction='up'>
+						<div class='step-card'>
+							<strong>{index + 1}</strong>
+							<span>{step}</span>
+						</div>
+					</FadeIn>
+				))
+			}
 		</div>
+	</section>
 
-		<!-- Right Column: Scrollable content -->
-		<div class='lg:w-1/2 bg-white dark:bg-[#0a0910] relative z-10'>
-			<div class='max-w-2xl mx-auto px-6 py-20 lg:py-32'>
-
-				<!-- Header -->
-				<FadeIn direction='up'>
-					<div class='mb-16'>
-						<span class='text-primary font-bold tracking-widest uppercase text-sm mb-2 block'>Collaboration</span>
-						<h2 class='text-3xl font-heading font-bold mb-6 text-text-main dark:text-white'>
-							협업 및 문의 안내
-						</h2>
-						<p class='text-text-muted dark:text-gray-400 text-lg leading-relaxed'>
-							콘텐츠 아이디어부터 기술 협업, 스폰서십까지 — <br />
-							다양한 방식으로 함께할 수 있습니다.
-						</p>
-					</div>
-				</FadeIn>
-
-				<!-- Category Grid -->
-				<div class='grid grid-cols-1 md:grid-cols-2 gap-6 mb-16'>
-					<FadeIn delay={0.1} class='h-full'>
-						<div class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/40 transition-colors h-full'>
-							<div class='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4'>
-								<svg class='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'/></svg>
-							</div>
-							<h3 class='font-bold text-lg mb-2'>콘텐츠 제안</h3>
-							<p class='text-sm text-text-muted dark:text-gray-400'>
-								다뤘으면 하는 주제, 글감 아이디어를 보내주세요
-							</p>
-						</div>
-					</FadeIn>
-
-					<FadeIn delay={0.2} class='h-full'>
-						<div class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/40 transition-colors h-full'>
-							<div class='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4'>
-								<svg class='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4'/></svg>
-							</div>
-							<h3 class='font-bold text-lg mb-2'>기술 협업</h3>
-							<p class='text-sm text-text-muted dark:text-gray-400'>
-								오픈소스, 프로젝트, 공동 연구 등 기술 교류
-							</p>
-						</div>
-					</FadeIn>
-
-					<FadeIn delay={0.3} class='h-full'>
-						<div class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/40 transition-colors h-full'>
-							<div class='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4'>
-								<svg class='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'/></svg>
-							</div>
-							<h3 class='font-bold text-lg mb-2'>스폰서십</h3>
-							<p class='text-sm text-text-muted dark:text-gray-400'>
-								IT 제품·서비스 소개 및 브랜드 협업 콘텐츠
-							</p>
-						</div>
-					</FadeIn>
-
-					<FadeIn delay={0.4} class='h-full'>
-						<div class='p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-primary/40 transition-colors h-full'>
-							<div class='w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4'>
-								<svg class='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z'/></svg>
-							</div>
-							<h3 class='font-bold text-lg mb-2'>아이디어 교류</h3>
-							<p class='text-sm text-text-muted dark:text-gray-400'>
-								독자로서의 피드백, 아이디어 보드 외 직접 제안
-							</p>
-						</div>
-					</FadeIn>
-				</div>
-
-				<!-- Process Steps -->
-				<FadeIn direction='up'>
-					<div class='relative py-10 mb-16 border-t border-b border-gray-100 dark:border-gray-800'>
-						<h3 class='font-heading font-bold text-xl mb-8'>진행 과정</h3>
-						<div class='flex flex-col md:flex-row justify-between relative'>
-							<div class='absolute top-[15px] left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-700 hidden md:block -z-10'></div>
-
-							{[
-								{ num: '1', label: '문의 접수' },
-								{ num: '2', label: '내용 검토' },
-								{ num: '3', label: '방향 협의' },
-								{ num: '4', label: '협업 시작' },
-							].map((step, i) => (
-								<div class='flex md:flex-col items-center gap-4 md:gap-2 mb-6 md:mb-0 bg-white dark:bg-[#0a0910] md:bg-transparent pr-4 md:pr-0'>
-									<div class={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-md ${i === 0 ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300'}`}>
-										{step.num}
-									</div>
-									<span class='text-sm font-medium'>{step.label}</span>
-								</div>
-							))}
-						</div>
-					</div>
-				</FadeIn>
-
-				<!-- Email CTA -->
-				<FadeIn direction='up'>
-					<div class='bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden group border border-gray-100 dark:border-gray-700'>
-						<div class='absolute -right-10 -top-10 w-40 h-40 bg-primary/10 dark:bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/20 dark:group-hover:bg-primary/30 transition-colors'></div>
-						<h3 class='text-2xl font-bold mb-2'>바로 연락하기</h3>
-						<p class='text-gray-600 dark:text-gray-400 mb-8 text-sm'>
-							가볍게 아이디어를 던져도 좋습니다. 3일 내 회신드립니다.
-						</p>
-						<a
-							href='mailto:denosinfo@gmail.com'
-							class='block w-full text-center py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-primary/20'
-						>
-							denosinfo@gmail.com
-						</a>
-					</div>
-				</FadeIn>
-
-				<!-- FAQ -->
-				<div class='mt-16'>
-					<h3 class='font-heading font-bold text-xl mb-6'>자주 묻는 질문</h3>
-					<div class='space-y-4'>
-						<details class='group border-b border-gray-100 dark:border-gray-800 pb-4'>
-							<summary class='flex justify-between items-center font-medium cursor-pointer list-none'>
-								<span>콘텐츠 협업은 어떤 방식으로 진행되나요?</span>
-								<span class='transition group-open:rotate-180'>
-									<svg fill='none' height='24' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' viewBox='0 0 24 24' width='24'><path d='M6 9l6 6 6-6'></path></svg>
-								</span>
-							</summary>
-							<p class='text-text-muted dark:text-gray-400 mt-3 text-sm leading-relaxed'>
-								제품/서비스를 직접 사용해보고 솔직한 경험을 기반으로 글을 작성합니다. 광고임을 명시하며, 사실과 다른 내용은 게재하지 않습니다.
-							</p>
-						</details>
-						<details class='group border-b border-gray-100 dark:border-gray-800 pb-4'>
-							<summary class='flex justify-between items-center font-medium cursor-pointer list-none'>
-								<span>콘텐츠 제안은 어떻게 하면 되나요?</span>
-								<span class='transition group-open:rotate-180'>
-									<svg fill='none' height='24' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' viewBox='0 0 24 24' width='24'><path d='M6 9l6 6 6-6'></path></svg>
-								</span>
-							</summary>
-							<p class='text-text-muted dark:text-gray-400 mt-3 text-sm leading-relaxed'>
-								이메일로 자유롭게 보내주시거나, 아이디어 페이지에서 직접 제안하실 수 있습니다. 간단한 메모 수준도 환영합니다.
-							</p>
-						</details>
-						<details class='group border-b border-gray-100 dark:border-gray-800 pb-4'>
-							<summary class='flex justify-between items-center font-medium cursor-pointer list-none'>
-								<span>독자로서 피드백을 보내고 싶어요</span>
-								<span class='transition group-open:rotate-180'>
-									<svg fill='none' height='24' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' viewBox='0 0 24 24' width='24'><path d='M6 9l6 6 6-6'></path></svg>
-								</span>
-							</summary>
-							<p class='text-text-muted dark:text-gray-400 mt-3 text-sm leading-relaxed'>
-								가장 환영하는 유형의 연락입니다. 오타, 오류 지적, 보완 요청 등 모두 소중하게 읽고 반영합니다.
-							</p>
-						</details>
-					</div>
-				</div>
-
-			</div>
+	<section class='faq-section'>
+		<FadeIn direction='up'>
+			<p class='eyebrow'>FAQ</p>
+			<h2>자주 묻는 질문</h2>
+		</FadeIn>
+		<div class='faq-list'>
+			<details open>
+				<summary>협찬 글도 가능한가요?</summary>
+				<p>가능합니다. 다만 광고 여부를 표시하고, 사실과 다른 내용은 싣지 않습니다.</p>
+			</details>
+			<details>
+				<summary>가벼운 주제 제안도 가능한가요?</summary>
+				<p>가능합니다. 짧은 메모, 링크, 현장에서 생긴 질문도 보내주세요.</p>
+			</details>
+			<details>
+				<summary>회신은 얼마나 걸리나요?</summary>
+				<p>
+					내용을 확인한 뒤 보통 3일 안에 답변합니다. 긴급한 일정이 있으면 메일 제목에 표시해주세요.
+				</p>
+			</details>
 		</div>
-	</div>
+	</section>
 </BaseLayout>
+
+<style>
+	.contact-hero,
+	.contact-grid,
+	.process-section,
+	.faq-section {
+		position: relative;
+		z-index: 1;
+		width: min(1180px, calc(100vw - 48px));
+		margin-inline: auto;
+	}
+
+	.contact-hero {
+		display: grid;
+		min-height: 82dvh;
+		place-items: center;
+		padding: 8rem 0 5rem;
+		text-align: center;
+	}
+
+	.eyebrow {
+		margin: 0 0 1rem;
+		color: #6ae4ff;
+		font-size: 13px;
+		font-weight: 850;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+	}
+
+	h1,
+	h2,
+	p {
+		margin: 0;
+	}
+
+	.contact-hero h1 {
+		color: #f6f7fb;
+		font-size: clamp(56px, 8.8vw, 122px);
+		font-weight: 880;
+		line-height: 0.94;
+		letter-spacing: -0.08em;
+		text-wrap: balance;
+	}
+
+	.lead {
+		max-width: 790px;
+		margin: 2rem auto 0;
+		color: rgba(246, 247, 251, 0.68);
+		font-size: clamp(18px, 2vw, 24px);
+		line-height: 1.5;
+	}
+
+	.mail-button {
+		display: inline-flex;
+		margin-top: 2.2rem;
+		border-radius: 999px;
+		background: #f6f7fb;
+		color: #05060a;
+		padding: 1rem 1.35rem;
+		font-weight: 850;
+		transition: transform 180ms ease;
+	}
+
+	.mail-button:hover {
+		transform: translateY(-2px);
+	}
+
+	.contact-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 1rem;
+		padding: clamp(4rem, 8vw, 8rem) 0;
+	}
+
+	.contact-card,
+	.step-card,
+	.faq-list details {
+		border: 1px solid rgba(246, 247, 251, 0.1);
+		border-radius: 2rem;
+		background: rgba(246, 247, 251, 0.045);
+		backdrop-filter: blur(4px);
+		transition:
+			transform 220ms ease,
+			border-color 220ms ease,
+			background 220ms ease;
+	}
+
+	.contact-card:hover,
+	.step-card:hover,
+	.faq-list details:hover {
+		transform: translateY(-4px);
+		border-color: rgba(106, 228, 255, 0.34);
+		background: rgba(246, 247, 251, 0.07);
+	}
+
+	.contact-card {
+		min-height: 270px;
+		padding: 1.6rem;
+	}
+
+	.contact-card span {
+		color: #6ae4ff;
+		font-weight: 850;
+	}
+
+	.contact-card h2 {
+		max-width: 9ch;
+		margin-top: 3rem;
+		color: #f6f7fb;
+		font-size: clamp(34px, 5vw, 68px);
+		font-weight: 800;
+		line-height: 0.95;
+		letter-spacing: -0.06em;
+	}
+
+	.contact-card p {
+		margin-top: 1rem;
+		color: rgba(246, 247, 251, 0.64);
+		font-size: 18px;
+		line-height: 1.55;
+	}
+
+	.process-section,
+	.faq-section {
+		padding: clamp(5rem, 10vw, 9rem) 0;
+	}
+
+	.process-heading {
+		max-width: 760px;
+		margin-bottom: 2rem;
+	}
+
+	.process-heading h2,
+	.faq-section h2 {
+		color: #f6f7fb;
+		font-size: clamp(42px, 6.2vw, 84px);
+		font-weight: 820;
+		line-height: 0.98;
+		letter-spacing: -0.06em;
+	}
+
+	.step-row {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 1rem;
+	}
+
+	.step-card {
+		min-height: 190px;
+		padding: 1.4rem;
+	}
+
+	.step-card strong {
+		display: block;
+		color: rgba(246, 247, 251, 0.16);
+		font-size: clamp(58px, 8vw, 112px);
+		font-weight: 900;
+		line-height: 0.8;
+		letter-spacing: -0.08em;
+	}
+
+	.step-card span {
+		display: block;
+		margin-top: 2rem;
+		color: #f6f7fb;
+		font-size: 20px;
+		font-weight: 760;
+	}
+
+	.faq-list {
+		display: grid;
+		gap: 1rem;
+		margin-top: 2rem;
+	}
+
+	.faq-list details {
+		padding: 1.3rem 1.5rem;
+	}
+
+	.faq-list summary {
+		cursor: pointer;
+		color: #f6f7fb;
+		font-size: 20px;
+		font-weight: 760;
+	}
+
+	.faq-list p {
+		margin-top: 1rem;
+		color: rgba(246, 247, 251, 0.64);
+		line-height: 1.55;
+	}
+
+	@media (max-width: 860px) {
+		.contact-grid,
+		.step-row {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

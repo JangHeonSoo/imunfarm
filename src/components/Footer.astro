@@ -2,9 +2,104 @@
 const today = new Date()
 ---
 
-<footer class='flex w-full items-center justify-center border-t border-white/10 px-6 py-10'>
-	<p class='text-sm text-[#f2f4ea]/50'>
+<footer class='ag-footer'>
+	<div class='ag-footer-top'>
+		<h2>농업인을 위한 지식블로그</h2>
+		<nav aria-label='Footer navigation'>
+			<a href='/contact'>Contact</a>
+			<a href='/blog'>Blog</a>
+			<a href='/about'>About</a>
+			<a href='/tags'>Tags</a>
+		</nav>
+	</div>
+	<div class='ag-footer-mega' aria-hidden='true'>IMUN.FARM</div>
+	<p class='ag-footer-copy'>
 		&copy; {today.getFullYear()}
-		<strong class='text-[#d8ff4f]'>imun.farm</strong>. All rights reserved.
+		<strong>imun.farm</strong>. All rights reserved.
 	</p>
 </footer>
+
+<style>
+	.ag-footer {
+		position: relative;
+		z-index: 1;
+		overflow: hidden;
+		width: min(100%, calc(100vw - 32px));
+		margin: clamp(7rem, 14vw, 14rem) auto 0;
+		border-top: 1px solid rgba(246, 247, 251, 0.08);
+		padding: clamp(2rem, 5vw, 4rem) 1rem 2rem;
+		color: #f6f7fb;
+		background: transparent;
+	}
+
+	.ag-footer-top {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(260px, 0.85fr);
+		gap: 2rem;
+		width: min(1180px, 100%);
+		margin: 0 auto;
+		align-items: start;
+	}
+
+	.ag-footer-top h2 {
+		margin: 0;
+		color: #f6f7fb;
+		font-size: clamp(24px, 3vw, 36px);
+		font-weight: 600;
+		letter-spacing: -0.025em;
+	}
+
+	.ag-footer nav {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.9rem 3rem;
+	}
+
+	.ag-footer a {
+		color: rgba(246, 247, 251, 0.58);
+		font-size: 14px;
+		font-weight: 500;
+		transition: color 150ms ease;
+	}
+
+	.ag-footer a:hover {
+		color: #f6f7fb;
+	}
+
+	.ag-footer-mega {
+		width: min(1180px, 100%);
+		margin: clamp(4rem, 8vw, 7rem) auto 0;
+		color: rgba(246, 247, 251, 0.055);
+		font-size: clamp(84px, 18vw, 230px);
+		font-weight: 900;
+		line-height: 0.78;
+		letter-spacing: -0.09em;
+		white-space: nowrap;
+		transform: translateX(-0.04em);
+		user-select: none;
+		text-shadow: 0 0 70px rgba(106, 228, 255, 0.035);
+	}
+
+	.ag-footer-copy {
+		width: min(1180px, 100%);
+		margin: 2rem auto 0;
+		color: rgba(246, 247, 251, 0.36);
+		font-size: 13px;
+		text-align: center;
+	}
+
+	.ag-footer-copy strong {
+		color: rgba(246, 247, 251, 0.5);
+	}
+
+	@media (max-width: 760px) {
+		.ag-footer-top,
+		.ag-footer nav {
+			grid-template-columns: 1fr;
+		}
+
+		.ag-footer-mega {
+			font-size: clamp(64px, 22vw, 120px);
+		}
+	}
+</style>

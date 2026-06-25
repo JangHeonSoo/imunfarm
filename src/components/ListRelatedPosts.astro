@@ -1,8 +1,7 @@
 ---
 import type { CollectionEntry } from 'astro:content'
 
-import { cn, getCategoryName, sluglify, getPostUrl, DEFAULT_LOCALE } from '@/utils'
-import { Image } from 'astro:assets'
+import { cn, getPostUrl, DEFAULT_LOCALE } from '@/utils'
 
 type Props = {
 	posts: CollectionEntry<'blog'>[]
@@ -15,35 +14,23 @@ const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
 <section class={cn(`grid gap-4 md:grid-cols-3`)}>
 	{
 		posts.length > 0 ? (
-			posts.map((post) => {
-				const categorySlug = sluglify(getCategoryName(post.data.category).toLowerCase())
+			posts.map((post, index) => {
 				return (
-					<div class='flex min-w-0 items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.045] p-4'>
-						{post.data.heroImage ? (
-							<div class='shrink-0'>
-								<Image
-									src={post.data.heroImage}
-									width={200}
-									height={200}
-									format='webp'
-									class='h-16 w-16 rounded-full object-cover'
-									alt={`img of ${post.data.title}`}
-								/>
-							</div>
-						) : null}
-						<header class='min-w-0 flex-1'>
-							<a
-								class='block font-medium leading-snug text-[#f2f4ea] hover:text-[#d8ff4f]'
-								href={getPostUrl(post.slug, currentLocale, post.data.category)}
-							>
+					<a
+						class='group flex min-h-36 min-w-0 flex-col justify-between rounded-2xl border border-white/12 bg-white/[0.045] p-5 transition-all hover:-translate-y-1 hover:border-[#6ae4ff]/35 hover:bg-white/[0.07]'
+						href={getPostUrl(post.slug, currentLocale, post.data.category)}
+					>
+						<span class='text-sm font-bold text-[#6ae4ff]'>0{index + 1}</span>
+						<header class='mt-8 min-w-0'>
+							<p class='line-clamp-3 font-semibold leading-snug text-[#f6f7fb] transition-colors group-hover:text-[#6ae4ff]'>
 								{post.data.title}
-							</a>
+							</p>
 						</header>
-					</div>
+					</a>
 				)
 			})
 		) : (
-			<span class='text-[#f2f4ea]/50'>There are no related posts yet.</span>
+			<span class='text-[#f6f7fb]/50'>There are no related posts yet.</span>
 		)
 	}
 </section>

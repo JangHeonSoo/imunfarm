@@ -4,9 +4,7 @@ import FormattedDate from '@/components/FormattedDate'
 import BaseLayout from '@/layouts/BaseLayout'
 import Tag from '@/components/Tag'
 import WaterButton from '@/components/WaterButton'
-import Giscus from '@/components/Giscus'
 import type { MarkdownHeading } from 'astro'
-import { Image } from 'astro:assets'
 import { siteConfig } from '@/site-config'
 
 type Props = {
@@ -17,7 +15,7 @@ type Props = {
 }
 
 const { data, readTime, headings, id } = Astro.props
-const { title, description, pubDate, heroImage, tags, comments } = data
+const { title, description, pubDate, heroImage, tags } = data
 
 const articleDate = pubDate.toISOString()
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).href
@@ -94,19 +92,13 @@ const breadcrumbSchema = {
 	<article class='article-shell min-w-full sm:max-w-none md:max-w-none'>
 		<header class='article-hero mb-3 flex flex-col justify-center items-center gap-6'>
 			<div class='flex flex-col gap-2'>
-				<div
-					class='flex items-center justify-center gap-x-1 bg-white/5 px-4 py-2 rounded-full mb-4 border border-white/15 backdrop-blur-sm'
-				>
-					<p class='text-center text-sm font-semibold text-[#d8ff4f]'>
-						Imun Farmer &middot; Published: <FormattedDate date={pubDate} />
+				<div class='article-meta-pill'>
+					<p>
+						IMUN.FARM &middot; Published: <FormattedDate date={pubDate} />
 					</p>
-					<p class='text-center text-sm text-[#d8ff4f] font-bold'>
-						- 예상 수확: {readTime}
-					</p>
+					<p>- 읽는 시간: {readTime}</p>
 				</div>
-				<h1
-					class='text-center text-4xl md:text-6xl md:pb-2.5 font-black text-[#f2f4ea] tracking-[-0.06em]'
-				>
+				<h1 class='article-title'>
 					{title}
 				</h1>
 			</div>
@@ -116,24 +108,7 @@ const breadcrumbSchema = {
 			</div>
 		</header>
 
-		<>
-			{
-				heroImage && (
-					<Image
-						src={heroImage}
-						width={1000}
-						height={500}
-						quality={100}
-						format='jpg'
-						loading='eager'
-						class='rounded-[28px] w-full max-h-[300px] md:max-h-[500px] my-8 object-cover border border-white/10 shadow-[0_32px_90px_rgba(0,0,0,0.28)]'
-						alt={`img of ${title}`}
-					/>
-				)
-			}
-		</>
-
-		<hr />
+		<hr class='article-divider' />
 
 		<div>
 			<slot />
@@ -149,47 +124,109 @@ const breadcrumbSchema = {
 				'unknown'}
 		/>
 	</article>
-	<Giscus enabled={comments} />
 </BaseLayout>
 
 <style>
 	.article-shell {
 		position: relative;
-		margin-top: 2rem;
-		padding: clamp(5rem, 9vw, 8rem) 0 3rem;
+		z-index: 1;
+		width: min(1180px, calc(100vw - 48px));
+		margin: 0 auto;
+		padding: clamp(7rem, 11vw, 11rem) 0 3rem;
 	}
 
 	.article-hero {
-		border: 1px solid rgba(255, 255, 255, 0.12);
-		border-radius: 34px;
-		padding: clamp(2rem, 5vw, 4.5rem);
-		background:
-			radial-gradient(circle at 20% 15%, rgba(216, 255, 79, 0.12), transparent 24rem),
-			linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025));
-		backdrop-filter: blur(14px);
-		box-shadow: 0 32px 90px rgba(0, 0, 0, 0.24);
+		border: 1px solid rgba(246, 247, 251, 0.1);
+		border-radius: 2rem;
+		padding: clamp(2rem, 5vw, 5rem);
+		background: rgba(246, 247, 251, 0.045);
+		box-shadow: 0 32px 100px rgba(0, 0, 0, 0.18);
+		backdrop-filter: blur(4px);
+	}
+
+	.article-meta-pill {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: 0.35rem;
+		width: max-content;
+		max-width: 100%;
+		margin: 0 auto 1.4rem;
+		border: 1px solid rgba(106, 228, 255, 0.22);
+		border-radius: 999px;
+		background: rgba(106, 228, 255, 0.08);
+		color: #6ae4ff;
+		padding: 0.6rem 0.95rem;
+	}
+
+	.article-meta-pill p {
+		margin: 0;
+		font-size: 13px;
+		font-weight: 760;
+	}
+
+	.article-title {
+		max-width: 1040px;
+		margin: 0 auto;
+		text-align: center;
+		color: #f6f7fb;
+		font-size: clamp(3rem, 7vw, 7.4rem);
+		font-weight: 860;
+		line-height: 0.95;
+		letter-spacing: -0.08em;
+		text-wrap: balance;
+	}
+
+	.article-divider {
+		margin: clamp(2rem, 5vw, 4rem) 0;
+		border-color: rgba(246, 247, 251, 0.1);
 	}
 
 	:global(.article-shell .prose) {
 		max-width: none;
-		color: rgba(242, 244, 234, 0.78);
+		color: rgba(246, 247, 251, 0.72) !important;
+		font-size: clamp(18px, 1.6vw, 21px);
+		line-height: 1.8;
 	}
 
 	:global(.article-shell .prose h1),
 	:global(.article-shell .prose h2),
 	:global(.article-shell .prose h3),
-	:global(.article-shell .prose h4) {
-		color: #f2f4ea !important;
-		letter-spacing: -0.04em;
+	:global(.article-shell .prose h4),
+	:global(.article-shell .prose h5),
+	:global(.article-shell .prose h6) {
+		color: #f6f7fb !important;
+		letter-spacing: -0.055em;
+		line-height: 1.05;
+	}
+
+	:global(.article-shell .prose h1) {
+		font-size: clamp(2.4rem, 5vw, 5rem);
+	}
+
+	:global(.article-shell .prose h2) {
+		margin-top: 4rem;
+		font-size: clamp(2rem, 4vw, 4rem);
+	}
+
+	:global(.article-shell .prose p),
+	:global(.article-shell .prose li) {
+		color: rgba(246, 247, 251, 0.68) !important;
+	}
+
+	:global(.article-shell .prose strong) {
+		color: #f6f7fb !important;
 	}
 
 	:global(.article-shell .prose a) {
-		color: #d8ff4f;
+		color: #6ae4ff !important;
+		text-decoration-color: rgba(106, 228, 255, 0.35);
 	}
 
 	:global(.article-shell .prose blockquote) {
-		border-left-color: #d8ff4f;
-		background: rgba(255, 255, 255, 0.045);
+		border-left-color: #6ae4ff;
+		background: rgba(246, 247, 251, 0.045);
 		border-radius: 0 18px 18px 0;
 		padding: 1rem 1.25rem;
 	}
@@ -197,6 +234,17 @@ const breadcrumbSchema = {
 	:global(.article-shell .prose table) {
 		border-radius: 18px;
 		overflow: hidden;
+		background: rgba(246, 247, 251, 0.045);
+	}
+
+	:global(.article-shell .prose img) {
+		border-radius: 1.5rem;
+		border: 1px solid rgba(246, 247, 251, 0.1);
+		box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+	}
+
+	:global(.article-shell footer h2) {
+		color: #f6f7fb !important;
 	}
 </style>
 
@@ -211,24 +259,18 @@ const breadcrumbSchema = {
 				const index = document.querySelector(`aside a[href="#${entry.target.id}"]`)
 
 				if (entry.isIntersecting) {
-					index?.classList.remove('bg-slate-200', 'dark:bg-slate-800') // remove bg
 					index?.classList.add(
-						'bg-indigo-600',
-						'dark:bg-indigo-700',
-						'text-white',
-						'font-bold',
-						'transition-colors',
-						'duration-200'
+						'text-[#6ae4ff]',
+						'border-[#6ae4ff]/40',
+						'bg-white/[0.07]',
+						'font-bold'
 					)
 				} else {
-					index?.classList.add('bg-slate-200', 'dark:bg-slate-800') // add bg
 					index?.classList.remove(
-						'bg-indigo-600',
-						'dark:bg-indigo-700',
-						'text-white',
-						'font-bold',
-						'transition-colors',
-						'duration-200'
+						'text-[#6ae4ff]',
+						'border-[#6ae4ff]/40',
+						'bg-white/[0.07]',
+						'font-bold'
 					)
 				}
 			})

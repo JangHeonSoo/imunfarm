@@ -1,149 +1,84 @@
 ---
 import HeaderLink from '@/components/HeaderLink'
 import MenuIcon from './icons/MenuIcon.astro'
-import Search from '@/components/Search'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, getLocalePrefix, getPostUrl } from '@/utils'
 
 const { postSlug, postCategory } = Astro.props
-
 const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
 const localePrefix = getLocalePrefix(currentLocale)
 const currentPath = Astro.url.pathname
 
-const buildLocalePath = (targetLocale: string) => {
-	// If we have explicit post info, use getPostUrl for precise mapping
-	if (postSlug) {
-		return getPostUrl(postSlug, targetLocale, postCategory)
-	}
+const buildHomePath = (targetLocale: string) =>
+	targetLocale === DEFAULT_LOCALE ? '/' : `/${targetLocale}/`
 
+const buildLocalePath = (targetLocale: string) => {
+	if (postSlug) return getPostUrl(postSlug, targetLocale, postCategory)
 	const segments = currentPath.split('/').filter(Boolean)
 	const hasLocalePrefix = SUPPORTED_LOCALES.includes(segments[0] as any)
 	const rest = hasLocalePrefix ? segments.slice(1) : segments
-
-	if (rest.length === 0) {
-		return buildHomePath(targetLocale)
-	}
-
-	// Prevent /ko prefix if not wanted, but keep others
+	if (rest.length === 0) return buildHomePath(targetLocale)
 	const effectivePrefix = targetLocale === DEFAULT_LOCALE ? '' : `/${targetLocale}`
-
-	// Handle Tags mapping
-	if (rest[0] === 'tags') {
-		return `${effectivePrefix}/${rest.join('/').toLowerCase()}`
-	}
-
-	const newPath = `/${[targetLocale, ...rest].join('/')}`
-	return newPath.replace(/\/ko\//, '/').replace(/\/ko$/, '/')
-}
-const buildHomePath = (targetLocale: string) => {
-	return targetLocale === DEFAULT_LOCALE ? '/' : `/${targetLocale}/`
+	return `${effectivePrefix}/${rest.join('/')}`.replace(/\/ko\//, '/').replace(/\/ko$/, '/')
 }
 ---
 
-<header
-	class='fixed left-1/2 top-[18px] z-50 w-[min(1720px,calc(100vw-36px))] -translate-x-1/2 rounded-full border border-white/15 bg-[#070807]/60 px-[14px] py-3 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl'
->
-	<div class='grid w-full grid-cols-[auto_1fr] items-center gap-4'>
-		<a
-			class='flex min-w-[148px] items-center gap-3 text-base font-extrabold tracking-[-0.04em] text-[#f2f4ea]'
-			href={buildHomePath(currentLocale)}
-		>
-			<span
-				class='h-9 w-9 rounded-full bg-[conic-gradient(from_180deg,#d8ff4f,#7cf7ff,#ff7ad9,#ffb35c,#d8ff4f)] shadow-[0_0_42px_rgba(216,255,79,0.34)]'
-			></span>
+<header class='ag-site-header'>
+	<nav class='ag-site-nav' aria-label='Primary navigation'>
+		<a class='ag-wordmark' href={buildHomePath(currentLocale)} aria-label='IMUN.FARM Home'>
 			<span>IMUN.FARM</span>
 		</a>
 
-		<div class='ml-auto flex min-w-0 items-center justify-end gap-2'>
-			<nav
-				class='hidden min-w-0 items-center justify-end gap-2 text-xs uppercase tracking-[0.12em] text-[#f2f4ea]/70 md:flex'
-			>
-				<HeaderLink
-					href={`${localePrefix}/blog`}
-					class='rounded-full px-3 py-2 font-medium transition-colors hover:bg-white/10 hover:text-[#f2f4ea]'
-				>
-					{currentLocale === 'en' ? 'Blog' : '블로그'}
-				</HeaderLink>
-				<HeaderLink
-					href={`${localePrefix}/about`}
-					class='rounded-full px-3 py-2 font-medium transition-colors hover:bg-white/10 hover:text-[#f2f4ea]'
-				>
-					{currentLocale === 'en' ? 'About' : '소개'}
-				</HeaderLink>
-				<HeaderLink
-					href={`${localePrefix}/contact`}
-					class='rounded-full px-3 py-2 font-medium transition-colors hover:bg-white/10 hover:text-[#f2f4ea]'
-				>
-					{currentLocale === 'en' ? 'Contact' : '협찬문의'}
-				</HeaderLink>
-				<HeaderLink
-					href={`${localePrefix}/tags`}
-					class='rounded-full px-3 py-2 font-medium transition-colors hover:bg-white/10 hover:text-[#f2f4ea]'
-				>
-					Tags
-				</HeaderLink>
-				<div class='flex items-center gap-2 pl-2 text-xs font-bold uppercase tracking-wider'>
-					{
-						SUPPORTED_LOCALES.map((locale: (typeof SUPPORTED_LOCALES)[number]) => (
-							<a
-								href={buildLocalePath(locale)}
-								class={
-									locale === currentLocale
-										? 'text-[#d8ff4f]'
-										: 'text-[#f2f4ea]/50 hover:text-[#d8ff4f]'
-								}
-							>
-								{locale.toUpperCase()}
-							</a>
-						))
-					}
-				</div>
-			</nav>
-			<div class='flex items-center gap-2 text-xs font-bold uppercase tracking-wider md:hidden'>
+		<div class='ag-desktop-nav'>
+			<HeaderLink href={`${localePrefix}/blog`}>
+				{currentLocale === 'en' ? 'Blog' : '블로그'}
+			</HeaderLink>
+			<HeaderLink href={`${localePrefix}/about`}>
+				{currentLocale === 'en' ? 'About' : '소개'}
+			</HeaderLink>
+			<HeaderLink href={`${localePrefix}/contact`}>
+				{currentLocale === 'en' ? 'Contact' : '협찬문의'}
+			</HeaderLink>
+			<HeaderLink href={`${localePrefix}/tags`}>Tags</HeaderLink>
+		</div>
+
+		<div class='ag-nav-actions'>
+			<div class='ag-lang-switch' aria-label='Language selector'>
 				{
 					SUPPORTED_LOCALES.map((locale: (typeof SUPPORTED_LOCALES)[number]) => (
-						<a
-							href={buildLocalePath(locale)}
-							class={
-								locale === currentLocale
-									? 'text-[#d8ff4f]'
-									: 'text-[#f2f4ea]/50 hover:text-[#d8ff4f]'
-							}
-						>
+						<a href={buildLocalePath(locale)} class={locale === currentLocale ? 'active' : ''}>
 							{locale.toUpperCase()}
 						</a>
 					))
 				}
 			</div>
-			<Search />
+			<a class='ag-download' href={`${localePrefix}/contact`}>
+				{currentLocale === 'en' ? 'Contact' : '협찬문의'}
+				<span aria-hidden='true'>→</span>
+			</a>
 			<button
 				id='astro-header-drawer-button'
 				type='button'
-				class='rounded-full border border-white/15 p-2 text-[#f2f4ea] md:hidden'
+				class='ag-menu-button'
+				aria-label='Open menu'
 			>
 				<MenuIcon />
-				<span class='sr-only'>Show Menu</span>
 			</button>
 		</div>
-	</div>
+	</nav>
 </header>
 
-<!-- Mobile Menu -->
-<div
-	id='astro-header-drawer'
-	class='md:hidden fixed top-24 right-4 z-40 h-auto w-72 rounded-3xl border border-white/15 bg-[#070807]/95 shadow-xl backdrop-blur-xl transform translate-x-[120%] transition-transform duration-300'
->
-	<nav class='flex flex-col items-end p-6 gap-4 text-right text-[#f2f4ea]'>
-		<HeaderLink href={`${localePrefix}/blog`} class='text-lg'>
+<div id='astro-header-drawer' class='ag-mobile-menu translate-x-[120%]'>
+	<nav>
+		<HeaderLink href={`${localePrefix}/blog`}>
 			{currentLocale === 'en' ? 'Blog' : '블로그'}
 		</HeaderLink>
-		<HeaderLink href={`${localePrefix}/about`} class='text-lg opacity-70'>
+		<HeaderLink href={`${localePrefix}/about`}>
 			{currentLocale === 'en' ? 'About' : '소개'}
 		</HeaderLink>
-		<HeaderLink href={`${localePrefix}/contact`} class='text-lg opacity-70'>
+		<HeaderLink href={`${localePrefix}/contact`}>
 			{currentLocale === 'en' ? 'Contact' : '협찬문의'}
 		</HeaderLink>
-		<HeaderLink href={`${localePrefix}/tags`} class='text-lg opacity-70'>Tags</HeaderLink>
+		<HeaderLink href={`${localePrefix}/tags`}>Tags</HeaderLink>
 	</nav>
 </div>
 
@@ -151,36 +86,182 @@ const buildHomePath = (targetLocale: string) => {
 	function initMobileMenu() {
 		const menu = document.getElementById('astro-header-drawer')
 		const menuButton = document.getElementById('astro-header-drawer-button')
-
 		if (!menu || !menuButton) return
-
 		menuButton.addEventListener('click', (e) => {
 			e.stopPropagation()
 			menu.classList.toggle('translate-x-[120%]')
 		})
-
 		document.addEventListener('click', (event) => {
-			const isClickInside =
-				menu.contains(event.target as HTMLElement) ||
-				menuButton.contains(event.target as HTMLElement)
-			if (!isClickInside && !menu.classList.contains('translate-x-[120%]')) {
+			const target = event.target as HTMLElement
+			if (!menu.contains(target) && !menuButton.contains(target))
 				menu.classList.add('translate-x-[120%]')
-			}
 		})
-
-		const menuLinks = menu.querySelectorAll('a')
-		menuLinks.forEach((link) => {
-			link.addEventListener('click', () => {
-				menu.classList.add('translate-x-[120%]')
-			})
-		})
+		menu
+			.querySelectorAll('a')
+			.forEach((link) =>
+				link.addEventListener('click', () => menu.classList.add('translate-x-[120%]'))
+			)
 	}
-
-	if (document.readyState === 'loading') {
+	if (document.readyState === 'loading')
 		document.addEventListener('DOMContentLoaded', initMobileMenu)
-	} else {
-		initMobileMenu()
-	}
-
+	else initMobileMenu()
 	document.addEventListener('astro:page-load', initMobileMenu)
 </script>
+
+<style>
+	.ag-site-header {
+		position: fixed;
+		inset: 0 0 auto;
+		z-index: 50;
+		color: #f6f7fb;
+	}
+
+	.ag-site-nav {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		width: min(1140px, calc(100vw - 96px));
+		height: 52px;
+		margin: 0 auto;
+	}
+
+	.ag-wordmark,
+	.ag-desktop-nav :global(a),
+	.ag-download {
+		color: #f6f7fb;
+		font-size: 15px;
+		font-weight: 500;
+		letter-spacing: 0;
+	}
+
+	.ag-wordmark {
+		display: inline-flex;
+		align-items: center;
+		width: max-content;
+		font-size: 18px;
+		font-weight: 700;
+		letter-spacing: -0.03em;
+	}
+
+	.ag-desktop-nav {
+		display: flex;
+		align-items: center;
+		gap: 2.4rem;
+	}
+
+	.ag-desktop-nav :global(a),
+	.ag-wordmark {
+		transition: opacity 150ms ease;
+	}
+
+	.ag-desktop-nav :global(a:hover),
+	.ag-wordmark:hover {
+		opacity: 0.68;
+	}
+
+	.ag-nav-actions {
+		justify-self: end;
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.ag-lang-switch {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.ag-lang-switch a {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		height: 36px;
+		border: 1px solid rgba(246, 247, 251, 0.15);
+		border-radius: 999px;
+		color: rgba(246, 247, 251, 0.72);
+		font-size: 11px;
+		font-weight: 700;
+		background: transparent;
+	}
+
+	.ag-lang-switch a.active {
+		color: #05060a;
+		background: #f6f7fb;
+	}
+
+	.ag-download {
+		display: inline-flex;
+		min-height: 42px;
+		align-items: center;
+		gap: 0.55rem;
+		border-radius: 999px;
+		background: #f6f7fb;
+		color: #05060a;
+		padding: 0 1.1rem;
+		transition:
+			transform 180ms ease,
+			background-color 150ms ease;
+	}
+
+	.ag-download:hover {
+		transform: translateY(-1px);
+		background: #ffffff;
+	}
+
+	.ag-menu-button {
+		display: none;
+	}
+
+	.ag-mobile-menu {
+		position: fixed;
+		top: 62px;
+		right: 24px;
+		z-index: 45;
+		width: min(300px, calc(100vw - 48px));
+		border: 1px solid rgba(246, 247, 251, 0.12);
+		border-radius: 24px;
+		background: rgba(5, 6, 10, 0.94);
+		box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+		backdrop-filter: blur(18px);
+		transition: transform 260ms cubic-bezier(0.19, 1, 0.22, 1);
+	}
+
+	.ag-mobile-menu nav {
+		display: grid;
+		gap: 0.25rem;
+		padding: 1rem;
+	}
+
+	.ag-mobile-menu :global(a) {
+		border-radius: 16px;
+		color: #f6f7fb;
+		font-size: 17px;
+		font-weight: 600;
+		padding: 0.85rem 1rem;
+	}
+
+	@media (max-width: 820px) {
+		.ag-site-nav {
+			grid-template-columns: 1fr auto;
+			width: min(100vw - 40px, 680px);
+		}
+		.ag-desktop-nav,
+		.ag-download,
+		.ag-lang-switch {
+			display: none;
+		}
+		.ag-menu-button {
+			display: inline-flex;
+			width: 40px;
+			height: 40px;
+			align-items: center;
+			justify-content: center;
+			border: 1px solid rgba(246, 247, 251, 0.16);
+			border-radius: 999px;
+			background: transparent;
+			color: #f6f7fb;
+		}
+	}
+</style>

@@ -59,9 +59,42 @@
 }
 
 @layer base {
-	/* body {
-		transition: background-color 0.5s ease;
-	} */
+	* {
+		box-sizing: border-box;
+	}
+
+	html {
+		background: #ffffff;
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+
+	body {
+		min-width: 320px;
+		background: #ffffff;
+		color: #121317;
+		font-family: 'Google Sans', 'Google Sans Text', Inter, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+	}
+
+	::-webkit-scrollbar {
+		display: none;
+	}
+
+	button,
+	input,
+	textarea,
+	select {
+		font: inherit;
+	}
+
+	button {
+		cursor: pointer;
+	}
+
+	::selection {
+		color: #ffffff;
+		background: #3f7eff;
+	}
 
 	.prose code {
 		@apply text-base;

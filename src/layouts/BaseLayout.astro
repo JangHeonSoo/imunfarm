@@ -15,19 +15,16 @@ const { hideHeader = false, hideFooter = false, fullBleed = false } = Astro.prop
 		<BaseHead title={title} description={description} ogImage={image} articleDate={articleDate} />
 		<ProviderTheme />
 		<ProviderAnimations />
-		<!-- Google Fonts -->
 		<link rel='preconnect' href='https://fonts.googleapis.com' />
 		<link rel='preconnect' href='https://fonts.gstatic.com' crossorigin />
 		<link
-			href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@300;400;600;700&display=swap'
+			href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;600;700&display=swap'
 			rel='stylesheet'
 		/>
-		<!-- Google AdSense -->
 		<script
 			async
 			src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9192660979184684'
 			crossorigin='anonymous'></script>
-		<!-- Google tag (gtag.js) -->
 		<script async src='https://www.googletagmanager.com/gtag/js?id=G-6ZQ577JL4Q'></script>
 		<script is:inline>
 			const dataLayer = window['dataLayer'] || []
@@ -40,28 +37,238 @@ const { hideHeader = false, hideFooter = false, fullBleed = false } = Astro.prop
 		</script>
 	</head>
 
-	<body class='site-body bg-[#070807] text-[#f2f4ea]'>
+	<body class='site-body bg-[#05060a] text-[#f6f7fb]'>
+		<canvas id='ag-particle-field' class='ag-particle-field' aria-hidden='true'></canvas>
 		<main
 			class:list={[
 				'antialiased overflow-x-hidden',
 				fullBleed
 					? 'min-h-screen'
-					: 'px-5 sm:mx-auto sm:px-8 lg:px-0 max-w-7xl grid gap-12 pt-20 overflow-y-hidden md:overflow-visible'
+					: 'px-5 sm:mx-auto sm:px-8 lg:px-0 max-w-7xl grid gap-12 pt-24 overflow-y-hidden md:overflow-visible'
 			]}
 		>
 			{!hideHeader && <Header postSlug={postSlug} postCategory={postCategory} />}
 			<slot />
 			{!hideFooter && <Footer />}
 		</main>
+		<script>
+			function initAgParticleField() {
+				const canvas = document.getElementById('ag-particle-field') as HTMLCanvasElement | null
+				const context = canvas?.getContext('2d')
+				if (!canvas || !context || canvas.dataset.ready === 'true') return
+				canvas.dataset.ready = 'true'
+
+				const ctx = context
+				const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+				const pointer = { x: 0, y: 0, tx: 0, ty: 0, active: false }
+				const scrollPulse = { x: 0, y: 0, power: 0 }
+				let width = 0
+				let height = 0
+				let frame = 0
+				let rect = canvas.getBoundingClientRect()
+				let particles: Array<{
+					x: number
+					y: number
+					size: number
+					angle: number
+					speed: number
+					tone: number
+					field: number
+					glow: number
+				}> = []
+
+				function resize() {
+					const dpr = Math.min(window.devicePixelRatio || 1, 2)
+					width = canvas.clientWidth
+					height = canvas.clientHeight
+					canvas.width = Math.floor(width * dpr)
+					canvas.height = Math.floor(height * dpr)
+					ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+					rect = canvas.getBoundingClientRect()
+					pointer.x = width * 0.5
+					pointer.y = height * 0.34
+					pointer.tx = pointer.x
+					pointer.ty = pointer.y
+
+					const count = width < 720 ? 360 : 920
+					const cols = Math.ceil(Math.sqrt(count * (width / Math.max(height, 1))))
+					const rows = Math.ceil(count / cols)
+					const cellW = width / cols
+					const cellH = height / rows
+
+					particles = Array.from({ length: count }, (_, index) => {
+						const field = Math.random()
+						const col = index % cols
+						const row = Math.floor(index / cols)
+						return {
+							x: (col + 0.5 + (Math.random() - 0.5) * 0.92) * cellW,
+							y: (row + 0.5 + (Math.random() - 0.5) * 0.92) * cellH,
+							size: Math.random() * 1.05 + 0.45,
+							angle: Math.random() * Math.PI * 2,
+							speed: Math.random() * 0.5 + 0.1,
+							tone: Math.random(),
+							field,
+							glow: 0
+						}
+					})
+				}
+
+				function draw(time = 0) {
+					ctx.clearRect(0, 0, width, height)
+					ctx.fillStyle = '#05060a'
+					ctx.fillRect(0, 0, width, height)
+					pointer.x += (pointer.tx - pointer.x) * (reduceMotion ? 0.04 : 0.14)
+					pointer.y += (pointer.ty - pointer.y) * (reduceMotion ? 0.04 : 0.14)
+
+					for (const particle of particles) {
+						const dx = particle.x - pointer.x
+						const dy = particle.y - pointer.y
+						const distance = Math.sqrt(dx * dx + dy * dy)
+						const hover = pointer.active
+							? Math.max(0, 1 - distance / (470 + particle.field * 280))
+							: 0
+						const scrollDx = particle.x - scrollPulse.x
+						const scrollDy = particle.y - scrollPulse.y
+						const scrollDistance = Math.sqrt(scrollDx * scrollDx + scrollDy * scrollDy)
+						const scrollHover =
+							scrollPulse.power * Math.max(0, 1 - scrollDistance / (520 + particle.field * 360))
+						particle.glow = Math.max(
+							hover,
+							scrollHover,
+							particle.glow * (reduceMotion ? 0.82 : 0.9)
+						)
+						const spread = particle.glow * particle.glow
+						const drift = reduceMotion
+							? 0
+							: Math.sin(time * 0.00024 * particle.speed + particle.angle) *
+								(0.6 + particle.field * 1.4)
+						const pointerPush = hover * hover * (82 + particle.field * 96)
+						const scrollPush = scrollHover * scrollHover * (120 + particle.field * 150)
+						const pointerDirectionX = distance > 0 ? dx / distance : Math.cos(particle.angle)
+						const pointerDirectionY = distance > 0 ? dy / distance : Math.sin(particle.angle)
+						const scrollDirectionX =
+							scrollDistance > 0 ? scrollDx / scrollDistance : Math.cos(particle.angle)
+						const scrollDirectionY =
+							scrollDistance > 0 ? scrollDy / scrollDistance : Math.sin(particle.angle)
+						const x =
+							particle.x +
+							pointerDirectionX * pointerPush +
+							scrollDirectionX * scrollPush +
+							Math.cos(particle.angle) * drift
+						const y =
+							particle.y +
+							pointerDirectionY * pointerPush +
+							scrollDirectionY * scrollPush +
+							Math.sin(particle.angle) * drift
+						const blue = particle.tone > 0.42
+
+						ctx.fillStyle = 'rgba(82, 88, 102, 0.38)'
+						ctx.beginPath()
+						ctx.arc(x, y, particle.size, 0, Math.PI * 2)
+						ctx.fill()
+
+						if (spread > 0.012) {
+							ctx.fillStyle = blue
+								? `rgba(120, 166, 255, ${0.22 + spread * 0.44})`
+								: `rgba(255, 255, 255, ${0.14 + spread * 0.3})`
+							ctx.beginPath()
+							ctx.arc(x, y, particle.size + spread * 1.05, 0, Math.PI * 2)
+							ctx.fill()
+						}
+					}
+
+					scrollPulse.power *= reduceMotion ? 0.8 : 0.88
+					if (!reduceMotion) frame = requestAnimationFrame(draw)
+				}
+
+				function move(event: PointerEvent) {
+					const x = event.clientX - rect.left
+					const y = event.clientY - rect.top
+					pointer.tx = x
+					pointer.ty = y
+					pointer.active = x >= 0 && x <= rect.width && y >= 0 && y <= rect.height
+				}
+
+				function leave() {
+					pointer.active = false
+				}
+				function wheel(event: WheelEvent) {
+					scrollPulse.x = event.clientX - rect.left
+					scrollPulse.y = event.clientY - rect.top
+					scrollPulse.power = Math.min(
+						1,
+						scrollPulse.power + Math.min(Math.abs(event.deltaY) / 520, 0.55)
+					)
+					pointer.tx = scrollPulse.x
+					pointer.ty = scrollPulse.y
+					pointer.active = true
+				}
+
+				resize()
+				draw()
+				window.addEventListener('resize', resize)
+				window.addEventListener('pointermove', move, { passive: true })
+				window.addEventListener('pointerleave', leave)
+				window.addEventListener('wheel', wheel, { passive: true })
+				window.addEventListener('beforeunload', () => cancelAnimationFrame(frame), { once: true })
+			}
+
+			if (document.readyState === 'loading')
+				document.addEventListener('DOMContentLoaded', initAgParticleField)
+			else initAgParticleField()
+			document.addEventListener('astro:page-load', initAgParticleField)
+		</script>
 		<style is:global>
+			:root {
+				color-scheme: dark;
+				--imun-bg: #05060a;
+				--imun-bg-soft: #0b0d12;
+				--imun-surface: #10131b;
+				--imun-container: #171b26;
+				--imun-ink: #f6f7fb;
+				--imun-muted: rgba(246, 247, 251, 0.64);
+				--imun-faint: rgba(246, 247, 251, 0.42);
+				--imun-line: rgba(246, 247, 251, 0.1);
+				--imun-line-strong: rgba(246, 247, 251, 0.18);
+				--imun-blue: #6ae4ff;
+				--imun-blue-soft: #8b5cf6;
+				--imun-mint: #45e3a7;
+				--imun-amber: #f5c77a;
+			}
+
+			html,
 			body {
-				margin-left: calc(100vw - 100%); /* prevent layout shift */
+				background: #05060a;
+			}
+
+			body {
+				margin-left: calc(100vw - 100%);
+				font-family:
+					'Google Sans', 'Google Sans Text', Inter, 'SF Pro Display', 'Segoe UI', system-ui,
+					sans-serif;
+				font-synthesis: none;
+				text-rendering: optimizeLegibility;
+				-webkit-font-smoothing: antialiased;
+				-moz-osx-font-smoothing: grayscale;
 			}
 
 			.site-body {
-				background:
-					radial-gradient(circle at 18% 12%, rgba(216, 255, 79, 0.11), transparent 30rem),
-					radial-gradient(circle at 84% 4%, rgba(124, 247, 255, 0.08), transparent 28rem), #070807;
+				background: #05060a;
+				color: #f6f7fb;
+			}
+
+			.ag-particle-field {
+				position: fixed;
+				inset: 0;
+				z-index: 0;
+				width: 100vw;
+				height: 100dvh;
+				pointer-events: none;
+			}
+
+			.site-body > main {
+				position: relative;
+				z-index: 1;
 			}
 
 			.site-body::before {
@@ -70,47 +277,42 @@ const { hideHeader = false, hideFooter = false, fullBleed = false } = Astro.prop
 				inset: 0;
 				z-index: -1;
 				pointer-events: none;
-				background-image:
-					linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-					linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-				background-size: 48px 48px;
-				opacity: 0.28;
+				background-image: radial-gradient(rgba(246, 247, 251, 0.26) 1px, transparent 1px);
+				background-size: 28px 28px;
+				opacity: 0.22;
 			}
 
 			.site-body .bg-white,
 			.site-body .bg-gray-50,
 			.site-body .bg-bg-light {
-				background-color: rgba(255, 255, 255, 0.045) !important;
+				background-color: rgba(5, 6, 10, 0.38) !important;
+			}
+
+			.site-body .bg-gray-950,
+			.site-body .bg-gray-900,
+			.site-body .bg-gray-800 {
+				background-color: rgba(5, 6, 10, 0.28) !important;
 			}
 
 			.site-body .bg-gray-100,
 			.site-body .bg-gray-200 {
-				background-color: rgba(255, 255, 255, 0.09) !important;
-			}
-
-			.site-body .bg-gray-800,
-			.site-body .bg-gray-900,
-			.site-body .bg-gray-950 {
-				background-color: rgba(7, 8, 7, 0.86) !important;
+				background-color: rgba(246, 247, 251, 0.06) !important;
 			}
 
 			.site-body .border-gray-100,
 			.site-body .border-gray-200,
 			.site-body .border-gray-300,
 			.site-body .border-gray-700,
-			.site-body .border-gray-800 {
-				border-color: rgba(255, 255, 255, 0.12) !important;
-			}
-
+			.site-body .border-gray-800,
 			.site-body [class*='border-white/'] {
-				border-color: rgba(255, 255, 255, 0.12) !important;
+				border-color: rgba(246, 247, 251, 0.1) !important;
 			}
 
 			.site-body .text-text-main,
 			.site-body .text-gray-900,
 			.site-body .text-gray-800,
 			.site-body .text-gray-700 {
-				color: #f2f4ea !important;
+				color: #f6f7fb !important;
 			}
 
 			.site-body .text-text-muted,
@@ -118,20 +320,20 @@ const { hideHeader = false, hideFooter = false, fullBleed = false } = Astro.prop
 			.site-body .text-gray-500,
 			.site-body .text-gray-400,
 			.site-body .text-gray-300 {
-				color: rgba(242, 244, 234, 0.66) !important;
+				color: rgba(246, 247, 251, 0.64) !important;
 			}
 
 			.site-body hr {
-				border-color: rgba(255, 255, 255, 0.12);
+				border-color: rgba(246, 247, 251, 0.1);
 			}
 
 			.in-article-ad-container {
 				margin: 2.5rem 0;
 				padding: 1.25rem;
-				border: 1px solid rgba(255, 255, 255, 0.12);
+				border: 1px solid rgba(246, 247, 251, 0.1);
 				border-radius: 24px;
-				background: rgba(255, 255, 255, 0.045);
-				backdrop-filter: blur(14px);
+				background: rgba(246, 247, 251, 0.05);
+				box-shadow: 0 18px 60px rgba(0, 0, 0, 0.24);
 				min-height: 140px;
 			}
 
@@ -139,21 +341,21 @@ const { hideHeader = false, hideFooter = false, fullBleed = false } = Astro.prop
 				content: 'Advertisement';
 				display: block;
 				margin-bottom: 0.75rem;
-				color: rgba(242, 244, 234, 0.44);
+				color: #8a9099;
 				font-size: 11px;
 				letter-spacing: 0.16em;
 				text-transform: uppercase;
 			}
 
 			.prose {
-				color: rgba(242, 244, 234, 0.78) !important;
+				color: rgba(246, 247, 251, 0.72) !important;
 			}
 
 			.prose p,
 			.prose li,
 			.prose td,
 			.prose figcaption {
-				color: rgba(242, 244, 234, 0.78) !important;
+				color: rgba(246, 247, 251, 0.72) !important;
 			}
 
 			.prose h1,
@@ -164,37 +366,33 @@ const { hideHeader = false, hideFooter = false, fullBleed = false } = Astro.prop
 			.prose h6,
 			.prose strong,
 			.prose th {
-				color: #f2f4ea !important;
+				color: #f6f7fb !important;
 			}
 
 			.prose a {
-				color: #d8ff4f !important;
+				color: #6ae4ff !important;
 			}
 
 			.prose code {
-				color: #7cf7ff !important;
-				background: rgba(255, 255, 255, 0.08);
+				color: #6ae4ff !important;
+				background: rgba(106, 228, 255, 0.1);
 				border-radius: 0.35rem;
 				padding: 0.1rem 0.32rem;
 			}
 
-			.prose pre {
-				background: rgba(7, 8, 7, 0.82) !important;
-				border: 1px solid rgba(255, 255, 255, 0.12);
-				color: #f2f4ea !important;
+			.prose pre,
+			.site-body .prose pre.shiki,
+			.site-body .prose pre.astro-code {
+				background: #0b0d12 !important;
+				border: 1px solid rgba(18, 19, 23, 0.12);
+				color: #f6f7fb !important;
 			}
 
 			.site-body .prose pre code {
 				background: transparent !important;
 				border-radius: 0;
-				color: #f2f4ea !important;
+				color: #f6f7fb !important;
 				padding: 0;
-			}
-
-			.site-body .prose pre.shiki,
-			.site-body .prose pre.astro-code {
-				background: rgba(7, 8, 7, 0.82) !important;
-				color: #f2f4ea !important;
 			}
 
 			.site-body .prose pre.shiki span,

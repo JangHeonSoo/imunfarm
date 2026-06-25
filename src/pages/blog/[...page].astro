@@ -34,29 +34,26 @@ const dateLocale = locale === 'en' ? 'en-US' : 'ko-KR'
 	>
 		<div class='absolute inset-0 opacity-20 pattern-grid-lg'></div>
 		<div
-			class='absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(216,255,79,0.14),transparent_34rem)]'
+			class='absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(106,228,255,0.12),transparent_34rem)]'
 		>
 		</div>
 		<div class='max-w-4xl mx-auto px-4 text-center relative z-10'>
 			<FadeIn delay={0.1} direction='up'>
 				<span
-					class='inline-block py-1 px-3 rounded-full border border-[#d8ff4f]/25 bg-[#d8ff4f]/10 text-[#d8ff4f] font-bold text-sm mb-6 tracking-wide uppercase'
+					class='inline-block py-1 px-3 rounded-full border border-[#6ae4ff]/25 bg-[#6ae4ff]/10 text-[#6ae4ff] font-bold text-sm mb-6 tracking-wide uppercase'
 				>
-					Archive
+					Blog
 				</span>
 				<h1
 					class='text-4xl md:text-6xl font-heading font-black mb-6 text-[#f2f4ea] tracking-[-0.06em]'
 				>
-					Stories & <span
-						class='text-transparent bg-clip-text bg-gradient-to-r from-[#d8ff4f] to-[#7cf7ff]'
-						>Insights</span
-					>
+					농업 지식블로그
 				</h1>
 				<p class='text-lg text-[#f2f4ea]/70 max-w-2xl mx-auto'>
 					{
 						locale === 'en'
-							? `Explore all ${page.total} articles about Smart Farming and Agriculture.`
-							: `총 ${page.total}개의 지식과 인사이트를 탐색하세요.`
+							? `${page.total} posts about farming, smart farms, and solar power.`
+							: `농업 관련 글 ${page.total}개를 모았습니다.`
 					}
 				</p>
 			</FadeIn>
@@ -69,7 +66,7 @@ const dateLocale = locale === 'en' ? 'en-US' : 'ko-KR'
 			{
 				page.data.map((post, index) => (
 					<FadeIn delay={index * 0.1} direction='up'>
-						<article class='rounded-[26px] overflow-hidden border border-white/12 bg-white/[0.055] shadow-[0_24px_70px_rgba(0,0,0,0.18)] hover:-translate-y-1 hover:border-[#d8ff4f]/35 hover:shadow-[0_30px_90px_rgba(0,0,0,0.28)] transition-all duration-300 group flex flex-col h-full'>
+						<article class='rounded-[26px] overflow-hidden border border-white/12 bg-white/[0.045] shadow-[0_24px_70px_rgba(0,0,0,0.18)] hover:-translate-y-1 hover:border-[#6ae4ff]/35 hover:bg-white/[0.07] hover:shadow-[0_30px_90px_rgba(0,0,0,0.28)] transition-all duration-300 group flex flex-col h-full'>
 							{post.data.heroImage && (
 								<a
 									href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`}
@@ -101,7 +98,7 @@ const dateLocale = locale === 'en' ? 'en-US' : 'ko-KR'
 									</time>
 								</div>
 
-								<h2 class='text-xl font-heading font-bold mb-3 text-[#f2f4ea] group-hover:text-[#d8ff4f] transition-colors leading-tight'>
+								<h2 class='text-xl font-heading font-bold mb-3 text-[#f6f7fb] group-hover:text-[#6ae4ff] transition-colors leading-tight'>
 									<a
 										href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`}
 									>
@@ -118,9 +115,9 @@ const dateLocale = locale === 'en' ? 'en-US' : 'ko-KR'
 								<div class='flex items-center justify-between pt-4 border-t border-white/10 mt-auto'>
 									<a
 										href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`}
-										class='text-sm font-bold text-[#d8ff4f] flex items-center gap-1 group/link'
+										class='text-sm font-bold text-[#6ae4ff] flex items-center gap-1 group/link'
 									>
-										Read Article{' '}
+										글 보기{' '}
 										<svg
 											class='w-4 h-4 group-hover/link:translate-x-1 transition-transform'
 											fill='none'

@@ -61,7 +61,7 @@ const pageNumbers = generatePageNumbers()
 		page.start > 0 ? (
 			<a
 				href={page.url.prev}
-				class='flex items-center justify-center w-10 h-10 text-base font-medium text-[#f2f4ea]/70 bg-white/[0.055] border border-white/12 rounded-lg hover:border-[#d8ff4f]/40 hover:text-[#d8ff4f]'
+				class='flex items-center justify-center w-10 h-10 text-base font-medium text-[#f6f7fb]/70 bg-white/[0.045] border border-white/12 rounded-full transition-all hover:-translate-y-0.5 hover:border-[#6ae4ff]/40 hover:bg-white/[0.07] hover:text-[#6ae4ff]'
 			>
 				<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
 					<path
@@ -73,7 +73,7 @@ const pageNumbers = generatePageNumbers()
 				</svg>
 			</a>
 		) : (
-			<span class='flex items-center justify-center w-10 h-10 text-[#f2f4ea]/24 cursor-not-allowed'>
+			<span class='flex items-center justify-center w-10 h-10 text-[#f6f7fb]/24 cursor-not-allowed'>
 				<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
 					<path
 						stroke-linecap='round'
@@ -90,7 +90,7 @@ const pageNumbers = generatePageNumbers()
 		pageNumbers.map((pageNum) => {
 			if (pageNum === '...') {
 				return (
-					<span class='flex items-center justify-center w-10 h-10 text-base font-medium text-[#f2f4ea]/45'>
+					<span class='flex items-center justify-center w-10 h-10 text-base font-medium text-[#f6f7fb]/45'>
 						...
 					</span>
 				)
@@ -99,10 +99,10 @@ const pageNumbers = generatePageNumbers()
 			return (
 				<a
 					href={isCurrentPage ? '#' : getPageUrl(pageNum as number)}
-					class={`flex items-center justify-center w-10 h-10 text-base font-medium rounded-lg ${
+					class={`flex items-center justify-center w-10 h-10 text-base font-semibold rounded-full transition-all ${
 						isCurrentPage
-							? 'bg-[#d8ff4f] text-[#080907]'
-							: 'text-[#f2f4ea]/70 bg-white/[0.055] border border-white/12 hover:border-[#d8ff4f]/40 hover:text-[#d8ff4f]'
+							? 'bg-[#f6f7fb] text-[#05060a] shadow-[0_0_28px_rgba(106,228,255,0.16)]'
+							: 'text-[#f6f7fb]/70 bg-white/[0.045] border border-white/12 hover:-translate-y-0.5 hover:border-[#6ae4ff]/40 hover:bg-white/[0.07] hover:text-[#6ae4ff]'
 					}`}
 					aria-current={isCurrentPage ? 'page' : undefined}
 				>
@@ -116,14 +116,14 @@ const pageNumbers = generatePageNumbers()
 		page.currentPage < page.lastPage ? (
 			<a
 				href={page.url.next}
-				class='flex items-center justify-center w-10 h-10 text-base font-medium text-[#f2f4ea]/70 bg-white/[0.055] border border-white/12 rounded-lg hover:border-[#d8ff4f]/40 hover:text-[#d8ff4f]'
+				class='flex items-center justify-center w-10 h-10 text-base font-medium text-[#f6f7fb]/70 bg-white/[0.045] border border-white/12 rounded-full transition-all hover:-translate-y-0.5 hover:border-[#6ae4ff]/40 hover:bg-white/[0.07] hover:text-[#6ae4ff]'
 			>
 				<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
 					<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5l7 7-7 7' />
 				</svg>
 			</a>
 		) : (
-			<span class='flex items-center justify-center w-10 h-10 text-[#f2f4ea]/24 cursor-not-allowed'>
+			<span class='flex items-center justify-center w-10 h-10 text-[#f6f7fb]/24 cursor-not-allowed'>
 				<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
 					<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5l7 7-7 7' />
 				</svg>

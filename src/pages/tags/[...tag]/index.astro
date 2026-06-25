@@ -1,8 +1,17 @@
 ---
+import type { CollectionEntry } from 'astro:content'
 import BaseLayout from '@/layouts/BaseLayout'
-import ListPosts from '@/components/ListPosts'
-import TitlePage from '@/components/TitlePage'
-import { SUPPORTED_LOCALES, getTags, getPostByTag } from '@/utils'
+import FadeIn from '../../../components/FadeIn.astro'
+import {
+	DEFAULT_LOCALE,
+	SUPPORTED_LOCALES,
+	getLocalePrefix,
+	getTags,
+	getPostByTag,
+	stripLocaleFromSlug,
+	getCategoryTitleFromSlug,
+	getCategorySlug
+} from '@/utils'
 
 export async function getStaticPaths() {
 	const allTagsSet = new Set<string>()
@@ -21,11 +30,250 @@ export async function getStaticPaths() {
 }
 
 const { tag } = Astro.props
-
-const posts = await getPostByTag(tag)
+const locale = DEFAULT_LOCALE
+const localePrefix = getLocalePrefix(locale)
+const posts = (await getPostByTag(tag, locale)) as CollectionEntry<'blog'>[]
+const dateLocale = 'ko-KR'
 ---
 
 <BaseLayout title={`#${tag}`}>
-	<TitlePage title={`#${tag}`} />
-	<ListPosts posts={posts} />
+	<section class='tag-detail-hero'>
+		<FadeIn direction='up'>
+			<p class='eyebrow'>TAG</p>
+			<h1>#{tag}</h1>
+			<p class='lead'>이 주제로 묶인 글 {posts.length}개를 모았습니다.</p>
+		</FadeIn>
+	</section>
+
+	<section class='tag-post-grid'>
+		{
+			posts.map((post, index) => (
+				<FadeIn delay={index * 0.08} direction='up'>
+					<article class='tag-post-card group'>
+						{post.data.heroImage && (
+							<a
+								href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`}
+								class='tag-post-image'
+							>
+								<div class='tag-post-overlay' />
+								<img src={post.data.heroImage} alt={post.data.title} loading='lazy' />
+								{post.data.category && (
+									<span class='tag-post-category'>
+										{getCategoryTitleFromSlug(getCategorySlug(post.data.category), locale)}
+									</span>
+								)}
+							</a>
+						)}
+
+						<div class='tag-post-body'>
+							<time datetime={post.data.pubDate.toISOString()}>
+								{post.data.pubDate.toLocaleDateString(dateLocale, {
+									year: 'numeric',
+									month: 'short',
+									day: 'numeric'
+								})}
+							</time>
+							<h2>
+								<a
+									href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`}
+								>
+									{post.data.title}
+								</a>
+							</h2>
+							<p>{post.data.description}</p>
+							<a
+								class='tag-post-link'
+								href={`${localePrefix}/${post.collection}/${stripLocaleFromSlug(post.slug, locale)}`}
+							>
+								글 보기 →
+							</a>
+						</div>
+					</article>
+				</FadeIn>
+			))
+		}
+	</section>
 </BaseLayout>
+
+<style>
+	.tag-detail-hero,
+	.tag-post-grid {
+		position: relative;
+		z-index: 1;
+		width: min(1180px, calc(100vw - 48px));
+		margin-inline: auto;
+	}
+
+	.tag-detail-hero {
+		display: grid;
+		min-height: 58dvh;
+		place-items: center;
+		padding: 8rem 0 4rem;
+		text-align: center;
+	}
+
+	.eyebrow {
+		margin: 0 0 1rem;
+		color: #6ae4ff;
+		font-size: 13px;
+		font-weight: 850;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+	}
+
+	h1,
+	h2,
+	p {
+		margin: 0;
+	}
+
+	.tag-detail-hero h1 {
+		color: #f6f7fb;
+		font-size: clamp(56px, 8vw, 112px);
+		font-weight: 880;
+		line-height: 0.94;
+		letter-spacing: -0.075em;
+		text-wrap: balance;
+	}
+
+	.lead {
+		max-width: 760px;
+		margin: 1.6rem auto 0;
+		color: rgba(246, 247, 251, 0.68);
+		font-size: clamp(18px, 2vw, 23px);
+		line-height: 1.5;
+	}
+
+	.tag-post-grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 1.5rem;
+		padding: 0 0 clamp(5rem, 10vw, 9rem);
+	}
+
+	.tag-post-card {
+		display: flex;
+		min-height: 100%;
+		flex-direction: column;
+		overflow: hidden;
+		border: 1px solid rgba(246, 247, 251, 0.12);
+		border-radius: 26px;
+		background: rgba(246, 247, 251, 0.045);
+		box-shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
+		transition:
+			transform 260ms ease,
+			border-color 260ms ease,
+			background 260ms ease,
+			box-shadow 260ms ease;
+	}
+
+	.tag-post-card:hover {
+		transform: translateY(-4px);
+		border-color: rgba(106, 228, 255, 0.35);
+		background: rgba(246, 247, 251, 0.07);
+		box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28);
+	}
+
+	.tag-post-image {
+		position: relative;
+		display: block;
+		height: 14rem;
+		overflow: hidden;
+	}
+
+	.tag-post-image img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transition: transform 500ms ease;
+	}
+
+	.tag-post-card:hover .tag-post-image img {
+		transform: scale(1.05);
+	}
+
+	.tag-post-overlay {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		background: rgba(0, 0, 0, 0.2);
+		transition: background 260ms ease;
+	}
+
+	.tag-post-card:hover .tag-post-overlay {
+		background: rgba(0, 0, 0, 0.05);
+	}
+
+	.tag-post-category {
+		position: absolute;
+		right: 1rem;
+		top: 1rem;
+		z-index: 2;
+		border: 1px solid rgba(246, 247, 251, 0.15);
+		border-radius: 999px;
+		background: rgba(7, 8, 7, 0.8);
+		padding: 0.35rem 0.7rem;
+		color: #f6f7fb;
+		font-size: 12px;
+		font-weight: 800;
+		backdrop-filter: blur(8px);
+	}
+
+	.tag-post-body {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		padding: 1.45rem;
+	}
+
+	.tag-post-body time {
+		margin-bottom: 0.8rem;
+		color: rgba(246, 247, 251, 0.46);
+		font-size: 13px;
+		font-weight: 650;
+	}
+
+	.tag-post-body h2 {
+		color: #f6f7fb;
+		font-size: 1.25rem;
+		font-weight: 800;
+		line-height: 1.25;
+		letter-spacing: -0.035em;
+	}
+
+	.tag-post-body h2 a {
+		color: inherit;
+	}
+
+	.tag-post-card:hover h2 {
+		color: #6ae4ff;
+	}
+
+	.tag-post-body p {
+		margin-top: 0.85rem;
+		color: rgba(246, 247, 251, 0.62);
+		font-size: 0.95rem;
+		line-height: 1.55;
+	}
+
+	.tag-post-link {
+		display: inline-flex;
+		margin-top: auto;
+		padding-top: 1.2rem;
+		color: #6ae4ff;
+		font-size: 0.95rem;
+		font-weight: 800;
+	}
+
+	@media (max-width: 980px) {
+		.tag-post-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 680px) {
+		.tag-post-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>
