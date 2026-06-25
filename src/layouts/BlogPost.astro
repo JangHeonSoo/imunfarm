@@ -3,7 +3,6 @@ import type { CollectionEntry } from 'astro:content'
 import FormattedDate from '@/components/FormattedDate'
 import BaseLayout from '@/layouts/BaseLayout'
 import Tag from '@/components/Tag'
-import WaterButton from '@/components/WaterButton'
 import type { MarkdownHeading } from 'astro'
 import { siteConfig } from '@/site-config'
 
@@ -113,16 +112,6 @@ const breadcrumbSchema = {
 		<div>
 			<slot />
 		</div>
-
-		<WaterButton
-			client:load
-			postSlug={data.slug ||
-				id
-					.split('/')
-					.pop()
-					?.replace(/\.(mdx|md)$/, '') ||
-				'unknown'}
-		/>
 	</article>
 </BaseLayout>
 
