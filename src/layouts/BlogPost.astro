@@ -18,7 +18,8 @@ const { title, description, pubDate, heroImage, tags } = data
 
 const articleDate = pubDate.toISOString()
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).href
-const heroImageURL = heroImage ? new URL(heroImage.src, Astro.site).href : undefined
+const heroImageSrc = typeof heroImage === 'string' ? heroImage : heroImage?.src
+const heroImageURL = heroImageSrc ? new URL(heroImageSrc, Astro.site).href : undefined
 
 // Article JSON-LD
 const articleSchema = {
@@ -75,7 +76,7 @@ const breadcrumbSchema = {
 <BaseLayout
 	title={title}
 	description={description}
-	image={heroImage?.src}
+	image={heroImageSrc}
 	articleDate={articleDate}
 	postSlug={data.slug ||
 		id
@@ -106,6 +107,14 @@ const breadcrumbSchema = {
 				{tags.map((tag) => <Tag tag={tag} />)}
 			</div>
 		</header>
+
+		{
+			heroImageSrc && (
+				<figure class='article-hero-image-wrap'>
+					<img src={heroImageSrc} alt={title} class='article-hero-image' loading='eager' />
+				</figure>
+			)
+		}
 
 		<hr class='article-divider' />
 
@@ -170,6 +179,33 @@ const breadcrumbSchema = {
 	.article-divider {
 		margin: clamp(2rem, 5vw, 4rem) 0;
 		border-color: rgba(246, 247, 251, 0.1);
+	}
+
+	.article-hero-image-wrap {
+		position: relative;
+		margin: clamp(1.5rem, 4vw, 3rem) 0 0;
+		border: 1px solid rgba(246, 247, 251, 0.12);
+		border-radius: clamp(1.4rem, 3vw, 2.25rem);
+		overflow: hidden;
+		background: rgba(246, 247, 251, 0.045);
+		box-shadow: 0 34px 100px rgba(0, 0, 0, 0.28);
+	}
+
+	.article-hero-image-wrap::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		background:
+			linear-gradient(180deg, rgba(5, 11, 15, 0.02), rgba(5, 11, 15, 0.18)),
+			radial-gradient(circle at 20% 10%, rgba(106, 228, 255, 0.1), transparent 38%);
+	}
+
+	.article-hero-image {
+		display: block;
+		width: 100%;
+		aspect-ratio: 16 / 8.8;
+		object-fit: cover;
 	}
 
 	:global(.article-shell .prose) {
