@@ -1,0 +1,61 @@
+---
+import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+
+type Props = {
+	tags: [string, number][]
+	locale?: string
+}
+
+const { tags, locale = DEFAULT_LOCALE } = Astro.props
+const prefix = getLocalePrefix(locale)
+
+const counts = tags.map(([, count]) => count)
+const max = Math.max(...counts, 1)
+const min = Math.min(...counts, 1)
+const tone = (count: number) => (max === min ? 1 : (count - min) / (max - min))
+const size = (count: number) => Math.round(15 + tone(count) * 47)
+---
+
+<div class='im-cloud'>
+	{
+		tags.map(([tag, count]) => (
+			<a
+				class='im-cloud-tag'
+				href={`${prefix}/tags/${tag.toLowerCase()}/`}
+				style={`--size:${size(count)}px; --tone:${tone(count).toFixed(3)}`}
+				title={`${count}`}
+			>
+				#{tag}
+			</a>
+		))
+	}
+</div>
+
+<style>
+	.im-cloud {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: center;
+		gap: clamp(10px, 1.4vw, 18px) clamp(14px, 1.8vw, 26px);
+		max-width: 1100px;
+		margin-inline: auto;
+	}
+
+	.im-cloud-tag {
+		color: color-mix(in srgb, var(--ink) calc(38% + var(--tone) * 62%), transparent);
+		font-size: var(--size);
+		font-weight: calc(500 + var(--tone) * 300);
+		letter-spacing: 0.01em;
+		line-height: 1.05;
+		transition: color 200ms ease;
+	}
+
+	.im-cloud-tag:hover {
+		color: var(--ink);
+		opacity: 1;
+		text-decoration: underline;
+		text-underline-offset: 0.16em;
+		text-decoration-thickness: 1px;
+	}
+</style>

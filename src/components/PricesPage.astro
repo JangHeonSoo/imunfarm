@@ -1,0 +1,1065 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+import { ITEMS, REGIONS, buildAnalysis, buildPriceData, formatDate } from '@/data/prices'
+import { siteConfig } from '@/site-config'
+
+const { locale = DEFAULT_LOCALE } = Astro.props
+const isEn = locale === 'en'
+const prefix = getLocalePrefix(locale)
+
+const today = new Date()
+const { dates, table } = buildPriceData(today)
+const recentDates = [...dates].reverse().slice(0, 5)
+const latest = dates[dates.length - 1]
+const dateLabel = formatDate(latest)
+const defaultRegion = REGIONS[0]
+
+const fmtServer = (value: number) =>
+	isEn ? '₩' + value.toLocaleString('en-US') : value.toLocaleString('ko-KR') + '원'
+const pct = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
+const dir = (v: number) => (v > 0 ? 'im-up' : v < 0 ? 'im-down' : 'im-flat')
+const mark = (v: number) => (v > 0 ? '▲ ' : v < 0 ? '▼ ' : '– ')
+
+// 서버에서 그리는 초기 표 (JS 없이도 읽히고 크롤러가 색인한다)
+const initialRows = ITEMS.map((item) => ({
+	id: item.id,
+	label: isEn ? item.en : item.ko,
+	grade: isEn ? item.gradeEn : item.gradeKo,
+	unit: isEn ? item.unitEn : item.unitKo,
+	...table[latest][defaultRegion.id][item.id]
+}))
+
+// 품목별 분석 요약 — 차트 아래 목록
+const MONTHS_KO = [
+	'1월',
+	'2월',
+	'3월',
+	'4월',
+	'5월',
+	'6월',
+	'7월',
+	'8월',
+	'9월',
+	'10월',
+	'11월',
+	'12월'
+]
+const MONTHS_EN = [
+	'Jan',
+	'Feb',
+	'Mar',
+	'Apr',
+	'May',
+	'Jun',
+	'Jul',
+	'Aug',
+	'Sep',
+	'Oct',
+	'Nov',
+	'Dec'
+]
+const months = isEn ? MONTHS_EN : MONTHS_KO
+const analyses = ITEMS.map((item) => {
+	const a = buildAnalysis(item, defaultRegion, today)
+	const peak = a.seasonality.indexOf(Math.max(...a.seasonality))
+	const seasonDelta = a.nextMonthIndex - a.monthIndex
+	const summary = isEn
+		? `${a.percentile}th percentile within 12 months · ${pct(a.benchmarks[3].diffPct)} in 10 years · seasonal peak in ${months[peak]} · next month ${seasonDelta > 0 ? 'up' : seasonDelta < 0 ? 'down' : 'flat'} ${Math.abs(seasonDelta)}p`
+		: `최근 1년 중 ${a.percentile}번째 백분위 · 10년간 ${pct(a.benchmarks[3].diffPct)} · 계절 고점 ${months[peak]} · 다음 달 지수 ${seasonDelta > 0 ? '상승' : seasonDelta < 0 ? '하락' : '보합'} ${Math.abs(seasonDelta)}p`
+	return {
+		id: item.id,
+		label: isEn ? item.en : item.ko,
+		unit: isEn ? item.unitEn : item.unitKo,
+		price: a.current,
+		trend30: a.trend30,
+		summary
+	}
+})
+
+// item -> region -> 날짜순 가격 배열 (전일비는 클라이언트에서 계산)
+const series: Record<string, Record<string, number[]>> = {}
+for (const item of ITEMS) {
+	series[item.id] = {}
+	for (const region of REGIONS) {
+		series[item.id][region.id] = dates.map((date) => table[date][region.id][item.id].price)
+	}
+}
+
+const payload = {
+	dates,
+	series,
+	regions: REGIONS.map((r) => ({ id: r.id, label: isEn ? r.en : r.ko })),
+	items: ITEMS.map((i) => ({
+		id: i.id,
+		label: isEn ? i.en : i.ko,
+		grade: isEn ? i.gradeEn : i.gradeKo,
+		unit: isEn ? i.unitEn : i.unitKo
+	})),
+	locale: isEn ? 'en-US' : 'ko-KR',
+	prefix: isEn ? '₩' : '',
+	suffix: isEn ? '' : '원',
+	labels: {
+		range: isEn ? 'Range' : '범위',
+		latest: isEn ? 'Latest' : '최근'
+	}
+}
+
+const canonical = new URL(Astro.url.pathname, siteConfig.siteUrl).href
+const pageTitle = isEn
+	? `Korean produce prices — wholesale market rates by region (${dateLabel})`
+	: `농산물 시세 — 지역별 도매가격 (${dateLabel} 기준)`
+const pageDescription = isEn
+	? `Daily wholesale prices for ${ITEMS.length} major Korean crops across ${REGIONS.length} public wholesale markets, with a 30-day trend chart and a 10-year outlook for each crop. Updated on ${dateLabel}.`
+	: `${dateLabel} 기준 배추·무·양파·마늘·대파·감자·사과·배·토마토·오이·청양고추·수박 등 주요 농산물 ${ITEMS.length}개 품목의 지역별 도매 시세표. 서울 가락, 강서, 부산 엄궁, 대구 북부, 광주 각화, 대전 오정 6개 공영도매시장 가격과 30일 추이 차트, 품목별 10년 시세 분석을 함께 제공한다.`
+
+const jsonLd = [
+	{
+		'@context': 'https://schema.org',
+		'@type': 'Dataset',
+		name: pageTitle,
+		description: pageDescription,
+		url: canonical,
+		keywords: isEn
+			? ['korean produce prices', 'wholesale market price', 'vegetable price korea']
+			: [
+					'농산물 시세',
+					'농산물 가격',
+					'도매시장 시세',
+					'채소 가격',
+					'과일 시세',
+					'농산물 도매가격'
+				],
+		temporalCoverage: `${dates[0]}/${latest}`,
+		spatialCoverage: { '@type': 'Place', name: isEn ? 'Republic of Korea' : '대한민국' },
+		creator: { '@type': 'Organization', name: siteConfig.author.name, url: siteConfig.siteUrl },
+		isAccessibleForFree: true,
+		distribution: initialRows.map((row) => ({
+			'@type': 'PropertyValue',
+			name: row.label,
+			unitText: row.unit,
+			value: row.price
+		}))
+	},
+	{
+		'@context': 'https://schema.org',
+		'@type': 'ItemList',
+		name: isEn ? 'Crop price analysis' : '품목별 시세 분석',
+		itemListElement: analyses.map((entry, index) => ({
+			'@type': 'ListItem',
+			position: index + 1,
+			name: entry.label,
+			url: new URL(`${prefix}/prices/${entry.id}/`, siteConfig.siteUrl).href
+		}))
+	},
+	{
+		'@context': 'https://schema.org',
+		'@type': 'BreadcrumbList',
+		itemListElement: [
+			{ '@type': 'ListItem', position: 1, name: 'IMUN.FARM', item: siteConfig.siteUrl },
+			{ '@type': 'ListItem', position: 2, name: isEn ? 'Prices' : '농산물 시세', item: canonical }
+		]
+	}
+]
+
+const t = {
+	basis: isEn ? 'Basis' : '기준',
+	item: isEn ? 'Item' : '품목',
+	grade: isEn ? 'Grade' : '등급',
+	unit: isEn ? 'Unit' : '단위',
+	price: isEn ? 'Price' : '가격',
+	delta: isEn ? 'Change' : '전일비',
+	note: isEn
+		? 'Wholesale auction prices · updated every morning'
+		: '도매시장 경락가 기준 · 매일 오전 갱신',
+	chart: isEn ? 'Trend · last 30 days' : '추이 최근 30일',
+	high: isEn ? 'High' : '최고',
+	low: isEn ? 'Low' : '최저',
+	avg: isEn ? 'Average' : '평균',
+	change30: isEn ? '30-day change' : '30일 대비',
+	tableView: isEn ? 'View as table' : '표로 보기',
+	analysisTitle: isEn ? 'Crop price analysis' : '품목별 시세 분석',
+	analysisLead: isEn
+		? 'Each crop compared with the same period 1, 3, 5 and 10 years ago, with its seasonal index and monthly trend.'
+		: '품목별로 1년·3년·5년·10년 전 같은 기간과 비교하고, 계절지수와 월평균 추이를 함께 본다.',
+	readMore: isEn ? 'Read analysis' : '분석 보기'
+}
+---
+
+<BaseLayout title={pageTitle} description={pageDescription} locale={locale} active='prices'>
+	{jsonLd.map((schema) => <script type='application/ld+json' set:html={JSON.stringify(schema)} />)}
+	<div class='im-prices im-pad im-bottom'>
+		<div class='im-top-sm'></div>
+
+		<div class='im-price-controls'>
+			<div>
+				<p class='im-label'>지역 Region</p>
+				<div class='im-tabs im-menu' id='im-region-tabs'>
+					{
+						payload.regions.map((region, index) => (
+							<button
+								type='button'
+								class='im-tab'
+								data-region={region.id}
+								aria-current={index === 0 ? 'true' : 'false'}
+							>
+								{region.label}
+							</button>
+						))
+					}
+				</div>
+			</div>
+			<div>
+				<p class='im-label'>날짜 Date</p>
+				<div class='im-tabs im-menu im-date-tabs' id='im-date-tabs'>
+					{
+						recentDates.map((date, index) => (
+							<button
+								type='button'
+								class='im-tab'
+								data-date={date}
+								aria-current={index === 0 ? 'true' : 'false'}
+							>
+								{formatDate(date)}
+							</button>
+						))
+					}
+				</div>
+			</div>
+			<div class='im-price-basis'>
+				<p class='im-label'>{t.basis}</p>
+				<p class='im-basis-value' id='im-price-basis'>
+					{isEn ? defaultRegion.en : defaultRegion.ko} · {dateLabel}
+				</p>
+			</div>
+		</div>
+
+		<div class='im-price-table'>
+			<div class='im-price-head'>
+				<span>{t.item}</span>
+				<span>{t.grade}</span>
+				<span>{t.unit}</span>
+				<span class='im-num'>{t.price}</span>
+				<span class='im-num'>{t.delta}</span>
+			</div>
+			<div id='im-price-rows'>
+				{
+					initialRows.map((row) => (
+						<div class='im-price-row'>
+							<span class='im-price-item'>{row.label}</span>
+							<span class='im-price-sub'>{row.grade}</span>
+							<span class='im-price-sub'>{row.unit}</span>
+							<span class='im-num im-price-value'>{fmtServer(row.price)}</span>
+							<span class={`im-num im-price-delta ${dir(row.delta)}`}>
+								{mark(row.delta)}
+								{Math.abs(row.delta).toFixed(1)}%
+							</span>
+						</div>
+					))
+				}
+			</div>
+		</div>
+		<p class='im-meta im-price-note'>{t.note}</p>
+
+		<section class='im-chart-section'>
+			<div class='im-chart-head'>
+				<div>
+					<p class='im-label'>{t.chart}</p>
+					<h2 class='im-chart-title' id='im-chart-title'></h2>
+				</div>
+				<dl class='im-chart-stats'>
+					<div><dt class='im-label'>{t.high}</dt><dd id='im-stat-high'></dd></div>
+					<div><dt class='im-label'>{t.low}</dt><dd id='im-stat-low'></dd></div>
+					<div><dt class='im-label'>{t.avg}</dt><dd id='im-stat-avg'></dd></div>
+					<div><dt class='im-label'>{t.change30}</dt><dd id='im-stat-change'></dd></div>
+				</dl>
+			</div>
+
+			<div class='im-tabs im-menu im-item-tabs' id='im-item-tabs'>
+				{
+					payload.items.map((item, index) => (
+						<button
+							type='button'
+							class='im-tab'
+							data-item={item.id}
+							aria-current={index === 0 ? 'true' : 'false'}
+						>
+							{item.label}
+						</button>
+					))
+				}
+			</div>
+
+			<figure class='im-chart' id='im-chart'>
+				<div class='im-chart-plot'>
+					<svg id='im-chart-svg' role='img' tabindex='0' aria-describedby='im-chart-desc'></svg>
+					<div class='im-tooltip' id='im-chart-tooltip' hidden></div>
+				</div>
+				<figcaption class='im-meta' id='im-chart-desc'></figcaption>
+			</figure>
+
+			<details class='im-chart-table'>
+				<summary class='im-menu'>{t.tableView}</summary>
+				<div class='im-chart-table-scroll'>
+					<table id='im-chart-data'>
+						<thead>
+							<tr>
+								<th>{t.basis}</th>
+								<th class='im-num'>{t.price}</th>
+								<th class='im-num'>{t.delta}</th>
+							</tr>
+						</thead>
+						<tbody></tbody>
+					</table>
+				</div>
+			</details>
+		</section>
+
+		<section class='im-crop-analysis'>
+			<h2 class='im-crop-title'>{t.analysisTitle}</h2>
+			<p class='im-crop-lead'>{t.analysisLead}</p>
+			<div class='im-crop-list'>
+				{
+					analyses.map((entry) => (
+						<a class='im-crop-row' href={`${prefix}/prices/${entry.id}/`}>
+							<span class='im-crop-name'>{entry.label}</span>
+							<span class='im-crop-summary'>{entry.summary}</span>
+							<span class='im-crop-price'>
+								<span class='im-num'>{fmtServer(entry.price)}</span>
+								<span class={`im-num im-crop-delta ${dir(entry.trend30)}`}>
+									{pct(entry.trend30)}
+								</span>
+							</span>
+						</a>
+					))
+				}
+			</div>
+		</section>
+	</div>
+
+	<script type='application/json' id='im-price-data' set:html={JSON.stringify(payload)} />
+</BaseLayout>
+
+<script is:inline>
+	function initPrices() {
+		const node = document.getElementById('im-price-data')
+		if (!node) return
+		const data = JSON.parse(node.textContent)
+
+		const rowsEl = document.getElementById('im-price-rows')
+		const basisEl = document.getElementById('im-price-basis')
+		const svg = document.getElementById('im-chart-svg')
+		const plot = svg.parentElement
+		const tooltip = document.getElementById('im-chart-tooltip')
+		const descEl = document.getElementById('im-chart-desc')
+		const titleEl = document.getElementById('im-chart-title')
+		const tableBody = document.querySelector('#im-chart-data tbody')
+		const regionTabs = Array.from(document.querySelectorAll('[data-region]'))
+		const dateTabs = Array.from(document.querySelectorAll('[data-date]'))
+		const itemTabs = Array.from(document.querySelectorAll('[data-item]'))
+
+		let region = regionTabs[0].dataset.region
+		let date = dateTabs[0].dataset.date
+		let item = itemTabs[0].dataset.item
+		let cursor = null
+		let geometry = null
+
+		const NS = 'http://www.w3.org/2000/svg'
+		const fmt = (v) => data.prefix + v.toLocaleString(data.locale) + data.suffix
+		const fmtShort = (v) => v.toLocaleString(data.locale)
+		const dot = (iso) => iso.replace(/-/g, '.')
+		const short = (iso) => iso.slice(5).replace('-', '.')
+		const nameOf = (list, id) => (list.find((e) => e.id === id) || {}).label || ''
+		const pct = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
+		const cls = (v) => (v > 0 ? 'im-up' : v < 0 ? 'im-down' : 'im-flat')
+		const mark = (v) => (v > 0 ? '▲ ' : v < 0 ? '▼ ' : '– ')
+
+		function cellFor(itemId, regionId, i) {
+			const values = data.series[itemId][regionId]
+			const price = values[i]
+			const prev = i > 0 ? values[i - 1] : price
+			return { price, delta: prev ? Math.round(((price - prev) / prev) * 1000) / 10 : 0 }
+		}
+
+		function el(tag, attrs, text) {
+			const n = document.createElementNS(NS, tag)
+			for (const k in attrs) n.setAttribute(k, attrs[k])
+			if (text != null) n.textContent = text
+			return n
+		}
+
+		/* ---------- 표 ---------- */
+		function renderTable() {
+			const i = data.dates.indexOf(date)
+			rowsEl.textContent = ''
+			data.items.forEach((entry) => {
+				const c = cellFor(entry.id, region, i)
+				const row = document.createElement('div')
+				row.className = 'im-price-row'
+				const cells = [
+					['im-price-item', entry.label],
+					['im-price-sub', entry.grade],
+					['im-price-sub', entry.unit],
+					['im-num im-price-value', fmt(c.price)],
+					[
+						'im-num im-price-delta ' + cls(c.delta),
+						mark(c.delta) + Math.abs(c.delta).toFixed(1) + '%'
+					]
+				]
+				cells.forEach(([className, value]) => {
+					const span = document.createElement('span')
+					span.className = className
+					span.textContent = value
+					row.appendChild(span)
+				})
+				rowsEl.appendChild(row)
+			})
+			basisEl.textContent = nameOf(data.regions, region) + ' · ' + dot(date)
+		}
+
+		/* ---------- 축 눈금 ---------- */
+		function niceScale(min, max, count) {
+			const span = Math.max(max - min, 1)
+			const rough = span / count
+			const mag = Math.pow(10, Math.floor(Math.log10(rough)))
+			const norm = rough / mag
+			const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag
+			const lo = Math.floor(min / step) * step
+			const hi = Math.ceil(max / step) * step
+			const ticks = []
+			for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v))
+			return { lo, hi, ticks }
+		}
+
+		/* ---------- 차트 ---------- */
+		function renderChart() {
+			const values = data.series[item][region]
+			const width = Math.max(plot.clientWidth || 720, 320)
+			const height = width < 560 ? 260 : 320
+			const padT = 18
+			const padB = 30
+			const padR = 16
+			const min = Math.min.apply(null, values)
+			const max = Math.max.apply(null, values)
+			const scale = niceScale(min, max, 4)
+			const yLabels = scale.ticks.map(fmtShort)
+			const padL = Math.max.apply(
+				null,
+				yLabels.map((s) => s.length * 6.4 + 14)
+			)
+
+			const innerW = width - padL - padR
+			const innerH = height - padT - padB
+			const x = (i) => padL + (i * innerW) / Math.max(values.length - 1, 1)
+			const y = (v) => padT + (1 - (v - scale.lo) / Math.max(scale.hi - scale.lo, 1)) * innerH
+			geometry = { x, y, padL, padR, innerW, count: values.length }
+
+			svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height)
+			svg.setAttribute('width', width)
+			svg.setAttribute('height', height)
+			svg.textContent = ''
+
+			// y 격자 + 눈금값
+			scale.ticks.forEach((v) => {
+				const yy = y(v)
+				svg.appendChild(
+					el('line', {
+						x1: padL,
+						y1: yy,
+						x2: width - padR,
+						y2: yy,
+						stroke: 'var(--line)',
+						'stroke-width': 1,
+						'shape-rendering': 'crispEdges'
+					})
+				)
+				svg.appendChild(
+					el(
+						'text',
+						{
+							x: padL - 10,
+							y: yy + 4,
+							class: 'im-axis',
+							'text-anchor': 'end'
+						},
+						fmtShort(v)
+					)
+				)
+			})
+
+			// x 눈금
+			const tickCount = width < 560 ? 3 : 5
+			const stepI = Math.max(1, Math.round((values.length - 1) / tickCount))
+			for (let i = 0; i < values.length; i += stepI) {
+				svg.appendChild(
+					el(
+						'text',
+						{ x: x(i), y: height - 10, class: 'im-axis', 'text-anchor': 'middle' },
+						short(data.dates[i])
+					)
+				)
+			}
+			const lastI = values.length - 1
+			if (lastI % stepI !== 0) {
+				svg.appendChild(
+					el(
+						'text',
+						{ x: x(lastI), y: height - 10, class: 'im-axis', 'text-anchor': 'end' },
+						short(data.dates[lastI])
+					)
+				)
+			}
+
+			// 면 + 선
+			const line = values
+				.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1))
+				.join(' ')
+			svg.appendChild(
+				el('path', {
+					d:
+						line +
+						' L' +
+						x(lastI).toFixed(1) +
+						' ' +
+						(padT + innerH) +
+						' L' +
+						padL +
+						' ' +
+						(padT + innerH) +
+						' Z',
+					fill: 'var(--ink)',
+					'fill-opacity': 0.08,
+					stroke: 'none'
+				})
+			)
+			svg.appendChild(
+				el('path', {
+					d: line,
+					fill: 'none',
+					stroke: 'var(--ink)',
+					'stroke-width': 2,
+					'stroke-linejoin': 'round',
+					'stroke-linecap': 'round'
+				})
+			)
+
+			// 마지막 값 직접 표기
+			svg.appendChild(el('circle', { cx: x(lastI), cy: y(values[lastI]), r: 6, fill: 'var(--bg)' }))
+			svg.appendChild(
+				el('circle', { cx: x(lastI), cy: y(values[lastI]), r: 4, fill: 'var(--ink)' })
+			)
+
+			// 크로스헤어
+			const cross = el('g', { id: 'im-cross', visibility: 'hidden' })
+			cross.appendChild(
+				el('line', {
+					y1: padT,
+					y2: padT + innerH,
+					stroke: 'var(--ink)',
+					'stroke-width': 1,
+					'stroke-opacity': 0.45
+				})
+			)
+			cross.appendChild(el('circle', { r: 6, fill: 'var(--bg)' }))
+			cross.appendChild(el('circle', { r: 4, fill: 'var(--ink)' }))
+			svg.appendChild(cross)
+
+			const label = nameOf(data.items, item)
+			const meta = data.items.find((e) => e.id === item) || {}
+			titleEl.textContent =
+				label + (meta.unit ? ' · ' + meta.unit : '') + ' · ' + nameOf(data.regions, region)
+
+			const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length)
+			const change = Math.round(((values[lastI] - values[0]) / values[0]) * 1000) / 10
+			document.getElementById('im-stat-high').textContent = fmt(max)
+			document.getElementById('im-stat-low').textContent = fmt(min)
+			document.getElementById('im-stat-avg').textContent = fmt(avg)
+			const changeEl = document.getElementById('im-stat-change')
+			changeEl.textContent = pct(change)
+			changeEl.className = cls(change)
+
+			svg.setAttribute(
+				'aria-label',
+				label +
+					' ' +
+					dot(data.dates[0]) +
+					'~' +
+					dot(data.dates[lastI]) +
+					', ' +
+					fmt(min) +
+					'~' +
+					fmt(max)
+			)
+			descEl.textContent =
+				dot(data.dates[0]) +
+				' – ' +
+				dot(data.dates[lastI]) +
+				' · ' +
+				data.labels.range +
+				' ' +
+				fmt(min) +
+				' – ' +
+				fmt(max) +
+				' · ' +
+				data.labels.latest +
+				' ' +
+				fmt(values[lastI])
+
+			renderDataTable()
+			if (cursor != null) moveCursor(cursor)
+		}
+
+		function renderDataTable() {
+			const values = data.series[item][region]
+			tableBody.textContent = ''
+			for (let i = values.length - 1; i >= 0; i--) {
+				const c = cellFor(item, region, i)
+				const tr = document.createElement('tr')
+				const cells = [
+					['', dot(data.dates[i])],
+					['im-num', fmt(c.price)],
+					['im-num ' + cls(c.delta), pct(c.delta)]
+				]
+				cells.forEach(([className, value]) => {
+					const td = document.createElement('td')
+					td.className = className
+					td.textContent = value
+					tr.appendChild(td)
+				})
+				tableBody.appendChild(tr)
+			}
+		}
+
+		/* ---------- 호버 ---------- */
+		function moveCursor(i) {
+			if (!geometry) return
+			cursor = Math.min(geometry.count - 1, Math.max(0, i))
+			const values = data.series[item][region]
+			const cx = geometry.x(cursor)
+			const cy = geometry.y(values[cursor])
+			const group = svg.querySelector('#im-cross')
+			if (!group) return
+			group.setAttribute('visibility', 'visible')
+			group.children[0].setAttribute('x1', cx)
+			group.children[0].setAttribute('x2', cx)
+			group.children[1].setAttribute('cx', cx)
+			group.children[1].setAttribute('cy', cy)
+			group.children[2].setAttribute('cx', cx)
+			group.children[2].setAttribute('cy', cy)
+
+			const c = cellFor(item, region, cursor)
+			tooltip.textContent = ''
+			const value = document.createElement('strong')
+			value.textContent = fmt(c.price)
+			const when = document.createElement('span')
+			when.textContent = dot(data.dates[cursor])
+			const change = document.createElement('span')
+			change.className = cls(c.delta)
+			change.textContent = pct(c.delta)
+			tooltip.append(value, when, change)
+			tooltip.hidden = false
+
+			const rect = svg.getBoundingClientRect()
+			const ratio = rect.width / (svg.viewBox.baseVal.width || rect.width)
+			const px = cx * ratio
+			const py = cy * ratio
+			tooltip.style.left = Math.min(Math.max(px, 8), rect.width - 8) + 'px'
+			tooltip.style.transform =
+				px > rect.width - 130
+					? 'translate(-100%, 0)'
+					: px < 130
+						? 'translate(0, 0)'
+						: 'translate(-50%, 0)'
+
+			// 점 위에 띄우고, 위가 좁으면 아래로 넘긴다
+			tooltip.style.top = '0px'
+			const th = tooltip.offsetHeight
+			const above = py - th - 14
+			tooltip.style.top =
+				Math.max(0, Math.min(above < 0 ? py + 16 : above, rect.height - th)) + 'px'
+		}
+
+		function hideCursor() {
+			cursor = null
+			tooltip.hidden = true
+			const group = svg.querySelector('#im-cross')
+			if (group) group.setAttribute('visibility', 'hidden')
+		}
+
+		function indexFromEvent(event) {
+			const rect = svg.getBoundingClientRect()
+			const ratio = (svg.viewBox.baseVal.width || rect.width) / rect.width
+			const vx = (event.clientX - rect.left) * ratio
+			const t = (vx - geometry.padL) / Math.max(geometry.innerW, 1)
+			return Math.round(t * (geometry.count - 1))
+		}
+
+		svg.addEventListener('pointermove', (e) => moveCursor(indexFromEvent(e)))
+		svg.addEventListener('pointerleave', hideCursor)
+		svg.addEventListener('blur', hideCursor)
+		svg.addEventListener('focus', () => moveCursor(cursor == null ? geometry.count - 1 : cursor))
+		svg.addEventListener('keydown', (e) => {
+			if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+			e.preventDefault()
+			const base = cursor == null ? geometry.count - 1 : cursor
+			moveCursor(base + (e.key === 'ArrowRight' ? 1 : -1))
+		})
+
+		/* ---------- 탭 ---------- */
+		function pick(tabs, tab) {
+			tabs.forEach((entry) => entry.setAttribute('aria-current', String(entry === tab)))
+		}
+		regionTabs.forEach((tab) =>
+			tab.addEventListener('click', () => {
+				region = tab.dataset.region
+				pick(regionTabs, tab)
+				renderTable()
+				renderChart()
+			})
+		)
+		dateTabs.forEach((tab) =>
+			tab.addEventListener('click', () => {
+				date = tab.dataset.date
+				pick(dateTabs, tab)
+				renderTable()
+			})
+		)
+		itemTabs.forEach((tab) =>
+			tab.addEventListener('click', () => {
+				item = tab.dataset.item
+				pick(itemTabs, tab)
+				hideCursor()
+				renderChart()
+			})
+		)
+
+		renderTable()
+		renderChart()
+		if (window.ResizeObserver) {
+			let last = plot.clientWidth
+			new ResizeObserver(() => {
+				if (Math.abs(plot.clientWidth - last) < 2) return
+				last = plot.clientWidth
+				renderChart()
+			}).observe(plot)
+		}
+	}
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPrices)
+	else initPrices()
+	document.addEventListener('astro:page-load', initPrices)
+</script>
+
+<style>
+	.im-prices {
+		width: min(1180px, 100%);
+		margin-inline: auto;
+	}
+
+	.im-price-controls {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		gap: clamp(16px, 2.4vw, 40px);
+		align-items: start;
+	}
+
+	.im-price-controls p {
+		margin: 0 0 10px;
+	}
+
+	.im-date-tabs {
+		text-transform: none;
+	}
+
+	.im-price-basis {
+		justify-self: end;
+		text-align: right;
+	}
+
+	.im-basis-value {
+		margin: 6px 0 0 !important;
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	.im-price-table {
+		margin-top: clamp(28px, 4vh, 54px);
+		border-top: 1px solid var(--ink);
+	}
+
+	.im-price-note {
+		margin: 16px 0 0;
+	}
+
+	/* ---------- 차트 ---------- */
+
+	.im-chart-section {
+		margin-top: clamp(60px, 12vh, 130px);
+		border-top: 1px solid var(--ink);
+		padding-top: clamp(24px, 3vh, 36px);
+	}
+
+	.im-chart-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: clamp(16px, 3vw, 40px);
+	}
+
+	.im-chart-head p {
+		margin: 0;
+	}
+
+	.im-chart-title {
+		margin: 8px 0 0;
+		font-size: clamp(18px, 1.8vw, 24px);
+		font-weight: 700;
+		letter-spacing: -0.01em;
+	}
+
+	.im-chart-stats {
+		display: flex;
+		flex-wrap: wrap;
+		gap: clamp(18px, 2.6vw, 40px);
+		margin: 0;
+	}
+
+	.im-chart-stats div {
+		display: grid;
+		gap: 6px;
+	}
+
+	.im-chart-stats dt {
+		margin: 0;
+	}
+
+	.im-chart-stats dd {
+		margin: 0;
+		font-size: 15px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-item-tabs {
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		text-transform: none;
+		margin-top: clamp(20px, 3vh, 32px);
+	}
+
+	.im-chart {
+		margin: clamp(16px, 2.4vh, 26px) 0 0;
+	}
+
+	.im-chart-plot {
+		position: relative;
+	}
+
+	.im-chart svg {
+		display: block;
+		width: 100%;
+		height: auto;
+		outline: none;
+	}
+
+	.im-chart svg:focus-visible {
+		outline: 1px solid var(--ink);
+		outline-offset: 4px;
+	}
+
+	.im-chart :global(.im-axis) {
+		fill: var(--muted);
+		font-family: inherit;
+		font-size: 11px;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-tooltip[hidden] {
+		display: none;
+	}
+
+	.im-tooltip {
+		position: absolute;
+		top: 0;
+		z-index: 2;
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+		border: 1px solid var(--line);
+		background: var(--bg);
+		padding: 7px 10px;
+		white-space: nowrap;
+		pointer-events: none;
+	}
+
+	.im-tooltip strong {
+		font-size: 14px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-tooltip span {
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-tooltip span.im-up {
+		color: var(--up);
+	}
+
+	.im-tooltip span.im-down {
+		color: var(--down);
+	}
+
+	.im-chart figcaption {
+		margin-top: 12px;
+	}
+
+	.im-chart-table {
+		margin-top: clamp(20px, 3vh, 32px);
+		border-top: 1px solid var(--line);
+		padding-top: 14px;
+	}
+
+	.im-chart-table summary {
+		cursor: pointer;
+		color: var(--muted);
+		list-style: none;
+	}
+
+	.im-chart-table summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.im-chart-table summary::before {
+		content: '+ ';
+	}
+
+	.im-chart-table[open] summary::before {
+		content: '− ';
+	}
+
+	.im-chart-table summary:hover {
+		color: var(--ink);
+	}
+
+	.im-chart-table-scroll {
+		max-height: 320px;
+		overflow: auto;
+		margin-top: 14px;
+	}
+
+	.im-chart-table table {
+		width: 100%;
+		max-width: 520px;
+		border-collapse: collapse;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-chart-table th {
+		position: sticky;
+		top: 0;
+		background: var(--bg);
+		border-bottom: 1px solid var(--line);
+		padding: 8px 0;
+		text-align: left;
+		font-size: 10px;
+		font-weight: 600;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--muted);
+	}
+
+	.im-chart-table td {
+		border-bottom: 1px solid var(--line);
+		padding: 9px 0;
+		font-size: 13px;
+	}
+
+	/* ---------- 품목별 분석 ---------- */
+
+	.im-crop-analysis {
+		margin-top: clamp(60px, 12vh, 130px);
+		border-top: 1px solid var(--ink);
+		padding-top: clamp(24px, 3vh, 36px);
+	}
+
+	.im-crop-title {
+		margin: 0;
+		font-size: clamp(20px, 2.2vw, 30px);
+		font-weight: 800;
+		letter-spacing: -0.01em;
+	}
+
+	.im-crop-lead {
+		max-width: 62ch;
+		margin: 12px 0 clamp(24px, 3.4vh, 40px);
+		font-size: 15px;
+		line-height: 1.7;
+		color: var(--muted);
+		text-wrap: pretty;
+	}
+
+	.im-crop-list {
+		border-top: 1px solid var(--line);
+	}
+
+	.im-crop-row {
+		display: grid;
+		grid-template-columns: minmax(0, 140px) minmax(0, 1fr) auto;
+		gap: clamp(14px, 2vw, 32px);
+		align-items: baseline;
+		border-bottom: 1px solid var(--line);
+		padding: 16px 0;
+	}
+
+	.im-crop-name {
+		font-size: 15px;
+		font-weight: 700;
+	}
+
+	.im-crop-summary {
+		font-size: 13px;
+		line-height: 1.6;
+		color: var(--muted);
+		text-wrap: pretty;
+	}
+
+	.im-crop-price {
+		display: flex;
+		align-items: baseline;
+		gap: 12px;
+		white-space: nowrap;
+		font-size: 14px;
+		font-weight: 600;
+	}
+
+	.im-crop-delta {
+		font-size: 12px;
+	}
+
+	@media (max-width: 760px) {
+		.im-crop-row {
+			grid-template-columns: minmax(0, 1fr) auto;
+		}
+
+		.im-crop-summary {
+			grid-column: 1 / -1;
+		}
+	}
+
+	@media (max-width: 1100px) {
+		.im-price-controls {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.im-price-basis {
+			justify-self: start;
+			text-align: left;
+		}
+	}
+</style>

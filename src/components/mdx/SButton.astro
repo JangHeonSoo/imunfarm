@@ -2,7 +2,22 @@
 const props = Astro.props
 ---
 
-<button {...props} class='bg-purple-800 p-4 text-white rounded-full'>
-	<slot />
-	<!-- Be sure to add a `<slot/>` for child content! -->
-</button>
+<button {...props} class='im-sbutton'><slot /></button>
+
+<style>
+	.im-sbutton {
+		border: 1px solid var(--ink);
+		background: none;
+		padding: 10px 16px;
+		color: var(--ink);
+		font-size: 13px;
+		font-weight: 600;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+
+	.im-sbutton:hover {
+		background: var(--ink);
+		color: var(--bg);
+	}
+</style>

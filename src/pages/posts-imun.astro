@@ -1,28 +1,36 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout'
-import { getPosts, getPostUrl, DEFAULT_LOCALE } from '@/utils'
+import { DEFAULT_LOCALE, getPostUrl, getPosts } from '@/utils'
 
-const posts = await getPosts()
-const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
+const locale = DEFAULT_LOCALE
+const posts = await getPosts(undefined, locale)
 ---
 
-<BaseLayout title='Posts Index (Private)'>
-	<div class='max-w-4xl mx-auto py-20 px-4'>
-		<h1 class='text-3xl md:text-4xl font-heading font-bold mb-6'>현재 등록된 글 목록</h1>
-		<ul class='space-y-3'>
+<BaseLayout title='Posts Index' locale={locale} altPath={null}>
+	<div class='im-pad im-bottom'>
+		<div class='im-top'></div>
+		<div class='im-index-list'>
 			{
-				posts.map((post) => (
-					<li class='flex items-start gap-3'>
-						<span class='mt-1 text-primary'>•</span>
-						<a
-							href={getPostUrl(post.slug, currentLocale, post.data.category)}
-							class='text-lg font-medium hover:text-primary transition-colors'
-						>
-							{post.data.title}
-						</a>
-					</li>
+				posts.map((post, index) => (
+					<a class='im-row' href={getPostUrl(post.slug, locale, post.data.category)}>
+						<span class='im-index-title'>{post.data.title}</span>
+						<span class='im-meta'>{String(index + 1).padStart(3, '0')}</span>
+					</a>
 				))
 			}
-		</ul>
+		</div>
 	</div>
 </BaseLayout>
+
+<style>
+	.im-index-list {
+		max-width: 760px;
+		border-top: 1px solid var(--ink);
+	}
+
+	.im-index-title {
+		font-size: 14px;
+		font-weight: 600;
+		line-height: 1.4;
+	}
+</style>

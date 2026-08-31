@@ -1,5 +1,11 @@
 ---
-import { getCategorySlug, getCategories, DEFAULT_LOCALE, getLocalePrefix, SUPPORTED_LOCALES } from '@/utils'
+import {
+	getCategorySlug,
+	getCategories,
+	DEFAULT_LOCALE,
+	getLocalePrefix,
+	SUPPORTED_LOCALES
+} from '@/utils'
 export async function getStaticPaths() {
 	const categoriesSet = new Set<string>()
 	await Promise.all(

@@ -1,0 +1,354 @@
+---
+/** 서버에서 전부 렌더한다 — JS 없이도 읽히고 크롤러가 그대로 색인한다. */
+import type { Item, ItemAnalysis } from '@/data/prices'
+
+type Props = {
+	item: Item
+	analysis: ItemAnalysis
+	isEn: boolean
+	fmt: (value: number) => string
+}
+
+const { item, analysis, isEn, fmt } = Astro.props
+
+const MONTHS_KO = [
+	'1월',
+	'2월',
+	'3월',
+	'4월',
+	'5월',
+	'6월',
+	'7월',
+	'8월',
+	'9월',
+	'10월',
+	'11월',
+	'12월'
+]
+const MONTHS_EN = [
+	'Jan',
+	'Feb',
+	'Mar',
+	'Apr',
+	'May',
+	'Jun',
+	'Jul',
+	'Aug',
+	'Sep',
+	'Oct',
+	'Nov',
+	'Dec'
+]
+const months = isEn ? MONTHS_EN : MONTHS_KO
+
+const peakMonth = analysis.seasonality.indexOf(Math.max(...analysis.seasonality))
+const troughMonth = analysis.seasonality.indexOf(Math.min(...analysis.seasonality))
+const seasonDelta = analysis.nextMonthIndex - analysis.monthIndex
+
+// --- 계절지수 막대 (SVG, 서버 렌더) ---
+const barW = 720
+const barH = 200
+const barPadB = 34
+const seasonMin = Math.min(...analysis.seasonality)
+const seasonMax = Math.max(...analysis.seasonality)
+const seasonSpan = Math.max(seasonMax - 100, 100 - seasonMin, 6)
+const zeroY = (barH - barPadB) / 2
+const bars = analysis.seasonality.map((value, i) => {
+	const slot = barW / 12
+	const width = slot - 8
+	const height = (Math.abs(value - 100) / seasonSpan) * (zeroY - 22)
+	return {
+		x: i * slot + 4,
+		y: value >= 100 ? zeroY - height : zeroY,
+		width,
+		height: Math.max(height, 1),
+		value,
+		label: months[i],
+		labelX: i * slot + slot / 2,
+		current: i === new Date().getMonth()
+	}
+})
+
+// --- 월평균 추이 (SVG, 서버 렌더) ---
+const lineW = 720
+const lineH = 190
+const linePadT = 14
+const linePadB = 26
+const linePadL = 62
+const monthlyValues = analysis.monthly.map((m) => m.avg)
+const mMin = Math.min(...monthlyValues)
+const mMax = Math.max(...monthlyValues)
+const niceStep = Math.pow(10, Math.floor(Math.log10((mMax - mMin) / 3 || 1)))
+const step = (() => {
+	const rough = (mMax - mMin) / 3 || 1
+	const n = rough / niceStep
+	return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * niceStep
+})()
+const lo = Math.floor(mMin / step) * step
+const hi = Math.ceil(mMax / step) * step
+const yTicks: number[] = []
+for (let v = lo; v <= hi + step / 2; v += step) yTicks.push(Math.round(v))
+const lx = (i: number) =>
+	linePadL + (i * (lineW - linePadL - 12)) / Math.max(monthlyValues.length - 1, 1)
+const ly = (v: number) =>
+	linePadT + (1 - (v - lo) / Math.max(hi - lo, 1)) * (lineH - linePadT - linePadB)
+const linePath = monthlyValues
+	.map((v, i) => (i ? 'L' : 'M') + lx(i).toFixed(1) + ' ' + ly(v).toFixed(1))
+	.join(' ')
+const areaPath =
+	linePath +
+	` L${lx(monthlyValues.length - 1).toFixed(1)} ${lineH - linePadB} L${linePadL} ${lineH - linePadB} Z`
+const xTicks = analysis.monthly
+	.map((m, i) => ({ ...m, i }))
+	.filter((m) => m.ym.endsWith('-01') || m.i === analysis.monthly.length - 1)
+
+const pct = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
+const dir = (v: number) => (v > 0 ? 'im-up' : v < 0 ? 'im-down' : 'im-flat')
+
+const t = isEn
+	? {
+			longTerm: 'Same period in past years',
+			year: 'Year',
+			avg: 'Average',
+			vsNow: 'vs now',
+			season: 'Seasonal index · 10-year average = 100',
+			monthly: 'Monthly average · last 5 years',
+			readout: 'What the numbers say',
+			seasonPeak: `Highest in ${months[peakMonth]} (${analysis.seasonality[peakMonth]}), lowest in ${months[troughMonth]} (${analysis.seasonality[troughMonth]}).`
+		}
+	: {
+			longTerm: '과거 같은 기간 비교',
+			year: '연도',
+			avg: '평균',
+			vsNow: '현재 대비',
+			season: '계절지수 · 10년 평균 = 100',
+			monthly: '월평균 추이 · 최근 5년',
+			readout: '수치가 말하는 것',
+			seasonPeak: `${months[peakMonth]}이 가장 높고(${analysis.seasonality[peakMonth]}) ${months[troughMonth]}이 가장 낮다(${analysis.seasonality[troughMonth]}).`
+		}
+
+const readout = isEn
+	? [
+			`Current ${fmt(analysis.current)}; 30-day average ${fmt(analysis.windowAvg)}, range ${fmt(analysis.windowMin)}–${fmt(analysis.windowMax)}.`,
+			`Within the past 12 months, today's price sits at the ${analysis.percentile}th percentile.`,
+			`10-year change ${pct(analysis.benchmarks[3].diffPct)} (${analysis.cagr}% per year).`,
+			`Seasonal index this month ${analysis.monthIndex}, next month ${analysis.nextMonthIndex} (${pct(seasonDelta)} points).`,
+			`30-day volatility ${analysis.volatility}% (standard deviation over mean).`
+		]
+	: [
+			`현재 ${fmt(analysis.current)}, 최근 30일 평균 ${fmt(analysis.windowAvg)} · 범위 ${fmt(analysis.windowMin)}–${fmt(analysis.windowMax)}.`,
+			`최근 1년 안에서 보면 현재가는 ${analysis.percentile}번째 백분위에 있다.`,
+			`10년 전 같은 기간 대비 ${pct(analysis.benchmarks[3].diffPct)}, 연평균 ${analysis.cagr}% 상승.`,
+			`계절지수는 이번 달 ${analysis.monthIndex}, 다음 달 ${analysis.nextMonthIndex} (${pct(seasonDelta)}p).`,
+			`최근 30일 변동성 ${analysis.volatility}% (평균 대비 표준편차).`
+		]
+---
+
+<section class='im-analysis'>
+	<h2 class='im-analysis-h'>{t.longTerm}</h2>
+	<table class='im-bench'>
+		<thead>
+			<tr>
+				<th>{t.year}</th>
+				<th class='im-num'>{t.avg}</th>
+				<th class='im-num'>{t.vsNow}</th>
+			</tr>
+		</thead>
+		<tbody>
+			{
+				analysis.benchmarks.map((benchmark) => (
+					<tr>
+						<th scope='row'>
+							{benchmark.year}
+							<span class='im-bench-ago'>
+								{isEn ? `${benchmark.yearsAgo}y ago` : `${benchmark.yearsAgo}년 전`}
+							</span>
+						</th>
+						<td class='im-num'>{fmt(benchmark.avg)}</td>
+						<td class={`im-num ${dir(benchmark.diffPct)}`}>{pct(benchmark.diffPct)}</td>
+					</tr>
+				))
+			}
+		</tbody>
+	</table>
+
+	<h2 class='im-analysis-h'>{t.season}</h2>
+	<figure class='im-figure'>
+		<svg viewBox={`0 0 ${barW} ${barH}`} role='img' aria-label={t.seasonPeak}>
+			<line
+				x1='0'
+				y1={zeroY}
+				x2={barW}
+				y2={zeroY}
+				stroke='var(--line)'
+				stroke-width='1'
+				shape-rendering='crispEdges'></line>
+			{
+				bars.map((bar) => (
+					<>
+						<rect
+							x={bar.x}
+							y={bar.y}
+							width={bar.width}
+							height={bar.height}
+							rx='2'
+							fill='var(--ink)'
+							fill-opacity={bar.current ? 1 : 0.32}
+						/>
+						<text x={bar.labelX} y={barH - 8} class='im-axis' text-anchor='middle'>
+							{bar.label}
+						</text>
+						<text
+							x={bar.labelX}
+							y={bar.value >= 100 ? bar.y - 7 : bar.y + bar.height + 14}
+							class='im-axis'
+							text-anchor='middle'
+						>
+							{bar.value}
+						</text>
+					</>
+				))
+			}
+		</svg>
+		<figcaption class='im-meta'>{t.seasonPeak}</figcaption>
+	</figure>
+
+	<h2 class='im-analysis-h'>{t.monthly}</h2>
+	<figure class='im-figure'>
+		<svg
+			viewBox={`0 0 ${lineW} ${lineH}`}
+			role='img'
+			aria-label={`${item.ko} ${analysis.monthly[0].ym} – ${analysis.monthly[analysis.monthly.length - 1].ym} ${fmt(mMin)} – ${fmt(mMax)}`}
+		>
+			{
+				yTicks.map((tick) => (
+					<>
+						<line
+							x1={linePadL}
+							y1={ly(tick)}
+							x2={lineW - 12}
+							y2={ly(tick)}
+							stroke='var(--line)'
+							stroke-width='1'
+							shape-rendering='crispEdges'
+						/>
+						<text x={linePadL - 10} y={ly(tick) + 4} class='im-axis' text-anchor='end'>
+							{tick.toLocaleString(isEn ? 'en-US' : 'ko-KR')}
+						</text>
+					</>
+				))
+			}
+			<path d={areaPath} fill='var(--ink)' fill-opacity='0.08'></path>
+			<path
+				d={linePath}
+				fill='none'
+				stroke='var(--ink)'
+				stroke-width='2'
+				stroke-linejoin='round'
+				stroke-linecap='round'></path>
+			{
+				xTicks.map((tick) => (
+					<text
+						x={lx(tick.i)}
+						y={lineH - 8}
+						class='im-axis'
+						text-anchor={tick.i === analysis.monthly.length - 1 ? 'end' : 'middle'}
+					>
+						{tick.ym.replace('-', '.')}
+					</text>
+				))
+			}
+		</svg>
+	</figure>
+
+	<h2 class='im-analysis-h'>{t.readout}</h2>
+	<ul class='im-readout'>
+		{readout.map((line) => <li>{line}</li>)}
+	</ul>
+</section>
+
+<style>
+	.im-analysis {
+		margin-top: clamp(48px, 8vh, 90px);
+	}
+
+	.im-bench {
+		width: 100%;
+		max-width: 560px;
+		border-collapse: collapse;
+		border-top: 1px solid var(--ink);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-bench th,
+	.im-bench td {
+		border-bottom: 1px solid var(--line);
+		padding: 12px 0;
+		text-align: left;
+		font-weight: 500;
+	}
+
+	.im-bench thead th {
+		font-size: 10px;
+		font-weight: 600;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--muted);
+	}
+
+	.im-bench tbody th {
+		font-size: 14px;
+		font-weight: 600;
+	}
+
+	.im-bench tbody td {
+		font-size: 14px;
+		font-weight: 600;
+	}
+
+	.im-bench-ago {
+		margin-left: 8px;
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--muted);
+	}
+
+	.im-figure {
+		margin: 0;
+		overflow-x: auto;
+	}
+
+	.im-figure svg {
+		display: block;
+		width: 100%;
+		min-width: 560px;
+		height: auto;
+	}
+
+	.im-figure :global(.im-axis) {
+		fill: var(--muted);
+		font-family: inherit;
+		font-size: 10px;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-figure figcaption {
+		margin-top: 12px;
+	}
+
+	.im-readout {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		max-width: 62ch;
+		border-top: 1px solid var(--line);
+	}
+
+	.im-readout li {
+		border-bottom: 1px solid var(--line);
+		padding: 14px 0;
+		font-size: 15px;
+		line-height: 1.7;
+		text-wrap: pretty;
+	}
+</style>

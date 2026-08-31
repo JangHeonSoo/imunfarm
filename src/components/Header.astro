@@ -1,267 +1,62 @@
 ---
-import HeaderLink from '@/components/HeaderLink'
-import MenuIcon from './icons/MenuIcon.astro'
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES, getLocalePrefix, getPostUrl } from '@/utils'
+import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
 
-const { postSlug, postCategory } = Astro.props
-const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
-const localePrefix = getLocalePrefix(currentLocale)
-const currentPath = Astro.url.pathname
-
-const buildHomePath = (targetLocale: string) =>
-	targetLocale === DEFAULT_LOCALE ? '/' : `/${targetLocale}/`
-
-const buildLocalePath = (targetLocale: string) => {
-	if (postSlug) return getPostUrl(postSlug, targetLocale, postCategory)
-	const segments = currentPath.split('/').filter(Boolean)
-	const hasLocalePrefix = SUPPORTED_LOCALES.includes(segments[0] as any)
-	const rest = hasLocalePrefix ? segments.slice(1) : segments
-	if (rest.length === 0) return buildHomePath(targetLocale)
-	const effectivePrefix = targetLocale === DEFAULT_LOCALE ? '' : `/${targetLocale}`
-	return `${effectivePrefix}/${rest.join('/')}`.replace(/\/ko\//, '/').replace(/\/ko$/, '/')
-}
+const { locale = DEFAULT_LOCALE, active = '' } = Astro.props
+const prefix = getLocalePrefix(locale)
 ---
 
-<header class='ag-site-header'>
-	<nav class='ag-site-nav' aria-label='Primary navigation'>
-		<a class='ag-wordmark' href={buildHomePath(currentLocale)} aria-label='IMUN.FARM Home'>
-			<span>IMUN.FARM</span>
-		</a>
-
-		<div class='ag-desktop-nav'>
-			<HeaderLink href={`${localePrefix}/blog`}>
-				{currentLocale === 'en' ? 'Blog' : '블로그'}
-			</HeaderLink>
-			<HeaderLink href={`${localePrefix}/about`}>
-				{currentLocale === 'en' ? 'About' : '소개'}
-			</HeaderLink>
-			<HeaderLink href={`${localePrefix}/contact`}>
-				{currentLocale === 'en' ? 'Contact' : '협찬문의'}
-			</HeaderLink>
-			<HeaderLink href={`${localePrefix}/tags`}>Tags</HeaderLink>
-		</div>
-
-		<div class='ag-nav-actions'>
-			<div class='ag-lang-switch' aria-label='Language selector'>
-				{
-					SUPPORTED_LOCALES.map((locale: (typeof SUPPORTED_LOCALES)[number]) => (
-						<a href={buildLocalePath(locale)} class={locale === currentLocale ? 'active' : ''}>
-							{locale.toUpperCase()}
-						</a>
-					))
-				}
-			</div>
-			<a class='ag-download' href={`${localePrefix}/contact`}>
-				{currentLocale === 'en' ? 'Contact' : '협찬문의'}
-				<span aria-hidden='true'>→</span>
-			</a>
-			<button
-				id='astro-header-drawer-button'
-				type='button'
-				class='ag-menu-button'
-				aria-label='Open menu'
-			>
-				<MenuIcon />
-			</button>
-		</div>
-	</nav>
+<header class='im-header'>
+	<span></span>
+	<a class='im-wordmark' href={`${prefix}/`} aria-label='IMUN.FARM'>IMUN.FARM</a>
+	<a
+		class='im-header-prices'
+		href={`${prefix}/prices/`}
+		aria-current={active === 'prices' ? 'page' : undefined}
+	>
+		시세 <span>Prices</span>
+	</a>
 </header>
 
-<div id='astro-header-drawer' class='ag-mobile-menu translate-x-[120%]'>
-	<nav>
-		<HeaderLink href={`${localePrefix}/blog`}>
-			{currentLocale === 'en' ? 'Blog' : '블로그'}
-		</HeaderLink>
-		<HeaderLink href={`${localePrefix}/about`}>
-			{currentLocale === 'en' ? 'About' : '소개'}
-		</HeaderLink>
-		<HeaderLink href={`${localePrefix}/contact`}>
-			{currentLocale === 'en' ? 'Contact' : '협찬문의'}
-		</HeaderLink>
-		<HeaderLink href={`${localePrefix}/tags`}>Tags</HeaderLink>
-	</nav>
-</div>
-
-<script>
-	function initMobileMenu() {
-		const menu = document.getElementById('astro-header-drawer')
-		const menuButton = document.getElementById('astro-header-drawer-button')
-		if (!menu || !menuButton) return
-		menuButton.addEventListener('click', (e) => {
-			e.stopPropagation()
-			menu.classList.toggle('translate-x-[120%]')
-		})
-		document.addEventListener('click', (event) => {
-			const target = event.target as HTMLElement
-			if (!menu.contains(target) && !menuButton.contains(target))
-				menu.classList.add('translate-x-[120%]')
-		})
-		menu
-			.querySelectorAll('a')
-			.forEach((link) =>
-				link.addEventListener('click', () => menu.classList.add('translate-x-[120%]'))
-			)
-	}
-	if (document.readyState === 'loading')
-		document.addEventListener('DOMContentLoaded', initMobileMenu)
-	else initMobileMenu()
-	document.addEventListener('astro:page-load', initMobileMenu)
-</script>
-
 <style>
-	.ag-site-header {
-		position: fixed;
-		inset: 0 0 auto;
-		z-index: 50;
-		color: #f6f7fb;
-	}
-
-	.ag-site-nav {
+	.im-header {
 		display: grid;
 		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
-		width: min(1140px, calc(100vw - 96px));
-		height: 52px;
-		margin: 0 auto;
+		gap: clamp(12px, 2vw, 28px);
+		padding: clamp(10px, 1.1vw, 16px) var(--gutter) 0;
 	}
 
-	.ag-wordmark,
-	.ag-desktop-nav :global(a),
-	.ag-download {
-		color: #f6f7fb;
-		font-size: 15px;
-		font-weight: 500;
-		letter-spacing: 0;
+	.im-wordmark {
+		color: var(--ink);
+		font-size: clamp(22px, 4.8vw, 62px);
+		font-weight: 800;
+		letter-spacing: 0.05em;
+		line-height: 1;
 	}
 
-	.ag-wordmark {
-		display: inline-flex;
-		align-items: center;
-		width: max-content;
-		font-size: 18px;
-		font-weight: 700;
-		letter-spacing: -0.03em;
+	.im-wordmark:hover {
+		opacity: 0.5;
 	}
 
-	.ag-desktop-nav {
-		display: flex;
-		align-items: center;
-		gap: 2.4rem;
-	}
-
-	.ag-desktop-nav :global(a),
-	.ag-wordmark {
-		transition: opacity 150ms ease;
-	}
-
-	.ag-desktop-nav :global(a:hover),
-	.ag-wordmark:hover {
-		opacity: 0.68;
-	}
-
-	.ag-nav-actions {
+	.im-header-prices {
 		justify-self: end;
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-	}
-
-	.ag-lang-switch {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-	}
-
-	.ag-lang-switch a {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 36px;
-		height: 36px;
-		border: 1px solid rgba(246, 247, 251, 0.15);
-		border-radius: 999px;
-		color: rgba(246, 247, 251, 0.72);
-		font-size: 11px;
-		font-weight: 700;
-		background: transparent;
-	}
-
-	.ag-lang-switch a.active {
-		color: #05060a;
-		background: #f6f7fb;
-	}
-
-	.ag-download {
-		display: inline-flex;
-		min-height: 42px;
-		align-items: center;
-		gap: 0.55rem;
-		border-radius: 999px;
-		background: #f6f7fb;
-		color: #05060a;
-		padding: 0 1.1rem;
-		transition:
-			transform 180ms ease,
-			background-color 150ms ease;
-	}
-
-	.ag-download:hover {
-		transform: translateY(-1px);
-		background: #ffffff;
-	}
-
-	.ag-menu-button {
-		display: none;
-	}
-
-	.ag-mobile-menu {
-		position: fixed;
-		top: 62px;
-		right: 24px;
-		z-index: 45;
-		width: min(300px, calc(100vw - 48px));
-		border: 1px solid rgba(246, 247, 251, 0.12);
-		border-radius: 24px;
-		background: rgba(5, 6, 10, 0.94);
-		box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
-		backdrop-filter: blur(18px);
-		transition: transform 260ms cubic-bezier(0.19, 1, 0.22, 1);
-	}
-
-	.ag-mobile-menu nav {
-		display: grid;
-		gap: 0.25rem;
-		padding: 1rem;
-	}
-
-	.ag-mobile-menu :global(a) {
-		border-radius: 16px;
-		color: #f6f7fb;
-		font-size: 17px;
+		align-self: end;
+		padding-bottom: 3px;
+		color: var(--ink);
+		font-size: 13px;
 		font-weight: 600;
-		padding: 0.85rem 1rem;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		white-space: nowrap;
+		border-bottom: 1px solid transparent;
 	}
 
-	@media (max-width: 820px) {
-		.ag-site-nav {
-			grid-template-columns: 1fr auto;
-			width: min(100vw - 40px, 680px);
-		}
-		.ag-desktop-nav,
-		.ag-download,
-		.ag-lang-switch {
-			display: none;
-		}
-		.ag-menu-button {
-			display: inline-flex;
-			width: 40px;
-			height: 40px;
-			align-items: center;
-			justify-content: center;
-			border: 1px solid rgba(246, 247, 251, 0.16);
-			border-radius: 999px;
-			background: transparent;
-			color: #f6f7fb;
-		}
+	.im-header-prices[aria-current='page'] {
+		border-bottom-color: var(--ink);
+	}
+
+	.im-header-prices span {
+		font-weight: 500;
+		color: var(--muted);
 	}
 </style>

@@ -1,439 +1,133 @@
 ---
-import { Image } from 'astro:assets'
 import BaseLayout from '@/layouts/BaseLayout'
-import { DEFAULT_LOCALE, getLocalePrefix, getPosts, getPostUrl } from '@/utils'
+import {
+	DEFAULT_LOCALE,
+	getCategorySlug,
+	getCategoryTitleFromSlug,
+	getLocalePrefix,
+	getPostUrl,
+	getPosts
+} from '@/utils'
 
 const { locale = DEFAULT_LOCALE } = Astro.props
 const isEn = locale === 'en'
-const localePrefix = getLocalePrefix(locale)
+const prefix = getLocalePrefix(locale)
+
 const allPosts = await getPosts(undefined, locale)
-const posts = allPosts.slice(0, 4)
+const posts = allPosts.slice(0, 24)
+
+const counts = new Map<string, number>()
+allPosts.forEach((post) => {
+	const slug = getCategorySlug(post.data.category)
+	counts.set(slug, (counts.get(slug) ?? 0) + 1)
+})
+const categories = Array.from(counts.entries())
+	.sort((a, b) => b[1] - a[1])
+	.slice(0, 4)
+	.map(([slug]) => ({ slug, label: getCategoryTitleFromSlug(slug, locale) }))
+
+const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2', '4 / 3']
 ---
 
-<BaseLayout title='Home' fullBleed={true}>
-	<div class='ag-imun-page'>
-		<section class='ag-section ag-hero' aria-labelledby='home-title'>
-			<div class='ag-hero-content'>
-				<p class='ag-brand-kicker'>IMUN.FARM</p>
-				<h1 id='home-title'>
-					{isEn ? 'A knowledge blog for farmers' : '농업인을 위한 지식블로그'}
-				</h1>
-				<div class='ag-actions'>
-					<a class='ag-button ag-button-primary' href={`${localePrefix}/blog`}
-						>{isEn ? 'Read posts' : '글 보기'}</a
-					>
-					<a class='ag-button ag-button-secondary' href='#field-notes'
-						>{isEn ? 'Recent posts' : '최근 글'}</a
-					>
-				</div>
-			</div>
-		</section>
+<BaseLayout title='Home' locale={locale} active='home'>
+	<div class='im-search'>
+		<input
+			id='im-search-input'
+			type='search'
+			autocomplete='off'
+			placeholder='SEARCH'
+			aria-label={isEn ? 'Search posts' : '글 검색'}
+			data-action={`${prefix}/search/`}
+		/>
+	</div>
 
-		<section class='ag-agent-first'>
-			<div class='ag-icon-marquee' aria-hidden='true'>
-				<div class='ag-icon-marquee-content'>
-					<span>{isEn ? 'Farmland' : '농지'}</span><span>{isEn ? 'Smart farms' : '스마트팜'}</span
-					><span>{isEn ? 'Solar' : '태양광'}</span><span>{isEn ? 'Subsidies' : '보조금'}</span><span
-						>{isEn ? 'Farm business' : '농업 창업'}</span
-					><span>{isEn ? 'Field notes' : '현장 정보'}</span>
-					<span>{isEn ? 'Farmland' : '농지'}</span><span>{isEn ? 'Smart farms' : '스마트팜'}</span
-					><span>{isEn ? 'Solar' : '태양광'}</span><span>{isEn ? 'Subsidies' : '보조금'}</span><span
-						>{isEn ? 'Farm business' : '농업 창업'}</span
-					><span>{isEn ? 'Field notes' : '현장 정보'}</span>
-				</div>
-			</div>
-			<p>
-				{
-					isEn
-						? 'We write about farmland, smart farms, solar power, subsidies, and farm business.'
-						: '농지, 스마트팜, 태양광, 보조금, 농업 창업 이야기를 쉽게 정리합니다.'
-				}
-			</p>
-		</section>
+	<nav class='im-filters im-pad'>
+		<a class='im-tab' href={`${prefix}/blog/`} aria-current='true'>{isEn ? 'All' : '전체'}</a>
+		{
+			categories.map((category) => (
+				<a class='im-tab' href={`${prefix}/${category.slug}/1`}>
+					{category.label}
+				</a>
+			))
+		}
+	</nav>
 
-		<section id='field-notes' class='ag-feature-explorer'>
-			<div class='ag-feature-list'>
-				{
-					posts.map((post, index) => (
-						<a
-							class={`ag-product-item ${index === 0 ? 'is-active' : ''}`}
-							href={getPostUrl(post.slug, locale, post.data.category)}
-							aria-label={post.data.title}
-						>
-							<div>
-								<span class='ag-product-index'>0{index + 1}</span>
-								<h2>{post.data.title}</h2>
-								<p>{post.data.description}</p>
-							</div>
-							<div class='ag-product-mock'>
-								{post.data.heroImage ? (
-									<Image
-										class='ag-product-visual'
-										src={post.data.heroImage}
-										width={720}
-										height={420}
-										format='webp'
-										alt={post.data.title}
-										loading='lazy'
-									/>
-								) : (
-									<div class='ag-product-visual ag-product-placeholder'>IMUN.FARM</div>
-								)}
-							</div>
-						</a>
-					))
-				}
-			</div>
-		</section>
-
-		<section class='ag-usecase-section'>
-			<div class='ag-usecase-heading'>
-				<h2>{isEn ? 'What we write about' : '이런 글을 씁니다'}</h2>
-				<p>
-					{
-						isEn
-							? 'Plain articles for people who farm, prepare to farm, or run farm-related work.'
-							: '농사를 짓거나 준비하는 사람이 바로 이해할 수 있는 글을 씁니다.'
-					}
-				</p>
-			</div>
-			<div class='ag-usecase-row'>
-				<article class='ag-usecase-card is-active'>
-					<h3>{isEn ? 'Farmland and permits' : '농지와 인허가'}</h3><p>
-						{
-							isEn
-								? 'Farmland rules, land use, permits, and checks before starting.'
-								: '농지 취득, 용도 변경, 인허가처럼 먼저 확인해야 할 내용을 정리합니다.'
-						}
-					</p><a href={`${localePrefix}/blog`}>{isEn ? 'Read posts' : '글 보기'}</a>
-				</article>
-				<article class='ag-usecase-card'>
-					<h3>{isEn ? 'Smart farming' : '스마트팜'}</h3><p>
-						{
-							isEn
-								? 'Crops, equipment, costs, and payback period in plain words.'
-								: '작물 선택, 설비 비용, 회수 기간을 어렵지 않게 풀어 씁니다.'
-						}
-					</p><a href={`${localePrefix}/blog`}>{isEn ? 'Read posts' : '글 보기'}</a>
-				</article>
-				<article class='ag-usecase-card'>
-					<h3>{isEn ? 'Solar and subsidies' : '태양광과 보조금'}</h3><p>
-						{
-							isEn
-								? 'Agrivoltaics, grid connection, support programs, and income estimates.'
-								: '영농형 태양광, 계통연계, 지원사업, 예상 수익을 현실적으로 봅니다.'
-						}
-					</p><a href={`${localePrefix}/blog`}>{isEn ? 'Read posts' : '글 보기'}</a>
-				</article>
-			</div>
-		</section>
+	<div class='im-grid-home im-pad im-bottom'>
+		{
+			posts.map((post, index) => (
+				<a class='im-card' href={getPostUrl(post.slug, locale, post.data.category)}>
+					{post.data.heroImage && (
+						<img
+							src={
+								typeof post.data.heroImage === 'string'
+									? post.data.heroImage
+									: post.data.heroImage.src
+							}
+							alt={post.data.title}
+							loading={index < 4 ? 'eager' : 'lazy'}
+							style={`aspect-ratio:${RATIOS[index % RATIOS.length]}`}
+						/>
+					)}
+					<span class='im-card-meta'>{post.data.title}</span>
+				</a>
+			))
+		}
 	</div>
 </BaseLayout>
 
+<script is:inline>
+	function initHomeSearch() {
+		const input = document.getElementById('im-search-input')
+		if (!input || input.dataset.bound === 'true') return
+		input.dataset.bound = 'true'
+		input.addEventListener('keydown', (event) => {
+			if (event.key !== 'Enter') return
+			event.preventDefault()
+			const query = input.value.trim()
+			if (!query) return
+			window.location.href = input.dataset.action + '?q=' + encodeURIComponent(query)
+		})
+	}
+	if (document.readyState === 'loading')
+		document.addEventListener('DOMContentLoaded', initHomeSearch)
+	else initHomeSearch()
+	document.addEventListener('astro:page-load', initHomeSearch)
+</script>
+
 <style>
-	.ag-imun-page {
-		--page-gutter: 3rem;
-		position: relative;
-		isolation: isolate;
-		min-height: 100vh;
-		overflow: hidden;
-		color: #f6f7fb;
-		background: transparent;
-	}
-	.ag-imun-page::before {
-		content: '';
-		position: fixed;
-		inset: 0;
-		z-index: 0;
-		pointer-events: none;
-		background:
-			radial-gradient(circle at 50% 12%, rgba(106, 228, 255, 0.08), transparent 24rem),
-			radial-gradient(circle at 62% 22%, rgba(139, 92, 246, 0.06), transparent 22rem);
-		mix-blend-mode: screen;
-	}
-	.ag-imun-page::after {
-		content: '';
-		position: fixed;
-		inset: 0;
-		z-index: 0;
-		pointer-events: none;
-		background: linear-gradient(
-			to bottom,
-			transparent 0%,
-			transparent 72%,
-			rgba(5, 6, 10, 0.78) 100%
-		);
-	}
-	.ag-section,
-	.ag-agent-first,
-	.ag-feature-explorer,
-	.ag-usecase-section {
-		position: relative;
-		z-index: 1;
-	}
-	.ag-section {
-		scroll-margin-top: 88px;
-		padding: clamp(72px, 12vw, 180px) var(--page-gutter);
-	}
-	.ag-hero {
+	.im-search {
 		display: grid;
-		min-height: 100dvh;
 		place-items: center;
-		overflow: hidden;
-		padding-top: 96px;
-		padding-bottom: 56px;
-	}
-	.ag-hero-content {
-		width: min(1040px, 100%);
-		margin: 0 auto;
-		text-align: center;
-	}
-	.ag-brand-kicker {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.58rem;
-		margin: 0 0 1.8rem;
-		color: #f6f7fb;
-		font-size: clamp(16px, 1.8vw, 22px);
-		font-weight: 600;
+		height: clamp(140px, 24vh, 250px);
 	}
 
-	.ag-hero h1 {
-		max-width: 17ch;
-		margin: 0 auto;
-		color: #f6f7fb;
-		font-size: clamp(48px, 7.2vw, 92px);
-		font-weight: 850;
-		line-height: 1.1;
-		letter-spacing: -0.025em;
-		text-wrap: balance;
-	}
-	.ag-actions {
-		display: flex;
-		justify-content: center;
-		gap: 0.8rem;
-		margin-top: 2.2rem;
-		flex-wrap: wrap;
-	}
-	.ag-button {
-		display: inline-flex;
-		min-height: 52px;
-		align-items: center;
-		justify-content: center;
-		border-radius: 999px;
-		padding: 0 1.35rem;
-		font-size: 15px;
-		font-weight: 600;
-		line-height: 1;
-		transition:
-			transform 180ms ease,
-			background-color 150ms ease,
-			border-color 180ms ease;
-	}
-	.ag-button:hover {
-		transform: translateY(-1px);
-	}
-	.ag-button-primary {
-		color: #05060a;
-		background: #f6f7fb;
-	}
-	.ag-button-secondary {
-		color: #f6f7fb;
-		border: 1px solid rgba(246, 247, 251, 0.18);
-		background: rgba(246, 247, 251, 0.04);
-	}
-	.ag-agent-first {
-		padding: clamp(72px, 11vw, 160px) var(--page-gutter);
-		text-align: center;
-		border-top: 1px solid rgba(246, 247, 251, 0.08);
-	}
-	.ag-icon-marquee {
-		overflow: hidden;
-		width: 100%;
-		margin-bottom: 3.5rem;
-		mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent 100%);
-	}
-	.ag-icon-marquee-content {
-		display: flex;
-		gap: clamp(1.5rem, 4.5vw, 4.5rem);
-		width: max-content;
-		animation: ag-marquee 28s linear infinite;
-		white-space: nowrap;
-		color: rgba(246, 247, 251, 0.38);
-		font-size: clamp(18px, 2.4vw, 36px);
-		font-weight: 700;
-	}
-	@keyframes ag-marquee {
-		from {
-			transform: translateX(-33.333%);
-		}
-		to {
-			transform: translateX(0);
-		}
-	}
-	.ag-agent-first p {
-		max-width: 980px;
-		margin: 0 auto;
-		color: #f6f7fb;
-		font-size: clamp(34px, 5.4vw, 82px);
-		font-weight: 750;
-		line-height: 1.05;
-		letter-spacing: -0.035em;
-		text-wrap: balance;
-	}
-	.ag-feature-explorer {
-		padding: clamp(72px, 12vw, 180px) var(--page-gutter);
-	}
-	.ag-feature-list {
-		display: grid;
-		gap: 1rem;
-		max-width: 1180px;
-		margin: 0 auto;
-	}
-	.ag-product-item {
-		display: grid;
-		grid-template-columns: minmax(0, 0.85fr) minmax(320px, 0.75fr);
-		gap: clamp(1.4rem, 4vw, 4rem);
-		align-items: center;
-		min-height: 390px;
-		border: 1px solid rgba(246, 247, 251, 0.1);
-		border-radius: 2rem;
-		background: rgba(246, 247, 251, 0.035);
-		padding: clamp(1.3rem, 3vw, 2.3rem);
-		color: inherit;
-		text-decoration: none;
-		cursor: pointer;
-		transition:
-			opacity 320ms cubic-bezier(0.19, 1, 0.22, 1),
-			transform 320ms cubic-bezier(0.19, 1, 0.22, 1),
-			border-color 320ms ease,
-			background 320ms ease;
-	}
-	.ag-product-item:hover,
-	.ag-product-item.is-active {
-		border-color: rgba(106, 228, 255, 0.28);
-		background: rgba(246, 247, 251, 0.055);
-		transform: translateY(-4px);
-	}
-	.ag-product-index {
-		display: inline-flex;
-		margin-bottom: 1.15rem;
-		color: #6ae4ff;
-		font-size: 14px;
-		font-weight: 700;
-	}
-	.ag-product-item h2 {
-		max-width: 18ch;
-		margin: 0;
-		color: #f6f7fb;
-		font-size: clamp(32px, 4.8vw, 66px);
-		font-weight: 650;
-		line-height: 1;
-		letter-spacing: -0.035em;
-	}
-	.ag-product-item p {
-		max-width: 56ch;
-		margin: 1rem 0 0;
-		color: rgba(246, 247, 251, 0.64);
-		font-size: clamp(17px, 1.8vw, 21px);
-		line-height: 1.42;
-	}
-	.ag-product-item a {
-		display: inline-flex;
-		margin-top: 1.5rem;
-		color: #6ae4ff;
-		font-size: 15px;
-		font-weight: 650;
-	}
-	.ag-product-mock {
-		overflow: hidden;
-		border: 1px solid rgba(246, 247, 251, 0.12);
-		border-radius: 1.7rem;
-		background: #10131b;
-		box-shadow: 0 0 46px rgba(106, 228, 255, 0.08);
-	}
-	.ag-product-visual {
-		display: flex;
-		width: 100%;
-		height: 260px;
-		align-items: center;
-		justify-content: center;
-		object-fit: cover;
-		color: rgba(246, 247, 251, 0.42);
-		font-size: 12px;
+	.im-search input {
+		width: min(760px, 90vw);
+		border: 0;
+		background: none;
+		padding: 0;
+		outline: none;
+		color: var(--ink);
+		font-family: inherit;
 		font-weight: 800;
-		letter-spacing: 0.12em;
-		background: linear-gradient(135deg, #10131b, #171b26);
+		font-size: clamp(26px, 4.2vw, 54px);
+		letter-spacing: 0.16em;
+		text-align: center;
+		text-transform: uppercase;
 	}
-	.ag-usecase-section {
-		padding: clamp(72px, 12vw, 180px) var(--page-gutter);
+
+	.im-search input::-webkit-search-cancel-button {
+		display: none;
 	}
-	.ag-usecase-heading {
-		display: grid;
-		grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.8fr);
-		gap: clamp(2rem, 6vw, 5rem);
-		max-width: 1180px;
-		margin: 0 auto 2rem;
-		align-items: end;
-	}
-	.ag-usecase-heading h2 {
-		margin: 0;
-		color: #f6f7fb;
-		font-size: clamp(42px, 6vw, 84px);
-		font-weight: 780;
-		line-height: 1;
-		letter-spacing: -0.035em;
-	}
-	.ag-usecase-heading p {
-		margin: 0;
-		color: rgba(246, 247, 251, 0.62);
-		font-size: clamp(18px, 2vw, 24px);
-		line-height: 1.36;
-	}
-	.ag-usecase-row {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 1rem;
-		max-width: 1180px;
-		margin: 0 auto;
-	}
-	.ag-usecase-card {
-		min-height: 310px;
-		border: 1px solid rgba(246, 247, 251, 0.1);
-		border-radius: 2rem;
-		background: rgba(246, 247, 251, 0.035);
-		padding: 1.55rem;
-	}
-	.ag-usecase-card h3 {
-		margin: 0;
-		color: #f6f7fb;
-		font-size: clamp(26px, 3.2vw, 44px);
-		font-weight: 650;
-		line-height: 1;
-	}
-	.ag-usecase-card p {
-		margin: 1rem 0 0;
-		color: rgba(246, 247, 251, 0.62);
-		line-height: 1.45;
-	}
-	.ag-usecase-card a {
-		display: inline-flex;
-		margin-top: 2rem;
-		color: #8b5cf6;
-		font-weight: 650;
-	}
-	@media (max-width: 860px) {
-		.ag-imun-page {
-			--page-gutter: 1.25rem;
-		}
-		.ag-hero h1 {
-			font-size: clamp(42px, 13vw, 66px);
-		}
-		.ag-product-item,
-		.ag-usecase-heading,
-		.ag-usecase-row {
-			grid-template-columns: 1fr;
-		}
+
+	.im-filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: clamp(14px, 2vw, 32px);
+		padding-bottom: clamp(14px, 1.6vw, 22px);
+		font-size: 13px;
+		font-weight: 500;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
 	}
 </style>

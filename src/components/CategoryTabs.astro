@@ -1,0 +1,49 @@
+---
+import {
+	DEFAULT_LOCALE,
+	getCategories,
+	getCategorySlug,
+	getCategoryTitleFromSlug,
+	getLocalePrefix
+} from '@/utils'
+
+const { locale = DEFAULT_LOCALE, active = '' } = Astro.props
+const prefix = getLocalePrefix(locale)
+const categories = await getCategories(locale)
+const items = categories
+	.map((category: string) => ({
+		slug: getCategorySlug(category),
+		label: getCategoryTitleFromSlug(getCategorySlug(category), locale)
+	}))
+	.sort((a, b) => a.label.localeCompare(b.label))
+---
+
+<nav class='im-category-tabs'>
+	<a class='im-tab' href={`${prefix}/blog/`} aria-current={active ? 'false' : 'true'}>
+		{locale === 'en' ? 'All' : '전체'}
+	</a>
+	{
+		items.map((item) => (
+			<a
+				class='im-tab'
+				href={`${prefix}/${item.slug}/1`}
+				aria-current={active === item.slug ? 'true' : 'false'}
+			>
+				{item.label}
+			</a>
+		))
+	}
+</nav>
+
+<style>
+	.im-category-tabs {
+		display: flex;
+		flex-wrap: wrap;
+		gap: clamp(14px, 2vw, 32px);
+		margin-bottom: clamp(28px, 4vh, 54px);
+		font-size: 13px;
+		font-weight: 500;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+</style>

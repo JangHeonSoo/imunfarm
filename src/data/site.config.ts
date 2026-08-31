@@ -35,13 +35,15 @@ interface SiteConfig {
 	paginationSize: number
 }
 
+export const CONTACT_EMAIL = 'denosinfo@gmail.com'
+
 export const siteConfig: SiteConfig = {
 	author: {
 		name: `Imun Farm`,
-		summary: `경북 구미에서 쌀, 샤인머스켓 포도, 감자, 수박, 메론을 재배하는 농장입니다.`
+		summary: `쌀, 샤인머스켓 포도, 감자, 수박, 메론을 재배하며 농사 기록을 남깁니다.`
 	},
-	title: `imun.farm - IMUN(Intelligent & Modern Urban Nature) 지식 농장`,
-	description: `경북 구미 지능형 현대 도시 농장 노하우와 농사 기록`,
+	title: `IMUN.FARM`,
+	description: `농지, 스마트팜, 영농형 태양광, 보조금과 지역별 농산물 시세를 직접 확인한 범위에서 기록합니다.`,
 	siteUrl: `https://imun.farm/`,
 	social: {
 		twitter: ``,

@@ -1,8 +1,8 @@
 {
-	"name": "blog-template",
+	"name": "imunfarm",
 	"type": "module",
 	"version": "1.1.0",
-	"description": "A template for creating a blog with Astro",
+	"description": "imun.farm — 농업 지식 블로그와 농산물 시세",
 	"author": "danielcgilibert",
 	"license": "GPL-3.0-only",
 	"repository": {
@@ -25,7 +25,6 @@
 		"build": "astro build",
 		"sync": "astro sync",
 		"preview": "astro preview",
-		"postbuild": "pagefind --site dist",
 		"format:check": "prettier --plugin-search-dir=. --check .",
 		"format": "prettier --plugin-search-dir=. --write .",
 		"lint": "eslint .",

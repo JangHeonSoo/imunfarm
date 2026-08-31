@@ -1,14 +1,30 @@
 ---
+import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+
 export interface Props {
 	tag: string
+	locale?: string
 }
-const { tag } = Astro.props
+
+const { tag, locale = DEFAULT_LOCALE } = Astro.props
+const prefix = getLocalePrefix(locale)
 ---
 
-<a href={`/tags/${tag.toLowerCase()}`} aria-label={tag}>
-	<span
-		class='w-fit rounded-full border border-white/15 bg-white/[0.055] px-2 py-1 text-sm font-semibold text-[#f6f7fb] shadow md:px-5 md:py-2 hover:border-[#6ae4ff]/50 hover:text-[#6ae4ff] transition-colors'
-	>
-		{tag ?? 'Blog Tag'}
-	</span>
-</a>
+<a class='im-tag' href={`${prefix}/tags/${tag.toLowerCase()}/`}>{tag}</a>
+
+<style>
+	.im-tag {
+		display: inline-flex;
+		border: 1px solid var(--line);
+		padding: 6px 10px;
+		color: var(--ink);
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.02em;
+	}
+
+	.im-tag:hover {
+		border-color: var(--ink);
+		opacity: 1;
+	}
+</style>

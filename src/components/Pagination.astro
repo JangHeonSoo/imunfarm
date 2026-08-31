@@ -1,133 +1,32 @@
 ---
-import ArrowLeft from './icons/ArrowLeft.astro'
-import ArrowRight from './icons/ArrowRight.astro'
-
 const { page } = Astro.props
-
-// Function to generate page URLs
-const getPageUrl = (pageNum: number) => {
-	if (pageNum === 1) {
-		// For first page, remove the /1 from the URL
-		return page.url.prev ? page.url.prev.replace(/\/\d+$/, '') : '#'
-	}
-
-	// For other pages, replace the current page number in the URL
-	const baseUrl = page.url.current.replace(/\/\d+$/, '')
-	return `${baseUrl}/${pageNum}`
-}
-
-// Generate array of page numbers to display
-const generatePageNumbers = () => {
-	const pageNumbers = []
-	const currentPage = page.currentPage
-	const lastPage = page.lastPage
-
-	// Always include first page
-	pageNumbers.push(1)
-
-	// Calculate range around current page (current +/- 2)
-	let rangeStart = Math.max(2, currentPage - 2)
-	let rangeEnd = Math.min(lastPage - 1, currentPage + 2)
-
-	// Add ellipsis after first page if needed
-	if (rangeStart > 2) {
-		pageNumbers.push('...')
-	}
-
-	// Add pages in the range
-	for (let i = rangeStart; i <= rangeEnd; i++) {
-		pageNumbers.push(i)
-	}
-
-	// Add ellipsis before last page if needed
-	if (rangeEnd < lastPage - 1) {
-		pageNumbers.push('...')
-	}
-
-	// Always include last page if it's not the first page
-	if (lastPage > 1) {
-		pageNumbers.push(lastPage)
-	}
-
-	return pageNumbers
-}
-
-const pageNumbers = generatePageNumbers()
 ---
 
-<div class='flex gap-2 items-center justify-center'>
-	<!-- Left arrow -->
-	{
-		page.start > 0 ? (
-			<a
-				href={page.url.prev}
-				class='flex items-center justify-center w-10 h-10 text-base font-medium text-[#f6f7fb]/70 bg-white/[0.045] border border-white/12 rounded-full transition-all hover:-translate-y-0.5 hover:border-[#6ae4ff]/40 hover:bg-white/[0.07] hover:text-[#6ae4ff]'
-			>
-				<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-					<path
-						stroke-linecap='round'
-						stroke-linejoin='round'
-						stroke-width='2'
-						d='M15 19l-7-7 7-7'
-					/>
-				</svg>
-			</a>
-		) : (
-			<span class='flex items-center justify-center w-10 h-10 text-[#f6f7fb]/24 cursor-not-allowed'>
-				<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-					<path
-						stroke-linecap='round'
-						stroke-linejoin='round'
-						stroke-width='2'
-						d='M15 19l-7-7 7-7'
-					/>
-				</svg>
-			</span>
-		)
+<nav class='im-pagination im-menu' aria-label='Pagination'>
+	{page.url.prev ? <a href={page.url.prev}>Prev</a> : <span>Prev</span>}
+	<span class='im-pagination-count'>
+		{String(page.currentPage).padStart(2, '0')} / {String(page.lastPage).padStart(2, '0')}
+	</span>
+	{page.url.next ? <a href={page.url.next}>Next</a> : <span>Next</span>}
+</nav>
+
+<style>
+	.im-pagination {
+		display: flex;
+		align-items: center;
+		gap: clamp(14px, 2vw, 28px);
+		padding-top: clamp(28px, 4vh, 54px);
+		border-top: 1px solid var(--line);
+		margin-top: clamp(28px, 4vh, 54px);
 	}
-	<!-- Page numbers -->
-	{
-		pageNumbers.map((pageNum) => {
-			if (pageNum === '...') {
-				return (
-					<span class='flex items-center justify-center w-10 h-10 text-base font-medium text-[#f6f7fb]/45'>
-						...
-					</span>
-				)
-			}
-			const isCurrentPage = pageNum === page.currentPage
-			return (
-				<a
-					href={isCurrentPage ? '#' : getPageUrl(pageNum as number)}
-					class={`flex items-center justify-center w-10 h-10 text-base font-semibold rounded-full transition-all ${
-						isCurrentPage
-							? 'bg-[#f6f7fb] text-[#05060a] shadow-[0_0_28px_rgba(106,228,255,0.16)]'
-							: 'text-[#f6f7fb]/70 bg-white/[0.045] border border-white/12 hover:-translate-y-0.5 hover:border-[#6ae4ff]/40 hover:bg-white/[0.07] hover:text-[#6ae4ff]'
-					}`}
-					aria-current={isCurrentPage ? 'page' : undefined}
-				>
-					{pageNum}
-				</a>
-			)
-		})
+
+	.im-pagination span {
+		color: var(--muted);
 	}
-	<!-- Right arrow -->
-	{
-		page.currentPage < page.lastPage ? (
-			<a
-				href={page.url.next}
-				class='flex items-center justify-center w-10 h-10 text-base font-medium text-[#f6f7fb]/70 bg-white/[0.045] border border-white/12 rounded-full transition-all hover:-translate-y-0.5 hover:border-[#6ae4ff]/40 hover:bg-white/[0.07] hover:text-[#6ae4ff]'
-			>
-				<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-					<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5l7 7-7 7' />
-				</svg>
-			</a>
-		) : (
-			<span class='flex items-center justify-center w-10 h-10 text-[#f6f7fb]/24 cursor-not-allowed'>
-				<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-					<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5l7 7-7 7' />
-				</svg>
-			</span>
-		)
+
+	.im-pagination-count {
+		margin-left: auto;
+		font-weight: 500;
+		font-variant-numeric: tabular-nums;
 	}
-</div>
+</style>

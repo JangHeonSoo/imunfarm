@@ -1,16 +1,18 @@
-import { getCollection } from 'astro:content'
+import { getCollection, type CollectionEntry } from 'astro:content'
 import { CATEGORIES } from '@/data/categories.ts'
 import { unsluglify, sluglify } from './sluglify.ts'
 import { DEFAULT_LOCALE, stripLocaleFromSlug } from './locale'
 
-export const getAllCollection = async (locale: string = DEFAULT_LOCALE) => {
+export const getAllCollection = async (
+	locale: string = DEFAULT_LOCALE
+): Promise<CollectionEntry<'blog'>[]> => {
 	const collections = ['blog']
 	const allPosts = await Promise.all(
 		collections.map(async (col) => {
 			try {
-				return await getCollection(col as any)
+				return (await getCollection(col as any)) as CollectionEntry<'blog'>[]
 			} catch (e) {
-				return []
+				return [] as CollectionEntry<'blog'>[]
 			}
 		})
 	)
@@ -91,9 +93,7 @@ export const getTags = async (locale: string = DEFAULT_LOCALE) => {
 
 export const getIndexPageByCategory = async (category: string, locale: string = DEFAULT_LOCALE) => {
 	const posts = await getAllCollection(locale)
-	return posts.find(
-		(post) => post.data.index && getCategorySlug(post.data.category) === category
-	)
+	return posts.find((post) => post.data.index && getCategorySlug(post.data.category) === category)
 }
 
 export const getPostByTag = async (tag: string, locale: string = DEFAULT_LOCALE) => {
@@ -116,4 +116,16 @@ export const getPostUrl = (slug: string, locale: string = DEFAULT_LOCALE, catego
 	}
 	const categorySlug = getCategorySlug(category)
 	return `/${categorySlug}/${cleanSlug}/`
+}
+
+/** 같은 글의 다른 언어 URL. 대응 글이 없으면 null. */
+export const getCounterpartUrl = async (
+	slug: string,
+	sourceLocale: string,
+	targetLocale: string
+) => {
+	const cleanSlug = stripLocaleFromSlug(slug, sourceLocale)
+	const posts = await getPosts(undefined, targetLocale)
+	const match = posts.find((post) => stripLocaleFromSlug(post.slug, targetLocale) === cleanSlug)
+	return match ? getPostUrl(match.slug, targetLocale, match.data.category) : null
 }

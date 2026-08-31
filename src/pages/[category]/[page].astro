@@ -1,68 +1,45 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout'
-import ListPosts from '@/components/ListPosts'
-import ListCategories from '@/components/ListCategories'
-import TitlePage from '@/components/TitlePage'
+import PostGrid from '@/components/PostGrid'
+import Pagination from '@/components/Pagination'
+import CategoryTabs from '@/components/CategoryTabs'
 import {
-	sluglify,
-	unsluglify,
+	DEFAULT_LOCALE,
+	SUPPORTED_LOCALES,
 	getCategories,
-	getCategoryName,
 	getCategorySlug,
 	getCategoryTitleFromSlug,
-	getIndexPageByCategory,
-	getPosts,
-	SUPPORTED_LOCALES
+	getPosts
 } from '@/utils'
-import { siteConfig } from '@/data/site.config'
-import Pagination from '@/components/Pagination'
-import Code from '@/components/mdx/Code'
-import SButton from '@/components/mdx/SButton'
-import { components } from '../../components/mixins/AutoImportComponents'
 
 export async function getStaticPaths({ paginate }: any) {
-	const categoriesSet = new Set<string>()
+	const set = new Set<string>()
 	await Promise.all(
 		SUPPORTED_LOCALES.map(async (locale) => {
 			const cats = await getCategories(locale)
-			cats.forEach((c) => categoriesSet.add(c))
+			cats.forEach((c) => set.add(c))
 		})
 	)
-	const categories = Array.from(categoriesSet)
-	const allPosts = await getPosts()
+	const allPosts = await getPosts(undefined, DEFAULT_LOCALE)
 
-	return categories.flatMap((category: string) => {
-		const slugNameCategory = getCategorySlug(category)
-		const filteredPosts = allPosts.filter(
-			(post) => getCategorySlug(post.data.category) === slugNameCategory
-		)
-
-		return paginate(filteredPosts, {
-			params: {
-				category: slugNameCategory
-			},
-			pageSize: siteConfig.paginationSize
-		})
+	return Array.from(set).flatMap((category: string) => {
+		const slug = getCategorySlug(category)
+		const filtered = allPosts.filter((post) => getCategorySlug(post.data.category) === slug)
+		return paginate(filtered, { params: { category: slug }, pageSize: 24 })
 	})
 }
-const params = Astro.params
-const { page } = Astro.props
 
-const categoryTitle = getCategoryTitleFromSlug(params.category!.toLowerCase())
-const indexPage = await getIndexPageByCategory(params.category!.toLowerCase())
-const posts = page.data
+const { page } = Astro.props
+const locale = DEFAULT_LOCALE
+const categorySlug = Astro.params.category!.toLowerCase()
+const title = getCategoryTitleFromSlug(categorySlug, locale)
 ---
 
-<BaseLayout title={params.category}>
-	<TitlePage title={categoryTitle} />
-	<ListCategories activeCategory={params.category} />
-	{
-		indexPage &&
-			[indexPage].map(async (post) => {
-				const { Content } = await post.render()
-				return <Content components={{ ...components, pre: Code, SButton }} />
-			})
-	}
-	<ListPosts posts={posts} />
-	<Pagination page={page} />
+<BaseLayout title={title} locale={locale} active='blog'>
+	<div class='im-top'></div>
+	<div class='im-pad im-bottom'>
+		<CategoryTabs locale={locale} active={categorySlug} />
+		<PostGrid posts={page.data} locale={locale} />
+		{page.lastPage > 1 && <Pagination page={page} />}
+	</div>
 </BaseLayout>

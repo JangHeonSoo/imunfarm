@@ -1,105 +1,124 @@
 ---
-const today = new Date()
+import { DEFAULT_LOCALE, getLocaleName, getLocalePrefix } from '@/utils'
+import { CONTACT_EMAIL } from '@/site-config'
+
+const { locale = DEFAULT_LOCALE, otherLocale = 'en', altPath, active = '' } = Astro.props
+const prefix = getLocalePrefix(locale)
+const isEn = locale === 'en'
+const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
+	isEn ? 'IMUN.FARM inquiry' : 'imun.farm 문의'
+)}`
+
+const links = [
+	{ href: `${prefix}/blog/`, label: isEn ? 'Posts' : '기록', key: 'blog' },
+	{ href: `${prefix}/tags/`, label: isEn ? 'Tags' : '태그', key: 'tags' },
+	{ href: `${prefix}/prices/`, label: isEn ? 'Prices' : '시세', key: 'prices' }
+]
 ---
 
-<footer class='ag-footer'>
-	<div class='ag-footer-top'>
-		<h2>농업인을 위한 지식블로그</h2>
-		<nav aria-label='Footer navigation'>
-			<a href='/contact'>Contact</a>
-			<a href='/blog'>Blog</a>
-			<a href='/about'>About</a>
-			<a href='/tags'>Tags</a>
-		</nav>
+<footer class='im-footer im-menu'>
+	<nav class='im-footer-group'>
+		{
+			links.map((link) => (
+				<a href={link.href} aria-current={active === link.key ? 'page' : undefined}>
+					{link.label}
+				</a>
+			))
+		}
+	</nav>
+	<div class='im-footer-group im-footer-end'>
+		{
+			altPath && (
+				<a href={altPath} class='im-lang'>
+					{getLocaleName(otherLocale)} <span>+</span>
+				</a>
+			)
+		}
+		<button type='button' id='im-theme-toggle' data-label-dark='Dark' data-label-light='Light'
+			>Dark</button
+		>
+		<a href={mailto}>{isEn ? 'Contact' : '문의'}</a>
+		<a href={mailto}>{CONTACT_EMAIL}</a>
 	</div>
-	<div class='ag-footer-mega' aria-hidden='true'>IMUN.FARM</div>
-	<p class='ag-footer-copy'>
-		&copy; {today.getFullYear()}
-		<strong>imun.farm</strong>. All rights reserved.
-	</p>
 </footer>
 
+<script is:inline>
+	function initThemeToggle() {
+		const button = document.getElementById('im-theme-toggle')
+		if (!button) return
+		const sync = () => {
+			const isDark = document.documentElement.classList.contains('dark')
+			button.textContent = isDark ? button.dataset.labelLight : button.dataset.labelDark
+		}
+		sync()
+		if (button.dataset.bound === 'true') return
+		button.dataset.bound = 'true'
+		button.addEventListener('click', () => {
+			const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark'
+			document.dispatchEvent(new CustomEvent('theme-change', { detail: { theme: next } }))
+			sync()
+		})
+	}
+	if (document.readyState === 'loading')
+		document.addEventListener('DOMContentLoaded', initThemeToggle)
+	else initThemeToggle()
+	document.addEventListener('astro:page-load', initThemeToggle)
+	document.addEventListener('astro:after-swap', initThemeToggle)
+</script>
+
 <style>
-	.ag-footer {
-		position: relative;
-		z-index: 1;
-		overflow: hidden;
-		width: min(100%, calc(100vw - 32px));
-		margin: clamp(7rem, 14vw, 14rem) auto 0;
-		border-top: 1px solid rgba(246, 247, 251, 0.08);
-		padding: clamp(2rem, 5vw, 4rem) 1rem 2rem;
-		color: #f6f7fb;
-		background: transparent;
-	}
-
-	.ag-footer-top {
+	.im-footer {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(260px, 0.85fr);
-		gap: 2rem;
-		width: min(1180px, 100%);
-		margin: 0 auto;
-		align-items: start;
+		grid-template-columns: 1fr 1fr;
+		align-items: end;
+		gap: clamp(16px, 3vw, 40px);
+		padding: clamp(60px, 14vh, 170px) var(--gutter) clamp(18px, 2vw, 28px);
+		color: var(--ink);
 	}
 
-	.ag-footer-top h2 {
-		margin: 0;
-		color: #f6f7fb;
-		font-size: clamp(24px, 3vw, 36px);
-		font-weight: 600;
-		letter-spacing: -0.025em;
+	.im-footer-group {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: clamp(14px, 2vw, 28px);
 	}
 
-	.ag-footer nav {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.9rem 3rem;
+	.im-footer-end {
+		justify-content: flex-end;
 	}
 
-	.ag-footer a {
-		color: rgba(246, 247, 251, 0.58);
-		font-size: 14px;
+	.im-footer a,
+	.im-footer button {
+		border: 0;
+		background: none;
+		padding: 0;
+		color: inherit;
+		font: inherit;
+		letter-spacing: inherit;
+		text-transform: inherit;
+		transition: opacity 200ms ease;
+	}
+
+	.im-footer a:hover,
+	.im-footer button:hover {
+		opacity: 0.55;
+	}
+
+	.im-footer a[aria-current='page'] {
+		opacity: 0.55;
+	}
+
+	.im-lang span {
 		font-weight: 500;
-		transition: color 150ms ease;
 	}
 
-	.ag-footer a:hover {
-		color: #f6f7fb;
-	}
-
-	.ag-footer-mega {
-		width: min(1180px, 100%);
-		margin: clamp(4rem, 8vw, 7rem) auto 0;
-		color: rgba(246, 247, 251, 0.055);
-		font-size: clamp(84px, 18vw, 230px);
-		font-weight: 900;
-		line-height: 0.78;
-		letter-spacing: -0.09em;
-		white-space: nowrap;
-		transform: translateX(-0.04em);
-		user-select: none;
-		text-shadow: 0 0 70px rgba(106, 228, 255, 0.035);
-	}
-
-	.ag-footer-copy {
-		width: min(1180px, 100%);
-		margin: 2rem auto 0;
-		color: rgba(246, 247, 251, 0.36);
-		font-size: 13px;
-		text-align: center;
-	}
-
-	.ag-footer-copy strong {
-		color: rgba(246, 247, 251, 0.5);
-	}
-
-	@media (max-width: 760px) {
-		.ag-footer-top,
-		.ag-footer nav {
+	@media (max-width: 640px) {
+		.im-footer {
 			grid-template-columns: 1fr;
 		}
 
-		.ag-footer-mega {
-			font-size: clamp(64px, 22vw, 120px);
+		.im-footer-end {
+			justify-content: flex-start;
 		}
 	}
 </style>

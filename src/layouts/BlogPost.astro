@@ -1,74 +1,74 @@
 ---
 import type { CollectionEntry } from 'astro:content'
-import FormattedDate from '@/components/FormattedDate'
+import type { MarkdownHeading } from 'astro'
 import BaseLayout from '@/layouts/BaseLayout'
 import Tag from '@/components/Tag'
-import type { MarkdownHeading } from 'astro'
 import { siteConfig } from '@/site-config'
+import {
+	DEFAULT_LOCALE,
+	formatPostDate,
+	getCategorySlug,
+	getCategoryTitleFromSlug,
+	getLocalePrefix
+} from '@/utils'
 
 type Props = {
 	id: CollectionEntry<'blog'>['id']
 	data: CollectionEntry<'blog'>['data']
 	headings: MarkdownHeading[]
 	readTime: string
+	locale?: string
+	altPath?: string | null
 }
 
-const { data, readTime, headings, id } = Astro.props
-const { title, description, pubDate, heroImage, tags } = data
+const {
+	data,
+	readTime,
+	headings,
+	id,
+	locale = Astro.currentLocale ?? DEFAULT_LOCALE,
+	altPath
+} = Astro.props
+const { title, description, heroImage, tags, category } = data
+const pubDate = data.pubDate ?? new Date()
+const isEn = locale === 'en'
+const prefix = getLocalePrefix(locale)
 
 const articleDate = pubDate.toISOString()
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).href
 const heroImageSrc = typeof heroImage === 'string' ? heroImage : heroImage?.src
 const heroImageURL = heroImageSrc ? new URL(heroImageSrc, Astro.site).href : undefined
+const categoryLabel = getCategoryTitleFromSlug(getCategorySlug(category), locale)
+const dateLabel = formatPostDate(pubDate)
 
-// Article JSON-LD
+const postSlug = id
+	.split('/')
+	.pop()
+	?.replace(/\.(mdx|md)$/, '')
+
+const toc = headings.filter((heading) => heading.depth === 2 || heading.depth === 3)
+
 const articleSchema = {
 	'@context': 'https://schema.org',
 	'@type': 'Article',
 	headline: title,
-	description: description,
+	description,
 	image: heroImageURL,
 	datePublished: articleDate,
 	dateModified: articleDate,
-	author: {
-		'@type': 'Organization',
-		name: siteConfig.author.name,
-		url: siteConfig.siteUrl
-	},
-	publisher: {
-		'@type': 'Organization',
-		name: siteConfig.author.name,
-		url: siteConfig.siteUrl
-	},
-	mainEntityOfPage: {
-		'@type': 'WebPage',
-		'@id': canonicalURL
-	},
+	author: { '@type': 'Organization', name: siteConfig.author.name, url: siteConfig.siteUrl },
+	publisher: { '@type': 'Organization', name: siteConfig.author.name, url: siteConfig.siteUrl },
+	mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalURL },
 	keywords: tags.join(', ')
 }
 
-// BreadcrumbList JSON-LD
 const breadcrumbSchema = {
 	'@context': 'https://schema.org',
 	'@type': 'BreadcrumbList',
 	itemListElement: [
-		{
-			'@type': 'ListItem',
-			position: 1,
-			name: 'Home',
-			item: siteConfig.siteUrl
-		},
-		{
-			'@type': 'ListItem',
-			position: 2,
-			name: 'Blog',
-			item: `${siteConfig.siteUrl}blog/`
-		},
-		{
-			'@type': 'ListItem',
-			position: 3,
-			name: title
-		}
+		{ '@type': 'ListItem', position: 1, name: 'Home', item: siteConfig.siteUrl },
+		{ '@type': 'ListItem', position: 2, name: 'Blog', item: `${siteConfig.siteUrl}blog/` },
+		{ '@type': 'ListItem', position: 3, name: title }
 	]
 }
 ---
@@ -78,245 +78,189 @@ const breadcrumbSchema = {
 	description={description}
 	image={heroImageSrc}
 	articleDate={articleDate}
-	postSlug={data.slug ||
-		id
-			.split('/')
-			.pop()
-			?.replace(/\.(mdx|md)$/, '')}
-	postCategory={data.category}
+	postSlug={postSlug}
+	postCategory={category}
+	locale={locale}
+	active='blog'
+	altPath={altPath}
 >
-	<!-- JSON-LD Structured Data -->
 	<script type='application/ld+json' set:html={JSON.stringify(articleSchema)} />
 	<script type='application/ld+json' set:html={JSON.stringify(breadcrumbSchema)} />
 
-	<article class='article-shell min-w-full sm:max-w-none md:max-w-none'>
-		<header class='article-hero mb-3 flex flex-col justify-center items-center gap-6'>
-			<div class='flex flex-col gap-2'>
-				<div class='article-meta-pill'>
-					<p>
-						IMUN.FARM &middot; Published: <FormattedDate date={pubDate} />
-					</p>
-					<p>- 읽는 시간: {readTime}</p>
-				</div>
-				<h1 class='article-title'>
-					{title}
-				</h1>
+	<header class='im-article-head im-pad'>
+		<div class='im-top'></div>
+		<h1 class='im-article-title'>{title}</h1>
+		<div class='im-article-meta im-meta'>
+			<a href={`${prefix}/${getCategorySlug(category)}/1`}>{categoryLabel}</a>
+			<span>{dateLabel}</span>
+			<span>{readTime}</span>
+		</div>
+	</header>
+
+	{
+		heroImageSrc && (
+			<figure class='im-article-hero'>
+				<img src={heroImageSrc} alt={title} loading='eager' />
+			</figure>
+		)
+	}
+
+	<article class='im-article im-pad im-bottom'>
+		<div class='im-article-body'>
+			<aside class='im-article-aside'>
+				{
+					toc.length > 0 && (
+						<nav class='im-toc im-meta' aria-label={isEn ? 'Contents' : '목차'}>
+							{toc.map((heading) => (
+								<a href={`#${heading.slug}`} data-toc={heading.slug}>
+									{heading.text}
+								</a>
+							))}
+						</nav>
+					)
+				}
+			</aside>
+
+			<div class='im-article-main'>
+				{description && <p class='im-article-lead'>{description}</p>}
+				<slot />
 			</div>
 
-			<div class='flex flex-wrap justify-center items-center gap-2 gap-y-4 md:gap-5'>
-				{tags.map((tag) => <Tag tag={tag} />)}
-			</div>
-		</header>
+			<div class='im-article-rail' aria-hidden='true'></div>
+		</div>
 
-		{
-			heroImageSrc && (
-				<figure class='article-hero-image-wrap'>
-					<img src={heroImageSrc} alt={title} class='article-hero-image' loading='eager' />
-				</figure>
-			)
-		}
+		<div class='im-article-foot'>
+			{
+				tags.length > 0 && (
+					<div class='im-article-tags'>
+						<p class='im-label'>{isEn ? 'Tags' : '태그'}</p>
+						<div class='im-tag-list'>
+							{tags.map((tag: string) => (
+								<Tag tag={tag} locale={locale} />
+							))}
+						</div>
+					</div>
+				)
+			}
 
-		<hr class='article-divider' />
-
-		<div>
-			<slot />
+			<slot name='after' />
 		</div>
 	</article>
+
+	<script is:inline>
+		;(function () {
+			const heading = document.querySelector('.im-prose > h1:first-child')
+			const title = document.querySelector('.im-article-title')
+			if (heading && title && heading.textContent.trim() === title.textContent.trim())
+				heading.remove()
+		})()
+	</script>
 </BaseLayout>
 
+<script>
+	function initTocObserver() {
+		const links = document.querySelectorAll('[data-toc]')
+		if (!links.length) return
+		const headings = document.querySelectorAll('.im-prose h2, .im-prose h3')
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					const link = document.querySelector(`[data-toc="${entry.target.id}"]`)
+					link?.classList.toggle('is-active', entry.isIntersecting)
+				})
+			},
+			{ rootMargin: '0px 0px -70% 0px', threshold: 1 }
+		)
+		headings.forEach((heading) => observer.observe(heading))
+	}
+	initTocObserver()
+	document.addEventListener('astro:after-swap', initTocObserver)
+</script>
+
 <style>
-	.article-shell {
-		position: relative;
-		z-index: 1;
-		width: min(1180px, calc(100vw - 48px));
-		margin: 0 auto;
-		padding: clamp(7rem, 11vw, 11rem) 0 3rem;
+	.im-article {
+		width: min(1400px, 100%);
+		margin-inline: auto;
 	}
 
-	.article-hero {
-		border: 1px solid rgba(246, 247, 251, 0.1);
-		border-radius: 2rem;
-		padding: clamp(2rem, 5vw, 5rem);
-		background: rgba(246, 247, 251, 0.045);
-		box-shadow: 0 32px 100px rgba(0, 0, 0, 0.18);
-		backdrop-filter: blur(4px);
+	.im-article-foot {
+		max-width: var(--measure);
+		margin-inline: auto;
 	}
 
-	.article-meta-pill {
+	.im-article-meta {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: center;
-		justify-content: center;
-		gap: 0.35rem;
-		width: max-content;
-		max-width: 100%;
-		margin: 0 auto 1.4rem;
-		border: 1px solid rgba(106, 228, 255, 0.22);
-		border-radius: 999px;
-		background: rgba(106, 228, 255, 0.08);
-		color: #6ae4ff;
-		padding: 0.6rem 0.95rem;
+		gap: clamp(14px, 2vw, 32px);
+		margin-top: clamp(18px, 2.4vw, 32px);
+		font-size: 12px;
 	}
 
-	.article-meta-pill p {
-		margin: 0;
-		font-size: 13px;
-		font-weight: 760;
+	/* 대표 이미지는 화면 폭 꽉 차게 */
+	.im-article-hero {
+		margin: clamp(28px, 4vw, 56px) 0 0;
 	}
 
-	.article-title {
-		max-width: 1040px;
-		margin: 0 auto;
-		text-align: center;
-		color: #f6f7fb;
-		font-size: clamp(3rem, 7vw, 7.4rem);
-		font-weight: 860;
-		line-height: 0.95;
-		letter-spacing: -0.08em;
-		text-wrap: balance;
-	}
-
-	.article-divider {
-		margin: clamp(2rem, 5vw, 4rem) 0;
-		border-color: rgba(246, 247, 251, 0.1);
-	}
-
-	.article-hero-image-wrap {
-		position: relative;
-		margin: clamp(1.5rem, 4vw, 3rem) 0 0;
-		border: 1px solid rgba(246, 247, 251, 0.12);
-		border-radius: clamp(1.4rem, 3vw, 2.25rem);
-		overflow: hidden;
-		background: rgba(246, 247, 251, 0.045);
-		box-shadow: 0 34px 100px rgba(0, 0, 0, 0.28);
-	}
-
-	.article-hero-image-wrap::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		pointer-events: none;
-		background:
-			linear-gradient(180deg, rgba(5, 11, 15, 0.02), rgba(5, 11, 15, 0.18)),
-			radial-gradient(circle at 20% 10%, rgba(106, 228, 255, 0.1), transparent 38%);
-	}
-
-	.article-hero-image {
+	.im-article-hero img {
 		display: block;
 		width: 100%;
-		aspect-ratio: 16 / 8.8;
+		height: clamp(220px, min(56vh, 42vw), 640px);
 		object-fit: cover;
 	}
 
-	:global(.article-shell .prose) {
-		max-width: none;
-		color: rgba(246, 247, 251, 0.72) !important;
-		font-size: clamp(18px, 1.6vw, 21px);
-		line-height: 1.8;
+	.im-article-aside {
+		align-content: start;
 	}
 
-	:global(.article-shell .prose h1),
-	:global(.article-shell .prose h2),
-	:global(.article-shell .prose h3),
-	:global(.article-shell .prose h4),
-	:global(.article-shell .prose h5),
-	:global(.article-shell .prose h6) {
-		color: #f6f7fb !important;
-		letter-spacing: -0.055em;
-		line-height: 1.05;
+	.im-toc {
+		position: sticky;
+		top: 28px;
+		display: grid;
+		gap: 14px;
+		align-content: start;
+		font-size: 14px;
+		font-weight: 500;
+		letter-spacing: 0;
+		line-height: 1.45;
+		text-transform: none;
+		color: var(--muted);
 	}
 
-	:global(.article-shell .prose h1) {
-		font-size: clamp(2.4rem, 5vw, 5rem);
+	.im-toc a {
+		text-wrap: pretty;
 	}
 
-	:global(.article-shell .prose h2) {
-		margin-top: 4rem;
-		font-size: clamp(2rem, 4vw, 4rem);
+	.im-toc a.is-active {
+		color: var(--ink);
+		font-weight: 600;
 	}
 
-	:global(.article-shell .prose p),
-	:global(.article-shell .prose li) {
-		color: rgba(246, 247, 251, 0.68) !important;
+	.im-article-lead {
+		margin: 0 0 clamp(28px, 3.4vw, 46px);
+		font-size: clamp(19px, 1.55vw, 24px);
+		font-weight: 400;
+		line-height: 1.75;
+		text-wrap: pretty;
 	}
 
-	:global(.article-shell .prose strong) {
-		color: #f6f7fb !important;
+	.im-article-tags {
+		display: grid;
+		gap: 12px;
+		margin-top: clamp(48px, 8vh, 96px);
+		border-top: 1px solid var(--line);
+		padding-top: 20px;
 	}
 
-	:global(.article-shell .prose a) {
-		color: #6ae4ff !important;
-		text-decoration-color: rgba(106, 228, 255, 0.35);
+	.im-tag-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
 	}
 
-	:global(.article-shell .prose blockquote) {
-		border-left-color: #6ae4ff;
-		background: rgba(246, 247, 251, 0.045);
-		border-radius: 0 18px 18px 0;
-		padding: 1rem 1.25rem;
-	}
-
-	:global(.article-shell .prose table) {
-		border-radius: 18px;
-		overflow: hidden;
-		background: rgba(246, 247, 251, 0.045);
-	}
-
-	:global(.article-shell .prose img) {
-		border-radius: 1.5rem;
-		border: 1px solid rgba(246, 247, 251, 0.1);
-		box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
-	}
-
-	:global(.article-shell footer h2) {
-		color: #f6f7fb !important;
+	@media (max-width: 1240px) {
+		.im-article-aside,
+		.im-article-rail {
+			display: none;
+		}
 	}
 </style>
-
-<script src='https://platform.twitter.com/widgets.js' async></script>
-<script>
-	const fnObserver = () => {
-		function handleIntersection(
-			entries: IntersectionObserverEntry[],
-			observer: IntersectionObserver
-		) {
-			entries.forEach((entry) => {
-				const index = document.querySelector(`aside a[href="#${entry.target.id}"]`)
-
-				if (entry.isIntersecting) {
-					index?.classList.add(
-						'text-[#6ae4ff]',
-						'border-[#6ae4ff]/40',
-						'bg-white/[0.07]',
-						'font-bold'
-					)
-				} else {
-					index?.classList.remove(
-						'text-[#6ae4ff]',
-						'border-[#6ae4ff]/40',
-						'bg-white/[0.07]',
-						'font-bold'
-					)
-				}
-			})
-		}
-
-		const headings = document.querySelectorAll(
-			'div.prose h1, div.prose h2, div.prose h3, div.prose h4, div.prose h5, div.prose h6'
-		)
-
-		const options = {
-			root: null,
-			rootMargin: ' 15% 0px 0% 0px ',
-			threshold: 1
-		}
-
-		const observer = new IntersectionObserver(handleIntersection, options)
-
-		headings.forEach((heading) => {
-			observer.observe(heading)
-		})
-	}
-	fnObserver()
-	document.addEventListener('astro:after-swap', fnObserver)
-</script>

@@ -1,5 +1,5 @@
 ---
-layout: ../layouts/BaseLayout.astro
+layout: ../layouts/MarkdownPage.astro
 title: 개인정보 처리방침
 description: 개인정보 처리방침
 ---
@@ -34,4 +34,5 @@ description: 개인정보 처리방침
 본 사이트의 개인정보 처리에 관한 문의는 Contact 페이지를 통해 주시면 신속하게 답변 드리겠습니다.
 
 ---
-*본 방침은 2024년 1월 1일부터 시행됩니다.*
+
+_본 방침은 2024년 1월 1일부터 시행됩니다._

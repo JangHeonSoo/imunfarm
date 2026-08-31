@@ -11,13 +11,17 @@ export {
 	getPostByTag,
 	getIndexPageByCategory,
 	filterPostsByCategory,
-	getPostUrl
+	getPostUrl,
+	getCounterpartUrl
 } from './post'
 export { remarkReadingTime } from './readTime'
+export { formatPostDate } from './date'
 export {
 	DEFAULT_LOCALE,
 	SUPPORTED_LOCALES,
 	getLocalePrefix,
 	getLocaleLanguageTag,
+	getLocaleName,
+	swapLocaleInPath,
 	stripLocaleFromSlug
 } from './locale'

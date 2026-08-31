@@ -1,0 +1,43 @@
+---
+import type { CollectionEntry } from 'astro:content'
+import {
+	DEFAULT_LOCALE,
+	formatPostDate,
+	getCategorySlug,
+	getCategoryTitleFromSlug,
+	getPostUrl
+} from '@/utils'
+
+type Props = {
+	posts: CollectionEntry<'blog'>[]
+	locale?: string
+}
+
+const { posts, locale = DEFAULT_LOCALE } = Astro.props
+---
+
+<div class='im-grid-list'>
+	{
+		posts.map((post, index) => (
+			<a class='im-card' href={getPostUrl(post.slug, locale, post.data.category)}>
+				{post.data.heroImage && (
+					<img
+						src={
+							typeof post.data.heroImage === 'string'
+								? post.data.heroImage
+								: post.data.heroImage.src
+						}
+						alt={post.data.title}
+						loading={index < 6 ? 'eager' : 'lazy'}
+						style='aspect-ratio:4 / 3'
+					/>
+				)}
+				<span class='im-card-title'>{post.data.title}</span>
+				<span class='im-card-meta'>
+					{getCategoryTitleFromSlug(getCategorySlug(post.data.category), locale)} —{' '}
+					{formatPostDate(post.data.pubDate)}
+				</span>
+			</a>
+		))
+	}
+</div>

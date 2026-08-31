@@ -1,0 +1,29 @@
+<script is:inline>
+	;(function () {
+		const prose = document.querySelector('.im-prose')
+		if (!prose) return
+		const headings = prose.querySelectorAll('h2, h3')
+		if (headings.length < 2) return
+
+		const interval = Math.max(3, Math.floor(headings.length / 2))
+		let inserted = 0
+		const maxAds = 2
+
+		headings.forEach((heading, index) => {
+			if (inserted >= maxAds) return
+			if ((index + 1) % interval !== 0) return
+			const slot = document.createElement('div')
+			slot.className = 'in-article-ad-container'
+			slot.innerHTML =
+				'<ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-9192660979184684" data-ad-slot="3171759407"></ins>'
+			heading.parentNode.insertBefore(slot, heading)
+			inserted++
+		})
+
+		for (let i = 0; i < inserted; i++) {
+			try {
+				;(window.adsbygoogle = window.adsbygoogle || []).push({})
+			} catch (e) {}
+		}
+	})()
+</script>

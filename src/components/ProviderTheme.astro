@@ -1,27 +1,37 @@
 <script is:inline>
-	function getTheme() {
-		const storedTheme = typeof localStorage !== 'undefined' && localStorage.getItem('theme')
+	;(function () {
+		function getTheme() {
+			try {
+				const stored = localStorage.getItem('theme')
+				if (stored === 'dark' || stored === 'light') return stored
+			} catch (e) {}
+			return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+		}
 
-		return (
-			storedTheme || 'light'
-		)
-	}
+		function setTheme(theme, persist) {
+			const html = document.documentElement
+			const isDark = theme === 'dark'
+			html.classList.toggle('dark', isDark)
+			html.classList.toggle('light', !isDark)
+			document
+				.querySelectorAll('meta[name="theme-color"]')
+				.forEach((meta) => meta.setAttribute('content', isDark ? '#0c0c0b' : '#faf8f6'))
+			if (persist) {
+				try {
+					localStorage.setItem('theme', theme)
+				} catch (e) {}
+			}
+		}
 
-	function setTheme(newTheme) {
-		const html = document.documentElement
-		const isDark = newTheme === 'dark'
-
-		html.classList.toggle('dark', isDark)
-		html.classList.toggle('light', !isDark)
-
-		localStorage.setItem('theme', newTheme)
-	}
-
-	// set initial theme
-	setTheme(getTheme())
-	document.addEventListener('astro:after-swap', () => setTheme(getTheme()))
-
-	document.addEventListener('theme-change', (e) => {
-		setTheme(e.detail.theme)
-	})
+		setTheme(getTheme(), false)
+		document.addEventListener('astro:after-swap', () => setTheme(getTheme(), false))
+		document.addEventListener('theme-change', (e) => setTheme(e.detail.theme, true))
+		window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+			let stored = null
+			try {
+				stored = localStorage.getItem('theme')
+			} catch (err) {}
+			if (!stored) setTheme(e.matches ? 'dark' : 'light', false)
+		})
+	})()
 </script>

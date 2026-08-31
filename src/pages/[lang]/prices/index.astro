@@ -1,0 +1,12 @@
+---
+import PricesPage from '@/components/PricesPage'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/utils'
+
+export async function getStaticPaths() {
+	return SUPPORTED_LOCALES.filter((l) => l !== DEFAULT_LOCALE).map((lang) => ({ params: { lang } }))
+}
+
+const locale = Astro.params.lang ?? DEFAULT_LOCALE
+---
+
+<PricesPage locale={locale} />

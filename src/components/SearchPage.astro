@@ -1,0 +1,178 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+import {
+	DEFAULT_LOCALE,
+	formatPostDate,
+	getCategorySlug,
+	getCategoryTitleFromSlug,
+	getLocalePrefix,
+	getPostUrl,
+	getPosts
+} from '@/utils'
+
+const { locale = DEFAULT_LOCALE } = Astro.props
+const isEn = locale === 'en'
+const prefix = getLocalePrefix(locale)
+
+const posts = await getPosts(undefined, locale)
+const index = posts.map((post) => ({
+	title: post.data.title,
+	url: getPostUrl(post.slug, locale, post.data.category),
+	image:
+		typeof post.data.heroImage === 'string'
+			? post.data.heroImage
+			: (post.data.heroImage?.src ?? ''),
+	category: getCategoryTitleFromSlug(getCategorySlug(post.data.category), locale),
+	date: formatPostDate(post.data.pubDate),
+	text: `${post.data.title} ${post.data.description ?? ''} ${getCategoryTitleFromSlug(getCategorySlug(post.data.category), locale)} ${(post.data.tags ?? []).join(' ')}`.toLowerCase()
+}))
+
+const t = {
+	empty: isEn ? 'No matching posts.' : '검색 결과가 없습니다.',
+	prompt: isEn ? 'Type a keyword.' : '검색어를 입력하세요.',
+	results: isEn ? ' results' : '건'
+}
+---
+
+<BaseLayout title={isEn ? 'Search' : '검색'} locale={locale} active='search'>
+	<div class='im-search'>
+		<input
+			id='im-search-input'
+			type='search'
+			autocomplete='off'
+			placeholder='SEARCH'
+			aria-label={isEn ? 'Search posts' : '글 검색'}
+		/>
+	</div>
+
+	<div class='im-pad im-bottom'>
+		<p class='im-meta im-search-count' id='im-search-count'></p>
+		<div class='im-grid-list' id='im-search-results'></div>
+	</div>
+
+	<script type='application/json' id='im-search-index' set:html={JSON.stringify(index)} />
+	<script type='application/json' id='im-search-text' set:html={JSON.stringify(t)} />
+</BaseLayout>
+
+<script is:inline>
+	function initSearchPage() {
+		const node = document.getElementById('im-search-index')
+		const input = document.getElementById('im-search-input')
+		const results = document.getElementById('im-search-results')
+		const count = document.getElementById('im-search-count')
+		if (!node || !input || !results) return
+
+		const posts = JSON.parse(node.textContent)
+		const text = JSON.parse(document.getElementById('im-search-text').textContent)
+		const escape = (value) =>
+			String(value).replace(
+				/[&<>"]/g,
+				(c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
+			)
+
+		function render(query) {
+			const needle = query.trim().toLowerCase()
+			if (!needle) {
+				count.textContent = text.prompt
+				results.innerHTML = ''
+				return
+			}
+			const matches = posts.filter((post) => post.text.includes(needle))
+			count.textContent = matches.length
+				? `“${query.trim()}” — ${matches.length}${text.results}`
+				: text.empty
+			results.innerHTML = matches
+				.map(
+					(post, i) =>
+						'<a class="im-card" href="' +
+						escape(post.url) +
+						'">' +
+						(post.image
+							? '<img src="' +
+								escape(post.image) +
+								'" alt="" loading="' +
+								(i < 6 ? 'eager' : 'lazy') +
+								'" style="aspect-ratio:4 / 3" />'
+							: '') +
+						'<span class="im-card-title">' +
+						escape(post.title) +
+						'</span>' +
+						'<span class="im-card-meta">' +
+						escape(post.category) +
+						' — ' +
+						escape(post.date) +
+						'</span>' +
+						'</a>'
+				)
+				.join('')
+		}
+
+		function syncUrl(query) {
+			const url = new URL(window.location.href)
+			if (query.trim()) url.searchParams.set('q', query.trim())
+			else url.searchParams.delete('q')
+			window.history.replaceState({}, '', url)
+
+			// 언어 전환 링크에도 검색어를 유지한다
+			const lang = document.querySelector('.im-lang')
+			if (lang) {
+				const target = new URL(lang.getAttribute('href'), window.location.origin)
+				if (query.trim()) target.searchParams.set('q', query.trim())
+				else target.searchParams.delete('q')
+				lang.setAttribute('href', target.pathname + target.search)
+			}
+		}
+
+		input.addEventListener('input', () => {
+			render(input.value)
+			syncUrl(input.value)
+		})
+		input.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter') {
+				event.preventDefault()
+				input.blur()
+			}
+		})
+
+		const initial = new URL(window.location.href).searchParams.get('q') || ''
+		input.value = initial
+		render(initial)
+		syncUrl(initial)
+		if (!initial) input.focus()
+	}
+	if (document.readyState === 'loading')
+		document.addEventListener('DOMContentLoaded', initSearchPage)
+	else initSearchPage()
+	document.addEventListener('astro:page-load', initSearchPage)
+</script>
+
+<style>
+	.im-search {
+		display: grid;
+		place-items: center;
+		height: clamp(140px, 24vh, 250px);
+	}
+
+	.im-search input {
+		width: min(760px, 90vw);
+		border: 0;
+		background: none;
+		padding: 0;
+		outline: none;
+		color: var(--ink);
+		font-family: inherit;
+		font-weight: 800;
+		font-size: clamp(26px, 4.2vw, 54px);
+		letter-spacing: 0.16em;
+		text-align: center;
+		text-transform: uppercase;
+	}
+
+	.im-search input::-webkit-search-cancel-button {
+		display: none;
+	}
+
+	.im-search-count {
+		margin: 0 0 clamp(22px, 3vh, 38px);
+	}
+</style>

@@ -1,0 +1,15 @@
+---
+import PriceItemPage from '@/components/PriceItemPage'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/utils'
+import { ITEMS } from '@/data/prices'
+
+export async function getStaticPaths() {
+	return SUPPORTED_LOCALES.filter((l) => l !== DEFAULT_LOCALE).flatMap((lang) =>
+		ITEMS.map((item) => ({ params: { lang, item: item.id }, props: { itemId: item.id } }))
+	)
+}
+
+const { itemId } = Astro.props
+---
+
+<PriceItemPage locale={Astro.params.lang ?? DEFAULT_LOCALE} itemId={itemId} />

@@ -1,0 +1,22 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+
+const { frontmatter } = Astro.props
+---
+
+<BaseLayout title={frontmatter.title} description={frontmatter.description} altPath={null}>
+	<div class='im-pad im-bottom'>
+		<div class='im-top'></div>
+		<h1 class='im-article-title'>{frontmatter.title}</h1>
+		<div class='im-md-body im-prose'>
+			<slot />
+		</div>
+	</div>
+</BaseLayout>
+
+<style>
+	.im-md-body {
+		max-width: 68ch;
+		margin-top: clamp(40px, 6vw, 90px);
+	}
+</style>

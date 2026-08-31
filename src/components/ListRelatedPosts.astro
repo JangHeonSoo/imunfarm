@@ -1,36 +1,47 @@
 ---
 import type { CollectionEntry } from 'astro:content'
-
-import { cn, getPostUrl, DEFAULT_LOCALE } from '@/utils'
+import { DEFAULT_LOCALE, formatPostDate, getPostUrl } from '@/utils'
 
 type Props = {
 	posts: CollectionEntry<'blog'>[]
+	locale?: string
 }
 
-const { posts } = Astro.props
-const currentLocale = Astro.currentLocale ?? DEFAULT_LOCALE
+const { posts, locale = DEFAULT_LOCALE } = Astro.props
+const isEn = locale === 'en'
 ---
 
-<section class={cn(`grid gap-4 md:grid-cols-3`)}>
-	{
-		posts.length > 0 ? (
-			posts.map((post, index) => {
-				return (
-					<a
-						class='group flex min-h-36 min-w-0 flex-col justify-between rounded-2xl border border-white/12 bg-white/[0.045] p-5 transition-all hover:-translate-y-1 hover:border-[#6ae4ff]/35 hover:bg-white/[0.07]'
-						href={getPostUrl(post.slug, currentLocale, post.data.category)}
-					>
-						<span class='text-sm font-bold text-[#6ae4ff]'>0{index + 1}</span>
-						<header class='mt-8 min-w-0'>
-							<p class='line-clamp-3 font-semibold leading-snug text-[#f6f7fb] transition-colors group-hover:text-[#6ae4ff]'>
-								{post.data.title}
-							</p>
-						</header>
+{
+	posts.length > 0 && (
+		<section class='im-related'>
+			<p class='im-label'>{isEn ? 'Related' : '관련 기록'}</p>
+			<div class='im-related-list'>
+				{posts.map((post) => (
+					<a class='im-row' href={getPostUrl(post.slug, locale, post.data.category)}>
+						<span class='im-related-title'>{post.data.title}</span>
+						<span class='im-meta'>{formatPostDate(post.data.pubDate)}</span>
 					</a>
-				)
-			})
-		) : (
-			<span class='text-[#f6f7fb]/50'>There are no related posts yet.</span>
-		)
+				))}
+			</div>
+		</section>
+	)
+}
+
+<style>
+	.im-related {
+		display: grid;
+		gap: 12px;
+		margin-top: clamp(48px, 8vh, 96px);
+		max-width: 760px;
 	}
-</section>
+
+	.im-related-list {
+		border-top: 1px solid var(--ink);
+	}
+
+	.im-related-title {
+		font-size: 14px;
+		font-weight: 600;
+		line-height: 1.4;
+	}
+</style>

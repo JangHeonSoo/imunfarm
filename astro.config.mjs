@@ -41,16 +41,6 @@ export default defineConfig({
 		react({
 			experimentalReactChildren: true
 		}),
-		// starlight({
-		//     title: 'astro-blog-template',
-		//     plugins: [
-		//         starlightDocSearch({
-		//             indexName: "Pages",
-		//             appId: process.env.GATSBY_ALGOLIA_APP_ID ?? '',
-		//             apiKey: process.env.GATSBY_ALGOLIA_WRITE_KEY ?? '',
-		//         })
-		//     ]
-		// }),
 		mdx({
 			syntaxHighlight: 'shiki',
 			shikiConfig: {
@@ -63,9 +53,7 @@ export default defineConfig({
 			},
 			drafts: true
 		}),
-		sitemap({
-			filter: (page) => !page.includes('/farm-admin-0224')
-		}),
+		sitemap(),
 		tailwind()
 	],
 	experimental: {
