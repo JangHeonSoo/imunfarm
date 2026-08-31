@@ -271,7 +271,11 @@ export const getPriceAsOfDate = () => {
 		const [year, month, day] = raw.split('-').map(Number)
 		return new Date(year, month - 1, day)
 	}
-	return new Date()
+
+	// 기본값은 한국 시간 기준 전일이다. 오전 자동 발행 때 아직 당일 경락가가
+	// 확정되지 않는 경우가 있어, 완전히 지나간 거래일을 기본 기준으로 삼는다.
+	const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000)
+	return new Date(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - 1)
 }
 
 /** 품목별 누적 랜덤워크. 한 번만 계산해 재사용한다. */
