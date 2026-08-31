@@ -258,6 +258,22 @@ const dayIndexOf = (ms: number) => Math.floor((ms - EPOCH) / DAY)
 const msOfIndex = (index: number) => EPOCH + index * DAY
 export const toKey = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 
+/**
+ * 시세표 기준일.
+ *
+ * 매일 오전 자동 발행은 새벽/아침에 확정된 "전일" 시세를 보여주는 것이 안전하므로
+ * 빌드 환경에서 IMUNFARM_PRICE_AS_OF=YYYY-MM-DD 를 넘기면 그 날짜 기준으로 굽는다.
+ * 값이 없거나 잘못되면 기존처럼 빌드 당일 날짜를 쓴다.
+ */
+export const getPriceAsOfDate = () => {
+	const raw = import.meta.env.IMUNFARM_PRICE_AS_OF
+	if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+		const [year, month, day] = raw.split('-').map(Number)
+		return new Date(year, month - 1, day)
+	}
+	return new Date()
+}
+
 /** 품목별 누적 랜덤워크. 한 번만 계산해 재사용한다. */
 const walks = new Map<string, Float64Array>()
 const walkFor = (item: Item, until: number) => {

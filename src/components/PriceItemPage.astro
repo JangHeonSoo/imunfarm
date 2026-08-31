@@ -2,7 +2,14 @@
 import BaseLayout from '@/layouts/BaseLayout'
 import PriceAnalysis from '@/components/PriceAnalysis'
 import { DEFAULT_LOCALE, getLocalePrefix, getPostUrl, getPosts } from '@/utils'
-import { ITEMS, REGIONS, buildAnalysis, buildPriceData, formatDate } from '@/data/prices'
+import {
+	ITEMS,
+	REGIONS,
+	buildAnalysis,
+	buildPriceData,
+	formatDate,
+	getPriceAsOfDate
+} from '@/data/prices'
 import { siteConfig } from '@/site-config'
 
 const { locale = DEFAULT_LOCALE, itemId } = Astro.props
@@ -14,7 +21,7 @@ const name = isEn ? item.en : item.ko
 const unit = isEn ? item.unitEn : item.unitKo
 const grade = isEn ? item.gradeEn : item.gradeKo
 
-const today = new Date()
+const today = getPriceAsOfDate()
 const { dates, table } = buildPriceData(today)
 const latest = dates[dates.length - 1]
 const analysis = buildAnalysis(item, REGIONS[0], today)

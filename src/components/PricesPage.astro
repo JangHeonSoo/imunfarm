@@ -1,14 +1,21 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout'
 import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
-import { ITEMS, REGIONS, buildAnalysis, buildPriceData, formatDate } from '@/data/prices'
+import {
+	ITEMS,
+	REGIONS,
+	buildAnalysis,
+	buildPriceData,
+	formatDate,
+	getPriceAsOfDate
+} from '@/data/prices'
 import { siteConfig } from '@/site-config'
 
 const { locale = DEFAULT_LOCALE } = Astro.props
 const isEn = locale === 'en'
 const prefix = getLocalePrefix(locale)
 
-const today = new Date()
+const today = getPriceAsOfDate()
 const { dates, table } = buildPriceData(today)
 const recentDates = [...dates].reverse().slice(0, 5)
 const latest = dates[dates.length - 1]

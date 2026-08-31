@@ -1,6 +1,7 @@
 ---
 /** 서버에서 전부 렌더한다 — JS 없이도 읽히고 크롤러가 그대로 색인한다. */
 import type { Item, ItemAnalysis } from '@/data/prices'
+import { getPriceAsOfDate } from '@/data/prices'
 
 type Props = {
 	item: Item
@@ -40,6 +41,7 @@ const MONTHS_EN = [
 	'Dec'
 ]
 const months = isEn ? MONTHS_EN : MONTHS_KO
+const asOfDate = getPriceAsOfDate()
 
 const peakMonth = analysis.seasonality.indexOf(Math.max(...analysis.seasonality))
 const troughMonth = analysis.seasonality.indexOf(Math.min(...analysis.seasonality))
@@ -65,7 +67,7 @@ const bars = analysis.seasonality.map((value, i) => {
 		value,
 		label: months[i],
 		labelX: i * slot + slot / 2,
-		current: i === new Date().getMonth()
+		current: i === asOfDate.getMonth()
 	}
 })
 
