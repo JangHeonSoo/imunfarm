@@ -260,22 +260,14 @@ const t = {
 			</div>
 		</div>
 
-		<div class='im-price-search' role='search'>
-			<label class='im-label' for='im-price-search'>{t.searchLabel}</label>
+		<div class='im-search im-price-search' role='search'>
 			<input
 				id='im-price-search'
-				class='im-price-search-input'
 				type='search'
-				placeholder={t.searchPlaceholder}
 				autocomplete='off'
+				placeholder='SEARCH'
+				aria-label={t.searchLabel}
 			/>
-			<p class='im-meta im-price-search-help'>
-				{
-					isEn
-						? `${ITEMS.length} crops · search by crop, variety, unit or keyword`
-						: `${ITEMS.length}개 작물 · 품목명, 품종명, 단위, 키워드로 검색`
-				}
-			</p>
 		</div>
 
 		<div class='im-price-table'>
@@ -362,10 +354,14 @@ const t = {
 		<section class='im-crop-analysis'>
 			<h2 class='im-crop-title'>{t.analysisTitle}</h2>
 			<p class='im-crop-lead'>{t.analysisLead}</p>
-			<div class='im-crop-list'>
+			<div class='im-crop-list' id='im-analysis-rows'>
 				{
 					analyses.map((entry) => (
-						<a class='im-crop-row' href={`${prefix}/prices/${entry.id}/`}>
+						<a
+							class='im-crop-row'
+							data-analysis-item={entry.id}
+							href={`${prefix}/prices/${entry.id}/`}
+						>
 							<span class='im-crop-name'>{entry.label}</span>
 							<span class='im-crop-summary'>{entry.summary}</span>
 							<span class='im-crop-price'>
@@ -378,6 +374,7 @@ const t = {
 					))
 				}
 			</div>
+			<p class='im-meta im-analysis-empty' id='im-analysis-empty' hidden>{t.noResults}</p>
 		</section>
 	</div>
 
@@ -401,6 +398,8 @@ const t = {
 		const regionTabs = Array.from(document.querySelectorAll('[data-region]'))
 		const dateTabs = Array.from(document.querySelectorAll('[data-date]'))
 		const itemTabs = Array.from(document.querySelectorAll('[data-item]'))
+		const analysisRows = Array.from(document.querySelectorAll('[data-analysis-item]'))
+		const analysisEmpty = document.getElementById('im-analysis-empty')
 		const searchInput = document.getElementById('im-price-search')
 
 		let region = regionTabs[0].dataset.region
@@ -450,6 +449,14 @@ const t = {
 				tab.hidden = !show
 				tab.setAttribute('aria-current', String(tab.dataset.item === item && show))
 			})
+		}
+
+		function renderAnalysisList() {
+			const ids = new Set(visibleItems().map((entry) => entry.id))
+			analysisRows.forEach((row) => {
+				row.hidden = query && !ids.has(row.dataset.analysisItem)
+			})
+			if (analysisEmpty) analysisEmpty.hidden = ids.size !== 0
 		}
 
 		/* ---------- 표 ---------- */
@@ -808,6 +815,7 @@ const t = {
 				query = searchInput.value || ''
 				ensureVisibleItem()
 				renderTable()
+				renderAnalysisList()
 				hideCursor()
 				if (visibleItems().length > 0) renderChart()
 			})
@@ -815,6 +823,7 @@ const t = {
 
 		ensureVisibleItem()
 		renderTable()
+		renderAnalysisList()
 		renderChart()
 		if (window.ResizeObserver) {
 			let last = plot.clientWidth
@@ -868,35 +877,29 @@ const t = {
 		border-top: 1px solid var(--ink);
 	}
 
-	.im-price-search {
-		margin-top: clamp(24px, 4vh, 44px);
-		max-width: 560px;
+	.im-search {
+		display: grid;
+		place-items: center;
+		height: clamp(120px, 20vh, 220px);
 	}
 
-	.im-price-search .im-label {
-		display: block;
-		margin-bottom: 10px;
-	}
-
-	.im-price-search-input {
-		width: 100%;
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--bg) 88%, transparent);
-		color: var(--ink);
-		font: inherit;
-		font-size: 15px;
-		padding: 13px 18px;
+	.im-search input {
+		width: min(760px, 90vw);
+		border: 0;
+		background: none;
+		padding: 0;
 		outline: none;
+		color: var(--ink);
+		font-family: inherit;
+		font-weight: 800;
+		font-size: clamp(26px, 4.2vw, 54px);
+		letter-spacing: 0.16em;
+		text-align: center;
+		text-transform: uppercase;
 	}
 
-	.im-price-search-input:focus {
-		border-color: var(--ink);
-		box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 10%, transparent);
-	}
-
-	.im-price-search-help {
-		margin: 8px 0 0;
+	.im-search input::-webkit-search-cancel-button {
+		display: none;
 	}
 
 	.im-price-empty {
