@@ -101,14 +101,28 @@ const payload = {
 		id: i.id,
 		label: isEn ? i.en : i.ko,
 		grade: isEn ? i.gradeEn : i.gradeKo,
-		unit: isEn ? i.unitEn : i.unitKo
+		unit: isEn ? i.unitEn : i.unitKo,
+		searchText: [
+			i.id,
+			i.ko,
+			i.en,
+			i.gradeKo,
+			i.gradeEn,
+			i.unitKo,
+			i.unitEn,
+			...i.keywordsKo,
+			...i.keywordsEn
+		]
+			.join(' ')
+			.toLowerCase()
 	})),
 	locale: isEn ? 'en-US' : 'ko-KR',
 	prefix: isEn ? '₩' : '',
 	suffix: isEn ? '' : '원',
 	labels: {
 		range: isEn ? 'Range' : '범위',
-		latest: isEn ? 'Latest' : '최근'
+		latest: isEn ? 'Latest' : '최근',
+		noResults: isEn ? 'No matching crops.' : '검색 결과가 없다.'
 	}
 }
 
@@ -177,8 +191,8 @@ const t = {
 	price: isEn ? 'Price' : '가격',
 	delta: isEn ? 'Change' : '전일비',
 	note: isEn
-		? 'Wholesale auction prices · updated every morning'
-		: '도매시장 경락가 기준 · 매일 오전 갱신',
+		? 'KAMIS-based reference prices · historical records generated per date'
+		: 'KAMIS 기준가 기반 비교용 · 일자별 기록 자동 생성',
 	chart: isEn ? 'Trend · last 30 days' : '추이 최근 30일',
 	high: isEn ? 'High' : '최고',
 	low: isEn ? 'Low' : '최저',
@@ -189,7 +203,12 @@ const t = {
 	analysisLead: isEn
 		? 'Each crop compared with the same period 1, 3, 5 and 10 years ago, with its seasonal index and monthly trend.'
 		: '품목별로 1년·3년·5년·10년 전 같은 기간과 비교하고, 계절지수와 월평균 추이를 함께 본다.',
-	readMore: isEn ? 'Read analysis' : '분석 보기'
+	readMore: isEn ? 'Read analysis' : '분석 보기',
+	searchLabel: isEn ? 'Search crops' : '작물 검색',
+	searchPlaceholder: isEn
+		? 'Search tomato, Shine Muscat, pepper…'
+		: '사과, 홍로, 샤인머스켓, 시금치, 피망…',
+	noResults: isEn ? 'No matching crops.' : '검색 결과가 없다.'
 }
 ---
 
@@ -239,6 +258,24 @@ const t = {
 					{isEn ? defaultRegion.en : defaultRegion.ko} · {dateLabel}
 				</p>
 			</div>
+		</div>
+
+		<div class='im-price-search' role='search'>
+			<label class='im-label' for='im-price-search'>{t.searchLabel}</label>
+			<input
+				id='im-price-search'
+				class='im-price-search-input'
+				type='search'
+				placeholder={t.searchPlaceholder}
+				autocomplete='off'
+			/>
+			<p class='im-meta im-price-search-help'>
+				{
+					isEn
+						? `${ITEMS.length} crops · search by crop, variety, unit or keyword`
+						: `${ITEMS.length}개 작물 · 품목명, 품종명, 단위, 키워드로 검색`
+				}
+			</p>
 		</div>
 
 		<div class='im-price-table'>
@@ -364,9 +401,11 @@ const t = {
 		const regionTabs = Array.from(document.querySelectorAll('[data-region]'))
 		const dateTabs = Array.from(document.querySelectorAll('[data-date]'))
 		const itemTabs = Array.from(document.querySelectorAll('[data-item]'))
+		const searchInput = document.getElementById('im-price-search')
 
 		let region = regionTabs[0].dataset.region
 		let date = dateTabs[0].dataset.date
+		let query = ''
 		let item = itemTabs[0].dataset.item
 		let cursor = null
 		let geometry = null
@@ -395,11 +434,30 @@ const t = {
 			return n
 		}
 
+		function visibleItems() {
+			const q = query.trim().toLowerCase()
+			if (!q) return data.items
+			const terms = q.split(/\s+/).filter(Boolean)
+			return data.items.filter((entry) => terms.every((term) => entry.searchText.includes(term)))
+		}
+
+		function ensureVisibleItem() {
+			const visible = visibleItems()
+			if (!visible.some((entry) => entry.id === item) && visible[0]) item = visible[0].id
+			itemTabs.forEach((tab) => {
+				const entry = data.items.find((e) => e.id === tab.dataset.item)
+				const show = !query || (entry && visible.some((v) => v.id === entry.id))
+				tab.hidden = !show
+				tab.setAttribute('aria-current', String(tab.dataset.item === item && show))
+			})
+		}
+
 		/* ---------- 표 ---------- */
 		function renderTable() {
 			const i = data.dates.indexOf(date)
+			const visible = visibleItems()
 			rowsEl.textContent = ''
-			data.items.forEach((entry) => {
+			visible.forEach((entry) => {
 				const c = cellFor(entry.id, region, i)
 				const row = document.createElement('div')
 				row.className = 'im-price-row'
@@ -421,6 +479,12 @@ const t = {
 				})
 				rowsEl.appendChild(row)
 			})
+			if (visible.length === 0) {
+				const row = document.createElement('div')
+				row.className = 'im-price-row im-price-empty'
+				row.textContent = data.labels.noResults || 'No matching crops.'
+				rowsEl.appendChild(row)
+			}
 			basisEl.textContent = nameOf(data.regions, region) + ' · ' + dot(date)
 		}
 
@@ -739,7 +803,17 @@ const t = {
 				renderChart()
 			})
 		)
+		if (searchInput) {
+			searchInput.addEventListener('input', () => {
+				query = searchInput.value || ''
+				ensureVisibleItem()
+				renderTable()
+				hideCursor()
+				if (visibleItems().length > 0) renderChart()
+			})
+		}
 
+		ensureVisibleItem()
 		renderTable()
 		renderChart()
 		if (window.ResizeObserver) {
@@ -790,8 +864,45 @@ const t = {
 	}
 
 	.im-price-table {
-		margin-top: clamp(28px, 4vh, 54px);
+		margin-top: clamp(18px, 3vh, 34px);
 		border-top: 1px solid var(--ink);
+	}
+
+	.im-price-search {
+		margin-top: clamp(24px, 4vh, 44px);
+		max-width: 560px;
+	}
+
+	.im-price-search .im-label {
+		display: block;
+		margin-bottom: 10px;
+	}
+
+	.im-price-search-input {
+		width: 100%;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--bg) 88%, transparent);
+		color: var(--ink);
+		font: inherit;
+		font-size: 15px;
+		padding: 13px 18px;
+		outline: none;
+	}
+
+	.im-price-search-input:focus {
+		border-color: var(--ink);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 10%, transparent);
+	}
+
+	.im-price-search-help {
+		margin: 8px 0 0;
+	}
+
+	.im-price-empty {
+		display: block !important;
+		padding: 22px 0;
+		color: var(--muted);
 	}
 
 	.im-price-note {
