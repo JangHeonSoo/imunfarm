@@ -1,0 +1,142 @@
+---
+type AffiliateItem = {
+	name: string
+	reason: string
+	url: string
+}
+
+type Props = {
+	title?: string
+	items: AffiliateItem[]
+	note?: string
+}
+
+const {
+	title = '함께 보면 좋은 작업 도구',
+	items = [],
+	note = '이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.'
+} = Astro.props
+---
+
+{
+	items.length > 0 && (
+		<aside class='im-affiliate-box' aria-label={title}>
+			<div class='im-affiliate-head'>
+				<p class='im-affiliate-kicker'>관련 도구</p>
+				<h2>{title}</h2>
+			</div>
+			<ul class='im-affiliate-list'>
+				{items.map((item) => (
+					<li>
+						<a href={item.url} target='_blank' rel='nofollow sponsored noopener noreferrer'>
+							<span class='im-affiliate-name'>{item.name}</span>
+							<span class='im-affiliate-reason'>{item.reason}</span>
+							<span class='im-affiliate-cta'>상품 보기</span>
+						</a>
+					</li>
+				))}
+			</ul>
+			<p class='im-affiliate-note'>{note}</p>
+		</aside>
+	)
+}
+
+<style>
+	.im-affiliate-box {
+		margin: clamp(32px, 5vw, 56px) 0;
+		border: 1px solid var(--line);
+		border-radius: 0;
+		background: color-mix(in srgb, var(--paper) 94%, transparent);
+		padding: clamp(20px, 3vw, 28px);
+	}
+
+	.im-affiliate-head {
+		display: grid;
+		gap: 8px;
+		margin-bottom: 16px;
+	}
+
+	.im-affiliate-kicker {
+		margin: 0;
+		color: var(--muted);
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.im-affiliate-head h2 {
+		margin: 0;
+		font-size: clamp(20px, 2vw, 25px);
+		line-height: 1.35;
+		letter-spacing: -0.02em;
+	}
+
+	.im-affiliate-list {
+		list-style: none;
+		display: grid;
+		gap: 0;
+		margin: 0;
+		padding: 0;
+		border-top: 1px solid var(--line);
+	}
+
+	.im-affiliate-list li {
+		margin: 0;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-affiliate-list a {
+		display: grid;
+		grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr) auto;
+		gap: 14px;
+		align-items: center;
+		padding: 14px 0;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.im-affiliate-list a:hover .im-affiliate-name,
+	.im-affiliate-list a:focus-visible .im-affiliate-name {
+		text-decoration: underline;
+		text-underline-offset: 4px;
+	}
+
+	.im-affiliate-name {
+		font-size: 16px;
+		font-weight: 700;
+		line-height: 1.45;
+	}
+
+	.im-affiliate-reason {
+		color: var(--muted);
+		font-size: 14px;
+		line-height: 1.55;
+	}
+
+	.im-affiliate-cta {
+		border: 1px solid var(--line);
+		padding: 7px 10px;
+		font-size: 12px;
+		font-weight: 700;
+		white-space: nowrap;
+	}
+
+	.im-affiliate-note {
+		margin: 14px 0 0;
+		color: var(--muted);
+		font-size: 12px;
+		line-height: 1.6;
+	}
+
+	@media (max-width: 720px) {
+		.im-affiliate-list a {
+			grid-template-columns: 1fr;
+			gap: 6px;
+		}
+
+		.im-affiliate-cta {
+			width: max-content;
+		}
+	}
+</style>
