@@ -25,22 +25,23 @@ const {
 
 {
 	items.length > 0 && (
-		<aside class='im-affiliate-box' aria-label={title}>
-			<div class='im-affiliate-head'>
-				<p class='im-affiliate-kicker'>추천 도구</p>
-				<h2>{title}</h2>
-			</div>
-			<ul class='im-affiliate-list'>
+		<aside class='im-aff' aria-label={title}>
+			<header class='im-aff-head'>
+				<span class='im-aff-label'>Recommended</span>
+				<span class='im-aff-title'>{title}</span>
+			</header>
+			<ul class='im-aff-list'>
 				{items.map((item) => (
 					<li>
 						<a
+							class='im-aff-item'
 							href={item.url}
 							target='_blank'
 							rel='nofollow sponsored noopener'
 							referrerpolicy='unsafe-url'
 						>
 							{item.image && (
-								<span class:list={['im-affiliate-image', { 'is-banner': item.banner }]}>
+								<span class:list={['im-aff-media', { 'is-banner': item.banner }]}>
 									<img
 										src={item.image}
 										alt={item.imageAlt ?? item.name}
@@ -50,181 +51,168 @@ const {
 									/>
 								</span>
 							)}
-							<span class='im-affiliate-copy'>
-								<span class='im-affiliate-name'>{item.name}</span>
-								<span class='im-affiliate-reason'>{item.reason}</span>
+							<span class='im-aff-body'>
+								<span class='im-aff-name'>{item.name}</span>
+								<span class='im-aff-reason'>{item.reason}</span>
+								<span class='im-aff-cta'>
+									쿠팡에서 보기 <span aria-hidden='true'>→</span>
+								</span>
 							</span>
-							<span class='im-affiliate-cta'>상품 보기</span>
 						</a>
 					</li>
 				))}
 			</ul>
-			<p class='im-affiliate-note'>{note}</p>
+			<p class='im-aff-note'>{note}</p>
 		</aside>
 	)
 }
 
 <style>
-	.im-affiliate-box {
-		width: min(680px, calc(100vw - 32px));
-		margin: clamp(36px, 6vw, 64px) 0;
-		border: 1px solid #f0c36a;
-		background: #fffaf0;
-		box-shadow: 0 18px 40px rgb(0 0 0 / 18%);
-		color: #17130c;
+	.im-aff {
+		margin: clamp(48px, 7vw, 80px) 0;
+		border-top: 1px solid var(--ink);
+		border-bottom: 1px solid var(--line);
+		color: var(--ink);
 	}
 
-	.im-affiliate-head {
-		display: grid;
-		gap: 8px;
-		border-bottom: 1px solid #f0c36a;
-		background: linear-gradient(135deg, #fff2c6 0%, #fffaf0 70%);
-		color: #17130c;
-		padding: clamp(16px, 2.6vw, 24px);
+	.im-aff-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 16px;
+		padding: 14px 0;
+		border-bottom: 1px solid var(--line);
 	}
 
-	.im-affiliate-kicker {
-		width: max-content;
-		margin: 0;
-		border: 1px solid #d98a00;
-		background: #fff;
-		padding: 5px 9px;
-		color: #9a5200;
-		font-size: 12px;
-		font-weight: 900;
-		letter-spacing: 0.1em;
+	.im-aff-label {
+		color: var(--muted);
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.12em;
 		line-height: 1;
 		text-transform: uppercase;
 	}
 
-	.im-affiliate-head h2 {
-		margin: 0;
-		color: #17130c;
-		font-size: clamp(22px, 2.8vw, 32px);
-		font-weight: 900;
-		line-height: 1.24;
-		letter-spacing: -0.04em;
-		text-wrap: pretty;
+	.im-aff-title {
+		font-size: 15px;
+		font-weight: 700;
+		line-height: 1.4;
+		text-align: right;
 	}
 
-	.im-affiliate-list {
+	.im-aff-list {
 		list-style: none;
-		display: grid;
-		gap: 0;
 		margin: 0;
-		padding: 0 clamp(16px, 2.6vw, 24px);
+		padding: 0;
 	}
 
-	.im-affiliate-list li {
+	.im-aff-list li {
 		margin: 0;
-		border-bottom: 1px solid #f4dfb0;
+		padding: 0;
 	}
 
-	.im-affiliate-list li:last-child {
-		border-bottom: 0;
+	.im-aff-list li + li {
+		border-top: 1px solid var(--line);
 	}
 
-	.im-affiliate-list a {
+	.im-aff-item {
 		display: grid;
-		grid-template-columns: clamp(96px, 14vw, 136px) minmax(0, 1fr) auto;
-		gap: clamp(14px, 2.2vw, 22px);
+		grid-template-columns: 112px minmax(0, 1fr);
+		gap: clamp(18px, 3vw, 32px);
 		align-items: center;
-		padding: clamp(16px, 2.6vw, 24px) 0;
-		color: #17130c;
+		padding: 22px 0;
+		color: inherit;
 		text-decoration: none;
 	}
 
-	.im-affiliate-image {
-		display: grid;
-		place-items: center;
-		aspect-ratio: 1;
-		border: 1px solid #ead8ad;
-		background: #fff;
+	.im-aff-media {
+		display: block;
 		overflow: hidden;
+		background: #fff;
+		aspect-ratio: 1;
 	}
 
-	.im-affiliate-image.is-banner {
+	.im-aff-media.is-banner {
 		aspect-ratio: 1 / 2;
-		border: 0;
-		background: transparent;
 	}
 
-	.im-affiliate-image.is-banner img {
-		padding: 0;
-		object-fit: contain;
-	}
-
-	.im-affiliate-image img {
+	.im-aff-media img {
 		display: block;
 		width: 100%;
 		height: 100%;
+		margin: 0;
 		object-fit: contain;
-		padding: 8px;
-		transition: transform 180ms ease;
+		transition: transform 200ms ease;
 	}
 
-	.im-affiliate-copy {
+	.im-aff-body {
 		display: grid;
-		gap: 7px;
+		gap: 8px;
+		align-content: center;
 	}
 
-	.im-affiliate-list a:hover .im-affiliate-name,
-	.im-affiliate-list a:focus-visible .im-affiliate-name {
-		text-decoration: underline;
-		text-underline-offset: 4px;
+	.im-aff-name {
+		font-size: clamp(18px, 1.5vw, 21px);
+		font-weight: 800;
+		line-height: 1.35;
+		letter-spacing: -0.01em;
 	}
 
-	.im-affiliate-list a:hover .im-affiliate-image img,
-	.im-affiliate-list a:focus-visible .im-affiliate-image img {
+	.im-aff-reason {
+		color: var(--muted);
+		font-size: 15px;
+		line-height: 1.7;
+	}
+
+	.im-aff-cta {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		width: max-content;
+		margin-top: 6px;
+		border: 1px solid var(--ink);
+		padding: 9px 16px;
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		line-height: 1;
+		transition:
+			background 160ms ease,
+			color 160ms ease;
+	}
+
+	.im-aff-item:hover .im-aff-cta,
+	.im-aff-item:focus-visible .im-aff-cta {
+		background: var(--ink);
+		color: var(--bg);
+	}
+
+	.im-aff-item:hover .im-aff-media img,
+	.im-aff-item:focus-visible .im-aff-media img {
 		transform: scale(1.03);
 	}
 
-	.im-affiliate-name {
-		color: #17130c;
-		font-size: clamp(17px, 1.6vw, 20px);
-		font-weight: 900;
-		line-height: 1.35;
-	}
-
-	.im-affiliate-reason {
-		color: #5e5340;
-		font-size: 14px;
-		line-height: 1.6;
-	}
-
-	.im-affiliate-cta {
-		border: 1px solid #1f62ff;
-		background: #1f62ff;
-		color: #fff;
-		padding: 10px 13px;
-		font-size: 12px;
-		font-weight: 900;
-		white-space: nowrap;
-		box-shadow: 0 8px 18px rgb(31 98 255 / 25%);
-	}
-
-	.im-affiliate-note {
+	.im-aff-note {
 		margin: 0;
-		border-top: 1px solid #f4dfb0;
-		padding: 12px clamp(16px, 2.6vw, 24px) 14px;
-		color: #6f6147;
+		padding: 12px 0 14px;
+		color: var(--muted);
 		font-size: 12px;
 		line-height: 1.6;
 	}
 
-	@media (max-width: 720px) {
-		.im-affiliate-box {
-			width: 100%;
+	@media (max-width: 560px) {
+		.im-aff-head {
+			flex-direction: column;
+			gap: 8px;
 		}
 
-		.im-affiliate-list a {
-			grid-template-columns: 92px minmax(0, 1fr);
-			gap: 14px;
+		.im-aff-title {
+			text-align: left;
 		}
 
-		.im-affiliate-cta {
-			grid-column: 2;
-			width: max-content;
+		.im-aff-item {
+			grid-template-columns: 88px minmax(0, 1fr);
+			gap: 16px;
 		}
 	}
 </style>

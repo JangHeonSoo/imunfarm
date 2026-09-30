@@ -331,6 +331,29 @@ html.dark {
 	}
 }
 
+/* 컬럼을 명시적으로 고정: 애드센스 자동광고가 그리드 자식으로 끼어들어도 본문이 밀리지 않게 */
+@media (min-width: 1241px) {
+	.im-article-body > .im-article-aside {
+		grid-column: 1;
+		grid-row: 1;
+	}
+
+	.im-article-body > .im-article-main {
+		grid-column: 2;
+		grid-row: 1;
+		min-width: 0;
+	}
+
+	.im-article-body > .im-article-rail {
+		grid-column: 3;
+		grid-row: 1;
+	}
+
+	.im-article-body > :not(.im-article-aside, .im-article-main, .im-article-rail) {
+		grid-column: 2;
+	}
+}
+
 /* prose — 상세 본문은 크게 */
 .im-prose {
 	max-width: none;
