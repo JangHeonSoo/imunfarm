@@ -77,24 +77,24 @@ const {
 
 	.im-aff-head {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		justify-content: space-between;
 		gap: 16px;
-		padding: 14px 0;
+		padding: 18px 0;
 		border-bottom: 1px solid var(--line);
 	}
 
 	.im-aff-label {
-		color: var(--muted);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.12em;
+		color: var(--ink);
+		font-size: 14px;
+		font-weight: 800;
+		letter-spacing: 0.14em;
 		line-height: 1;
 		text-transform: uppercase;
 	}
 
 	.im-aff-title {
-		font-size: 15px;
+		font-size: clamp(16px, 1.4vw, 19px);
 		font-weight: 700;
 		line-height: 1.4;
 		text-align: right;
@@ -117,10 +117,11 @@ const {
 
 	.im-aff-item {
 		display: grid;
-		grid-template-columns: 112px minmax(0, 1fr);
+		grid-template-columns: 112px minmax(0, 420px);
+		justify-content: center;
 		gap: clamp(18px, 3vw, 32px);
 		align-items: center;
-		padding: 22px 0;
+		padding: 28px 0;
 		color: inherit;
 		text-decoration: none;
 	}
@@ -198,6 +199,7 @@ const {
 		color: var(--muted);
 		font-size: 12px;
 		line-height: 1.6;
+		text-align: center;
 	}
 
 	@media (max-width: 560px) {
