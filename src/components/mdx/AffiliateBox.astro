@@ -5,6 +5,9 @@ type AffiliateItem = {
 	url: string
 	image?: string
 	imageAlt?: string
+	imageWidth?: number
+	imageHeight?: number
+	banner?: boolean
 }
 
 type Props = {
@@ -30,10 +33,21 @@ const {
 			<ul class='im-affiliate-list'>
 				{items.map((item) => (
 					<li>
-						<a href={item.url} target='_blank' rel='nofollow sponsored noopener noreferrer'>
+						<a
+							href={item.url}
+							target='_blank'
+							rel='nofollow sponsored noopener'
+							referrerpolicy='unsafe-url'
+						>
 							{item.image && (
-								<span class='im-affiliate-image'>
-									<img src={item.image} alt={item.imageAlt ?? item.name} loading='lazy' />
+								<span class:list={['im-affiliate-image', { 'is-banner': item.banner }]}>
+									<img
+										src={item.image}
+										alt={item.imageAlt ?? item.name}
+										width={item.imageWidth}
+										height={item.imageHeight}
+										loading='lazy'
+									/>
 								</span>
 							)}
 							<span class='im-affiliate-copy'>
@@ -127,6 +141,17 @@ const {
 		border: 1px solid #ead8ad;
 		background: #fff;
 		overflow: hidden;
+	}
+
+	.im-affiliate-image.is-banner {
+		aspect-ratio: 1 / 2;
+		border: 0;
+		background: transparent;
+	}
+
+	.im-affiliate-image.is-banner img {
+		padding: 0;
+		object-fit: contain;
 	}
 
 	.im-affiliate-image img {
