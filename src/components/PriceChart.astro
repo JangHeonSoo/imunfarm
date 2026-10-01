@@ -1,0 +1,373 @@
+---
+/**
+ * 품목 시세 차트 (uPlot).
+ * 차트를 누르거나 끌면 페이지 상단 가격(#im-item-price 등)이 그 날짜 값으로 바뀌고,
+ * 손을 떼면 최신값으로 돌아온다. 위아래 스크롤은 막지 않는다.
+ */
+import type { ItemSeries } from '@/data/prices'
+
+type Props = {
+	series: ItemSeries
+	regions: { id: string; label: string }[]
+	isEn: boolean
+}
+
+const { series, regions, isEn } = Astro.props
+
+const periods = isEn
+	? [
+			['1m', '1M'],
+			['3m', '3M'],
+			['1y', '1Y'],
+			['5y', '5Y'],
+			['all', 'All']
+		]
+	: [
+			['1m', '1개월'],
+			['3m', '3개월'],
+			['1y', '1년'],
+			['5y', '5년'],
+			['all', '전체']
+		]
+
+const payload = {
+	series,
+	regions,
+	locale: isEn ? 'en-US' : 'ko-KR',
+	prefix: isEn ? '₩' : '',
+	suffix: isEn ? '' : '원',
+	labels: isEn
+		? { monthly: 'monthly avg', vs: 'vs', noData: 'No KAMIS survey in this period.' }
+		: { monthly: '월평균', vs: '대비', noData: '이 기간 KAMIS 조사가 없다.' },
+	periodLabels: Object.fromEntries(periods)
+}
+---
+
+<section class='im-pc' aria-label={isEn ? 'Price chart' : '가격 차트'}>
+	<div class='im-pc-plot' id='im-pc-plot'></div>
+	<p class='im-pc-empty im-meta' id='im-pc-empty' hidden>{payload.labels.noData}</p>
+	<div class='im-tabs im-menu im-pc-periods' role='tablist'>
+		{
+			periods.map(([id, label]) => (
+				<button
+					type='button'
+					class='im-tab'
+					data-pc-period={id}
+					aria-current={id === '3m' ? 'true' : 'false'}
+				>
+					{label}
+				</button>
+			))
+		}
+	</div>
+	<div class='im-tabs im-pc-regions'>
+		{
+			regions.map((region, index) => (
+				<button
+					type='button'
+					class='im-tab'
+					data-pc-region={region.id}
+					aria-current={index === 0 ? 'true' : 'false'}
+				>
+					{region.label}
+				</button>
+			))
+		}
+	</div>
+	<script type='application/json' id='im-pc-data' set:html={JSON.stringify(payload)} />
+</section>
+
+<script>
+	import uPlot from 'uplot'
+	import 'uplot/dist/uPlot.min.css'
+
+	type Point = [string, number]
+	type Payload = {
+		series: { daily: Record<string, Point[]>; monthly: Record<string, Point[]> }
+		regions: { id: string; label: string }[]
+		locale: string
+		prefix: string
+		suffix: string
+		labels: { monthly: string; vs: string; noData: string }
+		periodLabels: Record<string, string>
+	}
+
+	function init() {
+		const host = document.getElementById('im-pc-plot')
+		const node = document.getElementById('im-pc-data')
+		if (!host || !node || host.dataset.ready) return
+		host.dataset.ready = '1'
+		const data: Payload = JSON.parse(node.textContent || '{}')
+		const empty = document.getElementById('im-pc-empty') as HTMLElement
+		const priceEl = document.getElementById('im-item-price')
+		const dateEl = document.getElementById('im-item-date')
+		const regionEl = document.getElementById('im-item-region')
+		const changeEl = document.getElementById('im-item-change')
+		const periodTabs = Array.from(document.querySelectorAll<HTMLElement>('[data-pc-period]'))
+		const regionTabs = Array.from(document.querySelectorAll<HTMLElement>('[data-pc-region]'))
+
+		let period = '3m'
+		let region = data.regions[0].id
+		let plot: uPlot | null = null
+		let xs: number[] = []
+		let ys: number[] = []
+		let labels: string[] = []
+
+		const fmt = (v: number) => data.prefix + Math.round(v).toLocaleString(data.locale) + data.suffix
+		const css = (name: string) =>
+			getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+		const toTs = (iso: string) =>
+			Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +(iso.slice(8, 10) || 15)) / 1000
+		const dot = (s: string) => s.replace(/-/g, '.')
+
+		const latest = Object.values(data.series.daily).reduce(
+			(m, list) => (list.length && list[list.length - 1][0] > m ? list[list.length - 1][0] : m),
+			''
+		)
+
+		function points(): Point[] {
+			if (period === '5y' || period === 'all') {
+				const list = data.series.monthly[region] || []
+				if (period === 'all' || !latest) return list
+				const from = `${+latest.slice(0, 4) - 5}-${latest.slice(5, 7)}`
+				return list.filter((p) => p[0] > from)
+			}
+			const list = data.series.daily[region] || []
+			if (!latest) return []
+			const days = ({ '1m': 31, '3m': 92, '1y': 366 } as Record<string, number>)[period]
+			const cut = new Date(Date.parse(latest) - days * 86400000).toISOString().slice(0, 10)
+			return list.filter((p) => p[0] >= cut)
+		}
+
+		/** 상단 가격·날짜·변동을 i번째 값으로 (null이면 최신값) */
+		function show(i: number | null) {
+			if (!ys.length || !priceEl) return
+			const k = i == null ? ys.length - 1 : i
+			const v = ys[k]
+			const base = ys[0]
+			const pct = base ? ((v - base) / base) * 100 : 0
+			priceEl.textContent = fmt(v)
+			if (dateEl) dateEl.textContent = dot(labels[k])
+			if (regionEl)
+				regionEl.textContent = (data.regions.find((r) => r.id === region) || { label: '' }).label
+			if (changeEl) {
+				const sign = pct > 0.05 ? '▲ ' : pct < -0.05 ? '▼ ' : '– '
+				changeEl.textContent = `${data.periodLabels[period]} ${data.labels.vs} ${sign}${Math.abs(pct).toFixed(1)}%`
+				changeEl.className =
+					'im-item-change ' + (pct > 0.05 ? 'im-up' : pct < -0.05 ? 'im-down' : 'im-flat')
+			}
+		}
+
+		function build() {
+			const pts = points()
+			xs = pts.map((p) => toTs(p[0]))
+			ys = pts.map((p) => p[1])
+			labels = pts.map((p) => p[0])
+			plot?.destroy()
+			plot = null
+			empty.hidden = pts.length >= 2
+			if (pts.length < 2) {
+				host!.textContent = ''
+				return
+			}
+			const ink = css('--ink') || '#1d1d1b'
+			const muted = css('--muted') || '#8a8a86'
+			const line = css('--line') || '#e5e2dd'
+			const width = host!.clientWidth || 360
+			const height = width < 560 ? 220 : 280
+			const monthly = period === '5y' || period === 'all'
+			const axisFont = `${width < 560 ? 10 : 11}px ${getComputedStyle(document.body).fontFamily || 'sans-serif'}`
+			const base = ys[0]
+
+			const opts: uPlot.Options = {
+				width,
+				height,
+				padding: [12, 4, 0, 0],
+				legend: { show: false },
+				cursor: {
+					x: true,
+					y: false,
+					drag: { x: false, y: false },
+					points: { size: 9, width: 2, stroke: ink, fill: css('--bg') || '#faf8f6' }
+				},
+				select: { show: false, left: 0, top: 0, width: 0, height: 0 },
+				scales: { x: { time: true } },
+				axes: [
+					{
+						stroke: muted,
+						grid: { show: false },
+						ticks: { show: false },
+						font: axisFont,
+						size: 28,
+						space: width < 560 ? 70 : 90,
+						values: (_u, splits) =>
+							splits.map((s) => {
+								const d = new Date(s * 1000)
+								return monthly
+									? `${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+									: `${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}`
+							})
+					},
+					{
+						stroke: muted,
+						grid: { stroke: line, width: 1 },
+						ticks: { show: false },
+						font: axisFont,
+						size: (u, values) =>
+							Math.max(40, ...(values || []).map((v) => String(v).length * 6.6 + 10)),
+						space: 44,
+						values: (_u, splits) => splits.map((v) => Math.round(v).toLocaleString(data.locale))
+					}
+				],
+				series: [
+					{},
+					{
+						stroke: ink,
+						width: 1.75,
+						fill: (u) => {
+							const g = u.ctx.createLinearGradient(0, u.bbox.top, 0, u.bbox.top + u.bbox.height)
+							g.addColorStop(0, ink + '1f')
+							g.addColorStop(1, ink + '00')
+							return g
+						},
+						points: { show: false },
+						spanGaps: true
+					}
+				],
+				hooks: {
+					draw: [
+						(u) => {
+							// 기간 시작가 점선
+							const y = u.valToPos(base, 'y', true)
+							const ctx = u.ctx
+							ctx.save()
+							ctx.strokeStyle = muted
+							ctx.lineWidth = 1
+							ctx.setLineDash([3, 4])
+							ctx.beginPath()
+							ctx.moveTo(u.bbox.left, y)
+							ctx.lineTo(u.bbox.left + u.bbox.width, y)
+							ctx.stroke()
+							ctx.restore()
+						}
+					],
+					setCursor: [
+						(u) => {
+							const i = u.cursor.idx
+							show(i == null ? null : i)
+						}
+					]
+				}
+			}
+			plot = new uPlot(opts, [xs, ys], host!)
+			plot.over.addEventListener('mouseleave', () => show(null))
+			bindTouch(plot)
+			show(null)
+		}
+
+		/** 손가락으로 누르고 끌면 그 지점 값을 보여 준다. 세로 스크롤은 그대로 둔다. */
+		function bindTouch(u: uPlot) {
+			const over = u.over
+			over.style.touchAction = 'pan-y'
+			let active = false
+			const move = (e: PointerEvent) => {
+				const rect = over.getBoundingClientRect()
+				const left = Math.min(Math.max(e.clientX - rect.left, 0), rect.width)
+				u.setCursor({ left, top: 10 })
+			}
+			over.addEventListener('pointerdown', (e) => {
+				if (e.pointerType === 'mouse') return
+				active = true
+				move(e)
+			})
+			over.addEventListener('pointermove', (e) => {
+				if (active) move(e)
+			})
+			const end = () => {
+				if (!active) return
+				active = false
+				u.setCursor({ left: -10, top: -10 })
+				show(null)
+			}
+			over.addEventListener('pointerup', end)
+			over.addEventListener('pointercancel', end)
+		}
+
+		periodTabs.forEach((tab) =>
+			tab.addEventListener('click', () => {
+				period = tab.dataset.pcPeriod || '3m'
+				periodTabs.forEach((t) => t.setAttribute('aria-current', String(t === tab)))
+				build()
+			})
+		)
+		regionTabs.forEach((tab) =>
+			tab.addEventListener('click', () => {
+				region = tab.dataset.pcRegion || region
+				regionTabs.forEach((t) => t.setAttribute('aria-current', String(t === tab)))
+				build()
+			})
+		)
+
+		let timer: number | undefined
+		new ResizeObserver(() => {
+			window.clearTimeout(timer)
+			timer = window.setTimeout(() => {
+				if (plot && host!.clientWidth && Math.abs(plot.width - host!.clientWidth) > 2) build()
+			}, 120)
+		}).observe(host)
+		new MutationObserver(build).observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['class']
+		})
+
+		build()
+	}
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init)
+	else init()
+	document.addEventListener('astro:page-load', init)
+</script>
+
+<style>
+	.im-pc {
+		margin-top: clamp(20px, 3vw, 32px);
+	}
+
+	.im-pc-plot {
+		width: 100%;
+		min-height: 220px;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	.im-pc-plot :global(.u-over) {
+		cursor: crosshair;
+	}
+
+	.im-pc-plot :global(.u-cursor-x) {
+		border-right: 1px dashed var(--muted);
+	}
+
+	.im-pc-empty {
+		margin: 12px 0 0;
+	}
+
+	.im-pc-periods {
+		margin-top: 14px;
+		justify-content: space-between;
+		max-width: 420px;
+	}
+
+	.im-pc-regions {
+		margin-top: 12px;
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.04em;
+	}
+
+	@media (max-width: 640px) {
+		.im-pc-periods {
+			max-width: none;
+		}
+	}
+</style>

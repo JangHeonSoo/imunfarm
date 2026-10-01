@@ -88,7 +88,9 @@
 		"codes": ["300-313-01-04"]
 	},
 	"perilla-seed-imported": {
-		"codes": ["300-313-02-05"]
+		"codes": ["300-313-02-05"],
+		"ko": "들깨 (수입)",
+		"en": "Perilla seed (imported)"
 	},
 	"peanut": {
 		"codes": ["300-314-01-04"]
@@ -167,7 +169,9 @@
 		"codes": ["200-247-00-04"]
 	},
 	"ginger-imported": {
-		"codes": ["200-247-01-05"]
+		"codes": ["200-247-01-05"],
+		"ko": "생강 (수입)",
+		"en": "Ginger (imported)"
 	},
 	"watermelon": {
 		"codes": ["200-221-00-04"]

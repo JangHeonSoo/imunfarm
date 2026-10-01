@@ -357,7 +357,8 @@ const t = {
 
 			<figure class='im-chart' id='im-chart'>
 				<div class='im-chart-plot'>
-					<svg id='im-chart-svg' role='img' tabindex='0' aria-describedby='im-chart-desc'></svg>
+					<div id='im-chart-host' class='im-chart-host' role='img' aria-describedby='im-chart-desc'>
+					</div>
 					<div class='im-tooltip' id='im-chart-tooltip' hidden></div>
 				</div>
 				<figcaption class='im-meta' id='im-chart-desc'></figcaption>
@@ -410,16 +411,22 @@ const t = {
 	<script type='application/json' id='im-price-data' set:html={JSON.stringify(payload)} />
 </BaseLayout>
 
-<script is:inline>
+<script>
+	// @ts-nocheck
+	import uPlot from 'uplot'
+	import 'uplot/dist/uPlot.min.css'
+
 	function initPrices() {
 		const node = document.getElementById('im-price-data')
-		if (!node) return
+		const hostEl = document.getElementById('im-chart-host')
+		if (!node || !hostEl || hostEl.dataset.ready) return
+		hostEl.dataset.ready = '1'
 		const data = JSON.parse(node.textContent)
 
 		const rowsEl = document.getElementById('im-price-rows')
 		const basisEl = document.getElementById('im-price-basis')
-		const svg = document.getElementById('im-chart-svg')
-		const plot = svg.parentElement
+		const host = hostEl
+		const plot = host.parentElement
 		const tooltip = document.getElementById('im-chart-tooltip')
 		const descEl = document.getElementById('im-chart-desc')
 		const titleEl = document.getElementById('im-chart-title')
@@ -435,14 +442,10 @@ const t = {
 		let date = dateTabs[0].dataset.date
 		let query = ''
 		let item = itemTabs[0].dataset.item
-		let cursor = null
-		let geometry = null
+		let chart = null
 
-		const NS = 'http://www.w3.org/2000/svg'
 		const fmt = (v) => (v == null ? '–' : data.prefix + v.toLocaleString(data.locale) + data.suffix)
-		const fmtShort = (v) => v.toLocaleString(data.locale)
 		const dot = (iso) => iso.replace(/-/g, '.')
-		const short = (iso) => iso.slice(5).replace('-', '.')
 		const nameOf = (list, id) => (list.find((e) => e.id === id) || {}).label || ''
 		const pct = (v) =>
 			v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
@@ -457,13 +460,6 @@ const t = {
 				price,
 				delta: price != null && prev ? Math.round(((price - prev) / prev) * 1000) / 10 : null
 			}
-		}
-
-		function el(tag, attrs, text) {
-			const n = document.createElementNS(NS, tag)
-			for (const k in attrs) n.setAttribute(k, attrs[k])
-			if (text != null) n.textContent = text
-			return n
 		}
 
 		function visibleItems() {
@@ -528,207 +524,190 @@ const t = {
 			basisEl.textContent = nameOf(data.regions, region) + ' · ' + dot(date)
 		}
 
-		/* ---------- 축 눈금 ---------- */
-		function niceScale(min, max, count) {
-			const span = Math.max(max - min, 1)
-			const rough = span / count
-			const mag = Math.pow(10, Math.floor(Math.log10(rough)))
-			const norm = rough / mag
-			const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag
-			const lo = Math.floor(min / step) * step
-			const hi = Math.ceil(max / step) * step
-			const ticks = []
-			for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v))
-			return { lo, hi, ticks }
-		}
+		/* ---------- 차트 (uPlot) ---------- */
+		const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+		const toTs = (iso) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 1000
 
-		/* ---------- 차트 ---------- */
-		function renderChart() {
-			const values = data.series[item][region]
-			const known = values.filter((v) => v != null)
-			const width = Math.max(plot.clientWidth || 720, 320)
-			const height = width < 560 ? 260 : 320
-			const label0 = nameOf(data.items, item)
-			const meta0 = data.items.find((e) => e.id === item) || {}
+		function setStats(known) {
+			const ids = ['im-stat-high', 'im-stat-low', 'im-stat-avg', 'im-stat-change']
 			if (!known.length) {
-				svg.textContent = ''
-				svg.setAttribute('viewBox', '0 0 ' + width + ' 60')
-				svg.setAttribute('width', width)
-				svg.setAttribute('height', 60)
-				svg.appendChild(el('text', { x: 0, y: 30, class: 'im-axis' }, data.labels.noSurvey))
-				titleEl.textContent =
-					label0 + (meta0.unit ? ' · ' + meta0.unit : '') + ' · ' + nameOf(data.regions, region)
-				;['im-stat-high', 'im-stat-low', 'im-stat-avg', 'im-stat-change'].forEach((id) => {
-					document.getElementById(id).textContent = '–'
-				})
-				descEl.textContent = data.labels.noSurvey
-				geometry = null
-				renderDataTable()
+				ids.forEach((id) => (document.getElementById(id).textContent = '–'))
 				return
 			}
-			const firstI = values.findIndex((v) => v != null)
-			const padT = 18
-			const padB = 30
-			const padR = 16
-			const min = Math.min.apply(null, known)
-			const max = Math.max.apply(null, known)
-			const scale = niceScale(min, max, 4)
-			const yLabels = scale.ticks.map(fmtShort)
-			const padL = Math.max.apply(
-				null,
-				yLabels.map((s) => s.length * 6.4 + 14)
-			)
-
-			const innerW = width - padL - padR
-			const innerH = height - padT - padB
-			const x = (i) => padL + (i * innerW) / Math.max(values.length - 1, 1)
-			const y = (v) => padT + (1 - (v - scale.lo) / Math.max(scale.hi - scale.lo, 1)) * innerH
-			geometry = { x, y, padL, padR, innerW, count: values.length }
-
-			svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height)
-			svg.setAttribute('width', width)
-			svg.setAttribute('height', height)
-			svg.textContent = ''
-
-			// y 격자 + 눈금값
-			scale.ticks.forEach((v) => {
-				const yy = y(v)
-				svg.appendChild(
-					el('line', {
-						x1: padL,
-						y1: yy,
-						x2: width - padR,
-						y2: yy,
-						stroke: 'var(--line)',
-						'stroke-width': 1,
-						'shape-rendering': 'crispEdges'
-					})
-				)
-				svg.appendChild(
-					el(
-						'text',
-						{
-							x: padL - 10,
-							y: yy + 4,
-							class: 'im-axis',
-							'text-anchor': 'end'
-						},
-						fmtShort(v)
-					)
-				)
-			})
-
-			// x 눈금
-			const tickCount = width < 560 ? 3 : 5
-			const stepI = Math.max(1, Math.round((values.length - 1) / tickCount))
-			for (let i = 0; i < values.length; i += stepI) {
-				svg.appendChild(
-					el(
-						'text',
-						{ x: x(i), y: height - 10, class: 'im-axis', 'text-anchor': 'middle' },
-						short(data.dates[i])
-					)
-				)
-			}
-			const lastI = values.length - 1
-			if (lastI % stepI !== 0) {
-				svg.appendChild(
-					el(
-						'text',
-						{ x: x(lastI), y: height - 10, class: 'im-axis', 'text-anchor': 'end' },
-						short(data.dates[lastI])
-					)
-				)
-			}
-
-			// 면 + 선
-			let started = false
-			const line = values
-				.map((v, i) => {
-					if (v == null) return ''
-					const seg = (started ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)
-					started = true
-					return seg
-				})
-				.filter(Boolean)
-				.join(' ')
-			svg.appendChild(
-				el('path', {
-					d:
-						line +
-						' L' +
-						x(values.length - 1 - [...values].reverse().findIndex((v) => v != null)).toFixed(1) +
-						' ' +
-						(padT + innerH) +
-						' L' +
-						x(firstI).toFixed(1) +
-						' ' +
-						(padT + innerH) +
-						' Z',
-					fill: 'var(--ink)',
-					'fill-opacity': 0.08,
-					stroke: 'none'
-				})
-			)
-			svg.appendChild(
-				el('path', {
-					d: line,
-					fill: 'none',
-					stroke: 'var(--ink)',
-					'stroke-width': 2,
-					'stroke-linejoin': 'round',
-					'stroke-linecap': 'round'
-				})
-			)
-
-			// 마지막 값 직접 표기
-			let lastK = lastI
-			while (lastK > 0 && values[lastK] == null) lastK--
-			svg.appendChild(el('circle', { cx: x(lastK), cy: y(values[lastK]), r: 6, fill: 'var(--bg)' }))
-			svg.appendChild(
-				el('circle', { cx: x(lastK), cy: y(values[lastK]), r: 4, fill: 'var(--ink)' })
-			)
-
-			// 크로스헤어
-			const cross = el('g', { id: 'im-cross', visibility: 'hidden' })
-			cross.appendChild(
-				el('line', {
-					y1: padT,
-					y2: padT + innerH,
-					stroke: 'var(--ink)',
-					'stroke-width': 1,
-					'stroke-opacity': 0.45
-				})
-			)
-			cross.appendChild(el('circle', { r: 6, fill: 'var(--bg)' }))
-			cross.appendChild(el('circle', { r: 4, fill: 'var(--ink)' }))
-			svg.appendChild(cross)
-
-			const label = nameOf(data.items, item)
-			const meta = data.items.find((e) => e.id === item) || {}
-			titleEl.textContent =
-				label + (meta.unit ? ' · ' + meta.unit : '') + ' · ' + nameOf(data.regions, region)
-
 			const avg = Math.round(known.reduce((a, b) => a + b, 0) / known.length)
 			const change = Math.round(((known[known.length - 1] - known[0]) / known[0]) * 1000) / 10
-			document.getElementById('im-stat-high').textContent = fmt(max)
-			document.getElementById('im-stat-low').textContent = fmt(min)
+			document.getElementById('im-stat-high').textContent = fmt(Math.max(...known))
+			document.getElementById('im-stat-low').textContent = fmt(Math.min(...known))
 			document.getElementById('im-stat-avg').textContent = fmt(avg)
 			const changeEl = document.getElementById('im-stat-change')
 			changeEl.textContent = pct(change)
 			changeEl.className = cls(change)
+		}
 
-			svg.setAttribute(
+		function showTip(i) {
+			if (!chart || i == null) {
+				tooltip.hidden = true
+				return
+			}
+			const values = data.series[item][region]
+			if (values[i] == null) {
+				tooltip.hidden = true
+				return
+			}
+			const c = cellFor(item, region, i)
+			tooltip.textContent = ''
+			const value = document.createElement('strong')
+			value.textContent = fmt(c.price)
+			const when = document.createElement('span')
+			when.textContent = dot(data.dates[i])
+			const change = document.createElement('span')
+			change.className = cls(c.delta)
+			change.textContent = pct(c.delta)
+			tooltip.append(value, when, change)
+			tooltip.hidden = false
+			const plotRect = plot.getBoundingClientRect()
+			const overRect = chart.over.getBoundingClientRect()
+			const px = overRect.left - plotRect.left + chart.valToPos(chart.data[0][i], 'x')
+			const py = overRect.top - plotRect.top + chart.valToPos(values[i], 'y')
+			const w = plotRect.width
+			tooltip.style.left = Math.min(Math.max(px, 8), w - 8) + 'px'
+			tooltip.style.transform =
+				px > w - 130 ? 'translate(-100%, 0)' : px < 130 ? 'translate(0, 0)' : 'translate(-50%, 0)'
+			const th = tooltip.offsetHeight
+			const above = py - th - 14
+			tooltip.style.top = Math.max(0, above < 0 ? py + 16 : above) + 'px'
+		}
+
+		function hideCursor() {
+			tooltip.hidden = true
+			if (chart) chart.setCursor({ left: -10, top: -10 })
+		}
+
+		function renderChart() {
+			const values = data.series[item][region]
+			const known = values.filter((v) => v != null)
+			const label0 = nameOf(data.items, item)
+			const meta0 = data.items.find((e) => e.id === item) || {}
+			titleEl.textContent =
+				label0 + (meta0.unit ? ' · ' + meta0.unit : '') + ' · ' + nameOf(data.regions, region)
+			setStats(known)
+			chart?.destroy()
+			chart = null
+			tooltip.hidden = true
+			if (known.length < 2) {
+				host.textContent = ''
+				const p = document.createElement('p')
+				p.className = 'im-meta im-chart-empty'
+				p.textContent = data.labels.noSurvey
+				host.appendChild(p)
+				descEl.textContent = data.labels.noSurvey
+				renderDataTable()
+				return
+			}
+			host.textContent = ''
+			const ink = css('--ink') || '#1d1d1b'
+			const muted = css('--muted') || '#8a8a86'
+			const line = css('--line') || '#e5e2dd'
+			const width = host.clientWidth || 360
+			const height = width < 560 ? 240 : 300
+			const axisFont = `${width < 560 ? 10 : 11}px ${getComputedStyle(document.body).fontFamily || 'sans-serif'}`
+			const firstKnown = known[0]
+			chart = new uPlot(
+				{
+					width,
+					height,
+					padding: [12, 4, 0, 0],
+					legend: { show: false },
+					cursor: {
+						x: true,
+						y: false,
+						drag: { x: false, y: false },
+						points: { size: 9, width: 2, stroke: ink, fill: css('--bg') || '#faf8f6' }
+					},
+					select: { show: false, left: 0, top: 0, width: 0, height: 0 },
+					scales: { x: { time: true } },
+					axes: [
+						{
+							stroke: muted,
+							grid: { show: false },
+							ticks: { show: false },
+							font: axisFont,
+							size: 28,
+							space: width < 560 ? 64 : 84,
+							values: (_u, splits) =>
+								splits.map((v) => {
+									const d = new Date(v * 1000)
+									return `${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}`
+								})
+						},
+						{
+							stroke: muted,
+							grid: { stroke: line, width: 1 },
+							ticks: { show: false },
+							font: axisFont,
+							size: (_u, vals) =>
+								Math.max(40, ...(vals || []).map((v) => String(v).length * 6.6 + 10)),
+							space: 44,
+							values: (_u, splits) => splits.map((v) => Math.round(v).toLocaleString(data.locale))
+						}
+					],
+					series: [
+						{},
+						{
+							stroke: ink,
+							width: 1.75,
+							fill: (u) => {
+								const g = u.ctx.createLinearGradient(0, u.bbox.top, 0, u.bbox.top + u.bbox.height)
+								g.addColorStop(0, ink + '1f')
+								g.addColorStop(1, ink + '00')
+								return g
+							},
+							points: { show: false },
+							spanGaps: true
+						}
+					],
+					hooks: {
+						draw: [
+							(u) => {
+								const y = u.valToPos(firstKnown, 'y', true)
+								const ctx = u.ctx
+								ctx.save()
+								ctx.strokeStyle = muted
+								ctx.lineWidth = 1
+								ctx.setLineDash([3, 4])
+								ctx.beginPath()
+								ctx.moveTo(u.bbox.left, y)
+								ctx.lineTo(u.bbox.left + u.bbox.width, y)
+								ctx.stroke()
+								ctx.restore()
+							}
+						],
+						setCursor: [(u) => showTip(u.cursor.idx)]
+					}
+				},
+				[data.dates.map(toTs), values],
+				host
+			)
+			bindTouch(chart)
+			chart.over.addEventListener('mouseleave', () => (tooltip.hidden = true))
+
+			svgLabel(label0, known)
+			renderDataTable()
+		}
+
+		function svgLabel(label, known) {
+			const lastI = data.dates.length - 1
+			host.setAttribute(
 				'aria-label',
 				label +
 					' ' +
 					dot(data.dates[0]) +
-					'~' +
+					' – ' +
 					dot(data.dates[lastI]) +
 					', ' +
-					fmt(min) +
-					'~' +
-					fmt(max)
+					fmt(Math.min(...known)) +
+					' – ' +
+					fmt(Math.max(...known))
 			)
 			descEl.textContent =
 				dot(data.dates[0]) +
@@ -737,16 +716,37 @@ const t = {
 				' · ' +
 				data.labels.range +
 				' ' +
-				fmt(min) +
+				fmt(Math.min(...known)) +
 				' – ' +
-				fmt(max) +
+				fmt(Math.max(...known)) +
 				' · ' +
 				data.labels.latest +
 				' ' +
-				fmt(values[lastI])
+				fmt(known[known.length - 1])
+		}
 
-			renderDataTable()
-			if (cursor != null) moveCursor(cursor)
+		/** 손가락으로 누르고 끌면 그 지점 값을 보여 준다. 세로 스크롤은 그대로 둔다. */
+		function bindTouch(u) {
+			const over = u.over
+			over.style.touchAction = 'pan-y'
+			let active = false
+			const move = (e) => {
+				const rect = over.getBoundingClientRect()
+				u.setCursor({ left: Math.min(Math.max(e.clientX - rect.left, 0), rect.width), top: 10 })
+			}
+			over.addEventListener('pointerdown', (e) => {
+				if (e.pointerType === 'mouse') return
+				active = true
+				move(e)
+			})
+			over.addEventListener('pointermove', (e) => active && move(e))
+			const end = () => {
+				if (!active) return
+				active = false
+				hideCursor()
+			}
+			over.addEventListener('pointerup', end)
+			over.addEventListener('pointercancel', end)
 		}
 
 		function renderDataTable() {
@@ -769,85 +769,6 @@ const t = {
 				tableBody.appendChild(tr)
 			}
 		}
-
-		/* ---------- 호버 ---------- */
-		function moveCursor(i) {
-			if (!geometry) return
-			cursor = Math.min(geometry.count - 1, Math.max(0, i))
-			const values = data.series[item][region]
-			if (values[cursor] == null) {
-				hideCursor()
-				return
-			}
-			const cx = geometry.x(cursor)
-			const cy = geometry.y(values[cursor])
-			const group = svg.querySelector('#im-cross')
-			if (!group) return
-			group.setAttribute('visibility', 'visible')
-			group.children[0].setAttribute('x1', cx)
-			group.children[0].setAttribute('x2', cx)
-			group.children[1].setAttribute('cx', cx)
-			group.children[1].setAttribute('cy', cy)
-			group.children[2].setAttribute('cx', cx)
-			group.children[2].setAttribute('cy', cy)
-
-			const c = cellFor(item, region, cursor)
-			tooltip.textContent = ''
-			const value = document.createElement('strong')
-			value.textContent = fmt(c.price)
-			const when = document.createElement('span')
-			when.textContent = dot(data.dates[cursor])
-			const change = document.createElement('span')
-			change.className = cls(c.delta)
-			change.textContent = pct(c.delta)
-			tooltip.append(value, when, change)
-			tooltip.hidden = false
-
-			const rect = svg.getBoundingClientRect()
-			const ratio = rect.width / (svg.viewBox.baseVal.width || rect.width)
-			const px = cx * ratio
-			const py = cy * ratio
-			tooltip.style.left = Math.min(Math.max(px, 8), rect.width - 8) + 'px'
-			tooltip.style.transform =
-				px > rect.width - 130
-					? 'translate(-100%, 0)'
-					: px < 130
-						? 'translate(0, 0)'
-						: 'translate(-50%, 0)'
-
-			// 점 위에 띄우고, 위가 좁으면 아래로 넘긴다
-			tooltip.style.top = '0px'
-			const th = tooltip.offsetHeight
-			const above = py - th - 14
-			tooltip.style.top =
-				Math.max(0, Math.min(above < 0 ? py + 16 : above, rect.height - th)) + 'px'
-		}
-
-		function hideCursor() {
-			cursor = null
-			tooltip.hidden = true
-			const group = svg.querySelector('#im-cross')
-			if (group) group.setAttribute('visibility', 'hidden')
-		}
-
-		function indexFromEvent(event) {
-			const rect = svg.getBoundingClientRect()
-			const ratio = (svg.viewBox.baseVal.width || rect.width) / rect.width
-			const vx = (event.clientX - rect.left) * ratio
-			const t = (vx - geometry.padL) / Math.max(geometry.innerW, 1)
-			return Math.round(t * (geometry.count - 1))
-		}
-
-		svg.addEventListener('pointermove', (e) => moveCursor(indexFromEvent(e)))
-		svg.addEventListener('pointerleave', hideCursor)
-		svg.addEventListener('blur', hideCursor)
-		svg.addEventListener('focus', () => moveCursor(cursor == null ? geometry.count - 1 : cursor))
-		svg.addEventListener('keydown', (e) => {
-			if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-			e.preventDefault()
-			const base = cursor == null ? geometry.count - 1 : cursor
-			moveCursor(base + (e.key === 'ArrowRight' ? 1 : -1))
-		})
 
 		/* ---------- 탭 ---------- */
 		function pick(tabs, tab) {
@@ -892,13 +813,17 @@ const t = {
 		renderAnalysisList()
 		renderChart()
 		if (window.ResizeObserver) {
-			let last = plot.clientWidth
+			let last = host.clientWidth
 			new ResizeObserver(() => {
-				if (Math.abs(plot.clientWidth - last) < 2) return
-				last = plot.clientWidth
+				if (Math.abs(host.clientWidth - last) < 2) return
+				last = host.clientWidth
 				renderChart()
-			}).observe(plot)
+			}).observe(host)
 		}
+		new MutationObserver(() => renderChart()).observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['class']
+		})
 	}
 
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPrices)
@@ -1042,6 +967,22 @@ const t = {
 
 	.im-chart-plot {
 		position: relative;
+	}
+
+	.im-chart-host {
+		width: 100%;
+		min-height: 240px;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	.im-chart-host :global(.u-cursor-x) {
+		border-right: 1px dashed var(--muted);
+	}
+
+	.im-chart-host :global(.im-chart-empty) {
+		margin: 0;
+		padding: 24px 0;
 	}
 
 	.im-chart svg {

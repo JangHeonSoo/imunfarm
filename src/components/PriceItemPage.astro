@@ -1,17 +1,22 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout'
 import PriceAnalysis from '@/components/PriceAnalysis'
+import PriceChart from '@/components/PriceChart'
+import PriceSwitcher from '@/components/PriceSwitcher'
+import kamisItems from '@/data/kamis-items.json'
 import { DEFAULT_LOCALE, getLocalePrefix, getPostUrl, getPosts } from '@/utils'
 import {
 	ITEMS,
 	REGIONS,
 	buildAnalysis,
+	buildItemSeries,
 	buildPriceData,
 	formatDate,
 	getItemStatus,
 	getPriceAsOfDate
 } from '@/data/prices'
 import { siteConfig } from '@/site-config'
+import pricePhotos from '@/data/price-photos.json'
 
 const { locale = DEFAULT_LOCALE, itemId } = Astro.props
 const isEn = locale === 'en'
@@ -27,6 +32,7 @@ const { dates, table } = buildPriceData(today)
 const latest = dates[dates.length - 1]
 const analysis = buildAnalysis(item, REGIONS[0], today)
 const status = getItemStatus(item, today)
+const photo = (pricePhotos as string[]).includes(item.id) ? `/images/prices/${item.id}.webp` : null
 
 const fmt = (value: number | null) =>
 	value == null
@@ -58,7 +64,49 @@ const related = posts
 	})
 	.slice(0, 4)
 
-const others = ITEMS.filter((entry) => entry.id !== item.id)
+const codeOf = (id: string) =>
+	((kamisItems as Record<string, { codes: string[] }>)[id]?.codes[0] ?? '').split('-')
+const switchItems = ITEMS.map((entry) => {
+	const cell = table[latest][REGIONS[0].id][entry.id]
+	return {
+		id: entry.id,
+		label: isEn ? entry.en : entry.ko,
+		category: codeOf(entry.id)[0] ?? '',
+		unit: isEn ? entry.unitEn : entry.unitKo,
+		price: cell?.price ?? null,
+		delta: cell?.delta ?? null,
+		photo: (pricePhotos as string[]).includes(entry.id)
+			? `/images/prices/thumb/${entry.id}.webp`
+			: null,
+		search: [entry.id, entry.ko, entry.en, ...entry.keywordsKo, ...entry.keywordsEn]
+			.join(' ')
+			.toLowerCase()
+	}
+})
+// 같이 보는 품목: 같은 작물의 다른 품종·국산/수입 → 같은 분류 순
+const [myCat, myItem] = codeOf(item.id)
+const siblings = switchItems.filter((e) => e.id !== item.id && codeOf(e.id)[1] === myItem)
+// 가까운 작물끼리 묶은 무리 (KAMIS 품목 코드)
+const GROUPS = [
+	['111', '112', '115', '121'],
+	['141', '142', '143', '144'],
+	['151', '152'],
+	['312', '313', '314'],
+	['315', '316', '317'],
+	['211', '212', '213', '214', '215', '233', '252', '253', '279', '280'],
+	['221', '223', '224', '225', '251', '255', '256', '257', '422'],
+	['231', '232', '247'],
+	['241', '242', '243', '244', '245', '246', '258']
+]
+const groupOf = (code: string) => GROUPS.findIndex((g) => g.includes(code))
+const others = switchItems.filter(
+	(e) => e.id !== item.id && codeOf(e.id)[1] !== myItem && e.price != null
+)
+const sameGroup = others.filter(
+	(e) => groupOf(codeOf(e.id)[1]) === groupOf(myItem) && groupOf(myItem) >= 0
+)
+const sameCat = others.filter((e) => e.category === myCat && !sameGroup.includes(e))
+const related6 = [...siblings, ...sameGroup, ...sameCat].slice(0, 6)
 
 const dateLabel = formatDate(latest)
 const surveyLabel = analysis.currentDate ? formatDate(analysis.currentDate) : null
@@ -172,7 +220,7 @@ const t = {
 	change: isEn ? 'Change' : '전일비',
 	faq: isEn ? 'Questions' : '자주 묻는 것',
 	related: isEn ? 'Related posts' : '관련 기록',
-	otherItems: isEn ? 'Other crops' : '다른 품목',
+	otherItems: isEn ? 'Related crops' : '같이 보는 품목',
 	source: isEn
 		? 'Source: aT KAMIS price information (Public Data Portal) · wholesale intermediary selling prices in Seoul, Busan, Daegu, Gwangju and Daejeon. Days without a survey carry the previous survey value. Past-year comparisons use KAMIS monthly averages for the same month.'
 		: '출처: aT KAMIS 가격정보(공공데이터포털) · 서울·부산·대구·광주·대전 도매시장 중도매인 판매가격. 조사가 없는 날은 직전 조사값을 표시한다. 과거 연도 비교는 KAMIS 같은 달 월평균 기준이다.',
@@ -190,21 +238,46 @@ const t = {
 			<a href={`${prefix}/prices/`}>{isEn ? 'Prices' : '농산물 시세'}</a>
 			<span>/</span>
 			<span>{name}</span>
+			<PriceSwitcher items={switchItems} currentId={item.id} prefix={prefix} isEn={isEn} />
 		</nav>
 
-		<h1 class='im-item-title'>{isEn ? `${name} price` : `${name} 시세`}</h1>
+		<div class={`im-item-top ${photo ? 'has-photo' : ''}`}>
+			{
+				photo && (
+					<img
+						class='im-item-photo'
+						src={photo}
+						alt={name}
+						width='480'
+						height='480'
+						decoding='async'
+						fetchpriority='high'
+					/>
+				)
+			}
+			<div>
+				<h1 class='im-item-title'>{isEn ? `${name} price` : `${name} 시세`}</h1>
 
-		<div class='im-item-hero'>
-			<p class='im-item-price'>{fmt(analysis.current)}</p>
-			<p class='im-meta'>
-				{grade} · {unit} · {surveyLabel ?? dateLabel} · {isEn ? 'Seoul' : '서울'}
-			</p>
-			{staleNote && <p class='im-meta'>{staleNote}</p>}
-			<p class={`im-item-change ${dir(analysis.trend30)}`}>
-				{isEn ? '30 survey days' : '30개 조사일'}
-				{pct(analysis.trend30)}
-			</p>
+				<div class='im-item-hero'>
+					<p class='im-item-price' id='im-item-price'>{fmt(analysis.current)}</p>
+					<p class='im-meta'>
+						{grade} · {unit} · <span id='im-item-date'>{surveyLabel ?? dateLabel}</span> ·{' '}
+						<span id='im-item-region'>{isEn ? 'Seoul' : '서울'}</span>
+					</p>
+					{staleNote && <p class='im-meta'>{staleNote}</p>}
+					<p class={`im-item-change ${dir(analysis.trend30)}`} id='im-item-change'>
+						{isEn ? '30 survey days' : '30개 조사일'}
+						{pct(analysis.trend30)}
+					</p>
+				</div>
+			</div>
 		</div>
+
+		<PriceChart
+			series={buildItemSeries(item, today)}
+			regions={REGIONS.map((r) => ({ id: r.id, label: isEn ? r.en : r.ko }))}
+			isEn={isEn}
+		/>
 
 		<p class='im-item-lead'>{description}</p>
 
@@ -263,16 +336,31 @@ const t = {
 		}
 
 		<h2 class='im-analysis-h'>{t.otherItems}</h2>
-		<nav class='im-other'>
-			<a class='im-tab' href={`${prefix}/prices/`}>{t.backToPrices}</a>
+		<div class='im-near'>
 			{
-				others.map((entry) => (
-					<a class='im-tab' href={`${prefix}/prices/${entry.id}/`}>
-						{isEn ? entry.en : entry.ko}
+				related6.map((entry) => (
+					<a class='im-near-row' href={`${prefix}/prices/${entry.id}/`}>
+						<span class='im-near-thumb'>
+							{entry.photo ? (
+								<img
+									src={entry.photo}
+									alt=''
+									width='40'
+									height='40'
+									loading='lazy'
+									decoding='async'
+								/>
+							) : (
+								<span aria-hidden='true'>{entry.label.slice(0, 1)}</span>
+							)}
+						</span>
+						<span class='im-near-name'>{entry.label}</span>
+						<span class='im-near-price'>{fmt(entry.price)}</span>
 					</a>
 				))
 			}
-		</nav>
+		</div>
+		<a class='im-near-all im-menu' href={`${prefix}/prices/`}>{t.backToPrices} →</a>
 	</div>
 </BaseLayout>
 
@@ -418,5 +506,106 @@ const t = {
 		gap: 12px clamp(14px, 2vw, 26px);
 		font-size: 13px;
 		font-weight: 500;
+	}
+
+	.im-item-top.has-photo {
+		display: grid;
+		grid-template-columns: clamp(120px, 17vw, 184px) minmax(0, 1fr);
+		align-items: center;
+		gap: clamp(18px, 3vw, 36px);
+		margin-top: clamp(16px, 2vw, 26px);
+	}
+
+	.im-item-top.has-photo .im-item-title {
+		margin-top: 0;
+	}
+
+	.im-item-photo {
+		display: block;
+		width: 100%;
+		height: auto;
+		aspect-ratio: 1;
+		object-fit: cover;
+		border-radius: 4px;
+		mix-blend-mode: multiply;
+	}
+
+	:global(html.dark) .im-item-photo {
+		mix-blend-mode: normal;
+	}
+
+	@media (max-width: 640px) {
+		.im-item-top.has-photo {
+			grid-template-columns: 84px minmax(0, 1fr);
+			gap: 16px;
+		}
+	}
+
+	.im-near {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		column-gap: clamp(20px, 4vw, 48px);
+		max-width: 760px;
+		border-top: 1px solid var(--ink);
+	}
+
+	.im-near-row {
+		display: grid;
+		grid-template-columns: 40px minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 12px;
+		padding: 10px 0;
+		border-bottom: 1px solid var(--line);
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.im-near-thumb {
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 4px;
+		background: var(--line);
+		font-size: 14px;
+		font-weight: 700;
+		color: var(--muted);
+		overflow: hidden;
+	}
+
+	.im-near-thumb img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		mix-blend-mode: multiply;
+	}
+
+	:global(html.dark) .im-near-thumb img {
+		mix-blend-mode: normal;
+	}
+
+	.im-near-name {
+		font-size: 14px;
+		font-weight: 600;
+	}
+
+	.im-near-price {
+		font-size: 14px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-near-all {
+		display: inline-block;
+		margin-top: 18px;
+		color: inherit;
+		text-decoration: none;
+		border-bottom: 1px solid var(--ink);
+	}
+
+	@media (max-width: 640px) {
+		.im-near {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>

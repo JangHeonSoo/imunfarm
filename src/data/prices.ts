@@ -1573,4 +1573,25 @@ export const buildAnalysis = (
 	}
 }
 
+export type ItemSeries = {
+	/** 지역별 일별 조사값 [iso, 가격] (최근 400일) */
+	daily: Record<string, [string, number][]>
+	/** 지역별 월평균 [YYYY-MM, 가격] (저장된 전체) */
+	monthly: Record<string, [string, number][]>
+}
+
+/** 품목 페이지 차트용 원자료 */
+export const buildItemSeries = (item: Item, today = getPriceAsOfDate()): ItemSeries => {
+	const asOf = keyOfDate(today)
+	const daily: ItemSeries['daily'] = {}
+	const monthly: ItemSeries['monthly'] = {}
+	for (const region of REGIONS) {
+		daily[region.id] = [...dailyOf(item, region).entries()].filter(([d]) => d <= asOf)
+		monthly[region.id] = [...monthlyOf(item, region).entries()].filter(
+			([ym]) => ym <= asOf.slice(0, 7)
+		)
+	}
+	return { daily, monthly }
+}
+
 export const formatDate = (iso: string) => iso.replace(/-/g, '.')
