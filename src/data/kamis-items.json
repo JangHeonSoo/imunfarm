@@ -1,0 +1,238 @@
+{
+	"mandarin": {
+		"codes": ["400-415-02-14"]
+	},
+	"lemon": {
+		"codes": ["400-424-00-04"]
+	},
+	"mango": {
+		"codes": ["400-428-00-04"]
+	},
+	"banana": {
+		"codes": ["400-418-02-04"]
+	},
+	"pear": {
+		"codes": ["400-412-01-04"],
+		"ko": "배 (신고)",
+		"en": "Pear (Shingo)"
+	},
+	"apple": {
+		"codes": ["400-411-05-04"],
+		"ko": "사과 (후지)",
+		"en": "Apple (Fuji)"
+	},
+	"apple-hongro": {
+		"codes": ["400-411-07-04"]
+	},
+	"orange": {
+		"codes": ["400-421-06-04"]
+	},
+	"pineapple": {
+		"codes": ["400-420-02-04"]
+	},
+	"grape": {
+		"codes": ["400-414-02-24"]
+	},
+	"grape-shine-muscat": {
+		"codes": ["400-414-12-24"]
+	},
+	"grape-campbell-early": {
+		"codes": ["400-414-01-24"]
+	},
+	"potato": {
+		"codes": ["100-152-01-04", "100-152-04-04"]
+	},
+	"sweet-potato": {
+		"codes": ["100-151-00-04"]
+	},
+	"mung-bean": {
+		"codes": ["100-143-00-04"]
+	},
+	"mung-bean-imported": {
+		"codes": ["100-143-02-05", "100-143-01-05"],
+		"ko": "녹두 (수입)",
+		"en": "Mung bean (imported)"
+	},
+	"buckwheat": {
+		"codes": ["100-144-01-05"]
+	},
+	"rice": {
+		"codes": ["100-111-01-04"]
+	},
+	"glutinous-rice": {
+		"codes": ["100-112-01-04"]
+	},
+	"soybean": {
+		"codes": ["100-141-01-04"]
+	},
+	"soybean-white": {
+		"codes": ["100-141-03-05"],
+		"ko": "콩 (흰 콩 수입)",
+		"en": "Soybean (white, imported)"
+	},
+	"red-bean": {
+		"codes": ["100-142-00-04"]
+	},
+	"red-bean-red": {
+		"codes": ["100-142-01-05"],
+		"ko": "팥 (붉은 팥 수입)",
+		"en": "Red bean (imported)"
+	},
+	"oyster-mushroom": {
+		"codes": ["300-315-00-04"]
+	},
+	"oyster-mushroom-2": {
+		"codes": ["300-315-01-04"]
+	},
+	"perilla-seed": {
+		"codes": ["300-313-01-04"]
+	},
+	"perilla-seed-imported": {
+		"codes": ["300-313-02-05"]
+	},
+	"peanut": {
+		"codes": ["300-314-01-04"]
+	},
+	"king-oyster-mushroom": {
+		"codes": ["300-317-00-04"]
+	},
+	"sesame": {
+		"codes": ["300-312-01-04"]
+	},
+	"sesame-india": {
+		"codes": ["300-312-03-05"]
+	},
+	"sesame-china": {
+		"codes": ["300-312-02-05"]
+	},
+	"enoki-mushroom": {
+		"codes": ["300-316-00-04"]
+	},
+	"dried-red-pepper": {
+		"codes": ["200-241-00-04"],
+		"ko": "건고추 (화건)",
+		"en": "Dried red pepper (fire-dried)"
+	},
+	"garlic": {
+		"codes": ["200-258-03-04"],
+		"ko": "마늘 (깐마늘 대서)",
+		"en": "Garlic (peeled, Daeseo)"
+	},
+	"garlic-2": {
+		"codes": ["200-258-05-04"],
+		"ko": "마늘 (깐마늘 남도)",
+		"en": "Garlic (peeled, Namdo)"
+	},
+	"perilla-leaf": {
+		"codes": ["200-253-00-04"]
+	},
+	"carrot": {
+		"codes": ["200-232-01-04"]
+	},
+	"carrot-2": {
+		"codes": ["200-232-10-05"]
+	},
+	"melon": {
+		"codes": ["200-257-00-04"]
+	},
+	"radish": {
+		"codes": ["200-231-02-04", "200-231-03-04", "200-231-06-04", "200-231-01-04"],
+		"ko": "무",
+		"en": "Radish"
+	},
+	"water-parsley": {
+		"codes": ["200-252-00-04"]
+	},
+	"cherry-tomato": {
+		"codes": ["200-422-02-04"]
+	},
+	"cabbage": {
+		"codes": ["200-211-02-04", "200-211-03-04", "200-211-06-04", "200-211-01-04"],
+		"ko": "배추",
+		"en": "Napa cabbage"
+	},
+	"red-chili-pepper": {
+		"codes": ["200-243-00-04"]
+	},
+	"broccoli": {
+		"codes": ["200-280-00-04"]
+	},
+	"lettuce": {
+		"codes": ["200-214-01-04"]
+	},
+	"lettuce-green": {
+		"codes": ["200-214-02-04"]
+	},
+	"ginger": {
+		"codes": ["200-247-00-04"]
+	},
+	"ginger-imported": {
+		"codes": ["200-247-01-05"]
+	},
+	"watermelon": {
+		"codes": ["200-221-00-04"]
+	},
+	"spinach": {
+		"codes": ["200-213-00-04"]
+	},
+	"baby-napa-cabbage": {
+		"codes": ["200-279-00-04"]
+	},
+	"cabbage-round": {
+		"codes": ["200-212-00-04"]
+	},
+	"onion": {
+		"codes": ["200-245-00-04"]
+	},
+	"eolgari-cabbage": {
+		"codes": ["200-215-00-04"]
+	},
+	"young-radish-greens": {
+		"codes": ["200-233-00-04"]
+	},
+	"cucumber": {
+		"codes": ["200-223-02-04"]
+	},
+	"cucumber-cheong": {
+		"codes": ["200-223-03-04"]
+	},
+	"tomato": {
+		"codes": ["200-225-00-04"]
+	},
+	"greenonion": {
+		"codes": ["200-246-00-04"]
+	},
+	"greenonion-2": {
+		"codes": ["200-246-02-04"]
+	},
+	"paprika": {
+		"codes": ["200-256-00-04"]
+	},
+	"green-chili-pepper": {
+		"codes": ["200-242-02-04"]
+	},
+	"green-chili-pepper-cucumber-flavor": {
+		"codes": ["200-242-04-04"]
+	},
+	"green-chili-pepper-cheongyang": {
+		"codes": ["200-242-03-04"]
+	},
+	"green-chili-pepper-4": {
+		"codes": ["200-242-00-04"]
+	},
+	"garlic-whole": {
+		"codes": ["200-244-22-04"]
+	},
+	"garlic-whole-2": {
+		"codes": ["200-244-03-04"]
+	},
+	"bell-pepper": {
+		"codes": ["200-255-00-04"]
+	},
+	"squash": {
+		"codes": ["200-224-01-04"]
+	},
+	"squash-zucchini": {
+		"codes": ["200-224-02-04"]
+	}
+}

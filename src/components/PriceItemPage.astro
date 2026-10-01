@@ -8,6 +8,7 @@ import {
 	buildAnalysis,
 	buildPriceData,
 	formatDate,
+	getItemStatus,
 	getPriceAsOfDate
 } from '@/data/prices'
 import { siteConfig } from '@/site-config'
@@ -25,16 +26,23 @@ const today = getPriceAsOfDate()
 const { dates, table } = buildPriceData(today)
 const latest = dates[dates.length - 1]
 const analysis = buildAnalysis(item, REGIONS[0], today)
+const status = getItemStatus(item, today)
 
-const fmt = (value: number) =>
-	isEn ? '₩' + value.toLocaleString('en-US') : value.toLocaleString('ko-KR') + '원'
-const pct = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
-const dir = (v: number) => (v > 0 ? 'im-up' : v < 0 ? 'im-down' : 'im-flat')
+const fmt = (value: number | null) =>
+	value == null
+		? '–'
+		: isEn
+			? '₩' + value.toLocaleString('en-US')
+			: value.toLocaleString('ko-KR') + '원'
+const pct = (v: number | null) =>
+	v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
+const dir = (v: number | null) =>
+	v == null ? 'im-flat' : v > 0 ? 'im-up' : v < 0 ? 'im-down' : 'im-flat'
 
 const regionRows = REGIONS.map((region) => ({
 	label: isEn ? region.en : region.ko,
 	...table[latest][region.id][item.id]
-})).sort((a, b) => b.price - a.price)
+})).sort((a, b) => (b.price ?? -1) - (a.price ?? -1))
 
 // 관련 기록
 const posts = await getPosts(undefined, locale)
@@ -53,12 +61,19 @@ const related = posts
 const others = ITEMS.filter((entry) => entry.id !== item.id)
 
 const dateLabel = formatDate(latest)
+const surveyLabel = analysis.currentDate ? formatDate(analysis.currentDate) : null
+const seasonValues = analysis.seasonality.filter((v): v is number => v != null)
+const staleNote = status.stale
+	? isEn
+		? `Not surveyed recently${status.lastSurvey ? ` (last survey ${formatDate(status.lastSurvey)})` : ''} — likely out of season.`
+		: `최근 조사가 없다${status.lastSurvey ? ` (마지막 조사 ${formatDate(status.lastSurvey)})` : ''}. 제철이 아닐 가능성이 크다.`
+	: null
 const title = isEn
 	? `${name} price — wholesale market outlook (${dateLabel})`
 	: `${name} 시세 — 도매가격과 전망 (${dateLabel} 기준)`
 const description = isEn
-	? `${name} wholesale price on ${dateLabel}: ${fmt(analysis.current)} per ${unit}. Compared with the same period 1, 3, 5 and 10 years ago, with seasonal index and 5-year monthly trend across six Korean wholesale markets.`
-	: `${dateLabel} 기준 ${name} 도매 시세는 ${unit}당 ${fmt(analysis.current)}. 1년·3년·5년·10년 전 같은 기간과 비교하고, 계절지수와 최근 5년 월평균 추이, 6개 공영도매시장 지역별 가격을 함께 정리했다.`
+	? `${name} wholesale price (KAMIS, Seoul) ${surveyLabel ? `on ${surveyLabel}: ${fmt(analysis.current)} per ${unit}` : 'not surveyed recently'}. Compared with the same month 1, 3, 5 and 10 years ago, with seasonal index, 5-year monthly trend and prices in five Korean cities.`
+	: `${name} 도매 시세(KAMIS 중도매인 판매가격, 서울)는 ${surveyLabel ? `${surveyLabel} 기준 ${unit}당 ${fmt(analysis.current)}` : '최근 조사가 없다'}. 1년·3년·5년·10년 전 같은 달과 비교하고, 계절지수와 최근 5년 월평균 추이, 서울·부산·대구·광주·대전 지역별 가격을 함께 정리했다.`
 
 const canonical = new URL(Astro.url.pathname, siteConfig.siteUrl).href
 
@@ -66,29 +81,43 @@ const faq = isEn
 	? [
 			{
 				q: `How much is ${name} today?`,
-				a: `As of ${dateLabel}, ${name} (${grade}, ${unit}) traded at ${fmt(analysis.current)} at Seoul Garak market. The 30-day average is ${fmt(analysis.windowAvg)}.`
+				a: surveyLabel
+					? `On ${surveyLabel}, the KAMIS wholesale (intermediary) price for ${name} (${grade}, ${unit}) in Seoul was ${fmt(analysis.current)}. The average over the last 30 survey days is ${fmt(analysis.windowAvg)}.`
+					: `${name} has not been surveyed recently, so there is no current KAMIS price.`
 			},
 			{
 				q: `Is ${name} expensive right now?`,
-				a: `Within the past 12 months the current price sits at the ${analysis.percentile}th percentile — ${analysis.percentile >= 50 ? 'above' : 'below'} the one-year median.`
+				a:
+					analysis.percentile == null
+						? 'There is not enough recent survey data to compare.'
+						: `Within the past 12 months the current price sits at the ${analysis.percentile}th percentile — ${analysis.percentile >= 50 ? 'above' : 'below'} the one-year median.`
 			},
 			{
 				q: `When is ${name} usually most expensive?`,
-				a: `Over a 10-year average, the seasonal index peaks at ${Math.max(...analysis.seasonality)} and bottoms at ${Math.min(...analysis.seasonality)} (10-year average = 100).`
+				a: seasonValues.length
+					? `Over a 10-year average, the seasonal index peaks at ${Math.max(...seasonValues)} and bottoms at ${Math.min(...seasonValues)} (10-year average = 100).`
+					: 'There is not enough monthly data to compute a seasonal index.'
 			}
 		]
 	: [
 			{
 				q: `오늘 ${name} 시세는 얼마인가?`,
-				a: `${dateLabel} 기준 ${name}(${grade}, ${unit})는 서울 가락시장에서 ${fmt(analysis.current)}에 거래됐다. 최근 30일 평균은 ${fmt(analysis.windowAvg)}이다.`
+				a: surveyLabel
+					? `${surveyLabel} KAMIS 조사 기준 ${name}(${grade}, ${unit}) 서울 도매시장 중도매인 판매가격은 ${fmt(analysis.current)}이다. 최근 30개 조사일 평균은 ${fmt(analysis.windowAvg)}이다.`
+					: `${name}는 최근 KAMIS 조사가 없어 현재 가격이 없다.`
 			},
 			{
 				q: `지금 ${name} 값은 비싼 편인가?`,
-				a: `최근 1년 안에서 보면 현재가는 ${analysis.percentile}번째 백분위에 있다. 1년 중간값보다 ${analysis.percentile >= 50 ? '높은' : '낮은'} 구간이다.`
+				a:
+					analysis.percentile == null
+						? '비교할 만큼 최근 조사값이 충분하지 않다.'
+						: `최근 1년 안에서 보면 현재가는 ${analysis.percentile}번째 백분위에 있다. 1년 중간값보다 ${analysis.percentile >= 50 ? '높은' : '낮은'} 구간이다.`
 			},
 			{
 				q: `${name}는 보통 언제 가장 비싼가?`,
-				a: `10년 평균으로 보면 계절지수가 최고 ${Math.max(...analysis.seasonality)}, 최저 ${Math.min(...analysis.seasonality)}까지 움직인다 (10년 평균 = 100).`
+				a: seasonValues.length
+					? `10년 평균으로 보면 계절지수가 최고 ${Math.max(...seasonValues)}, 최저 ${Math.min(...seasonValues)}까지 움직인다 (10년 평균 = 100).`
+					: '계절지수를 계산할 만큼 월별 조사값이 충분하지 않다.'
 			}
 		]
 
@@ -100,7 +129,7 @@ const jsonLd = [
 		description,
 		url: canonical,
 		keywords: isEn ? item.keywordsEn : item.keywordsKo,
-		temporalCoverage: `${analysis.monthly[0].ym}/${latest}`,
+		temporalCoverage: `${analysis.monthly[0]?.ym ?? latest}/${latest}`,
 		spatialCoverage: { '@type': 'Place', name: isEn ? 'Republic of Korea' : '대한민국' },
 		variableMeasured: {
 			'@type': 'PropertyValue',
@@ -138,15 +167,15 @@ const jsonLd = [
 
 const t = {
 	byRegion: isEn ? 'By market · ' + dateLabel : '지역별 시세 · ' + dateLabel,
-	market: isEn ? 'Market' : '도매시장',
+	market: isEn ? 'City' : '지역',
 	price: isEn ? 'Price' : '가격',
 	change: isEn ? 'Change' : '전일비',
 	faq: isEn ? 'Questions' : '자주 묻는 것',
 	related: isEn ? 'Related posts' : '관련 기록',
 	otherItems: isEn ? 'Other crops' : '다른 품목',
 	source: isEn
-		? 'KAMIS-based reference prices across six public markets. Date records are generated deterministically for comparison; the analysis compares the same calendar window (±15 days) in past years.'
-		: 'KAMIS 기준가를 바탕으로 6개 공영도매시장별 비교값을 만든다. 일자별 기록은 비교용으로 결정론적으로 생성하며, 분석은 과거 연도의 같은 시기(±15일)를 비교한다.',
+		? 'Source: aT KAMIS price information (Public Data Portal) · wholesale intermediary selling prices in Seoul, Busan, Daegu, Gwangju and Daejeon. Days without a survey carry the previous survey value. Past-year comparisons use KAMIS monthly averages for the same month.'
+		: '출처: aT KAMIS 가격정보(공공데이터포털) · 서울·부산·대구·광주·대전 도매시장 중도매인 판매가격. 조사가 없는 날은 직전 조사값을 표시한다. 과거 연도 비교는 KAMIS 같은 달 월평균 기준이다.',
 	backToPrices: isEn ? 'All prices' : '전체 시세표'
 }
 ---
@@ -168,10 +197,11 @@ const t = {
 		<div class='im-item-hero'>
 			<p class='im-item-price'>{fmt(analysis.current)}</p>
 			<p class='im-meta'>
-				{grade} · {unit} · {dateLabel} · {isEn ? 'Seoul Garak' : '서울 가락'}
+				{grade} · {unit} · {surveyLabel ?? dateLabel} · {isEn ? 'Seoul' : '서울'}
 			</p>
+			{staleNote && <p class='im-meta'>{staleNote}</p>}
 			<p class={`im-item-change ${dir(analysis.trend30)}`}>
-				{isEn ? '30-day' : '30일'}
+				{isEn ? '30 survey days' : '30개 조사일'}
 				{pct(analysis.trend30)}
 			</p>
 		</div>

@@ -1,0 +1,53 @@
+name: KAMIS prices
+
+# KAMIS 일별 조사값은 보통 다음 날 00시(KST) 무렵 등록된다.
+on:
+  schedule:
+    - cron: '40 16 * * *' # 01:40 KST
+    - cron: '40 22 * * *' # 07:40 KST, 늦게 등록된 날 보완
+  workflow_dispatch:
+    inputs:
+      full:
+        description: '일별 400일 전체 다시 받기'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kamis-prices
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch KAMIS prices
+        env:
+          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+        run: |
+          ARGS=""
+          if [ "${{ inputs.full }}" = "true" ]; then ARGS="$ARGS --full"; fi
+          # 월평균은 매월 2일과 수동 실행 때 갱신
+          if [ "$(TZ=Asia/Seoul date +%d)" = "02" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then ARGS="$ARGS --monthly"; fi
+          node scripts/kamis/fetch.mjs $ARGS
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- src/data/generated/kamis/daily.json src/data/generated/kamis/monthly.json; then
+            echo "no new data"
+            exit 0
+          fi
+          git config user.name "imunfarm-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/data/generated/kamis/
+          git commit -m "chore: KAMIS prices $(TZ=Asia/Seoul date +%F)"
+          git push

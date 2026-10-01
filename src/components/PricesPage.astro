@@ -7,6 +7,7 @@ import {
 	buildAnalysis,
 	buildPriceData,
 	formatDate,
+	getItemStatus,
 	getPriceAsOfDate
 } from '@/data/prices'
 import { siteConfig } from '@/site-config'
@@ -22,10 +23,16 @@ const latest = dates[dates.length - 1]
 const dateLabel = formatDate(latest)
 const defaultRegion = REGIONS[0]
 
-const fmtServer = (value: number) =>
-	isEn ? '₩' + value.toLocaleString('en-US') : value.toLocaleString('ko-KR') + '원'
-const pct = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
-const dir = (v: number) => (v > 0 ? 'im-up' : v < 0 ? 'im-down' : 'im-flat')
+const fmtServer = (value: number | null) =>
+	value == null
+		? '–'
+		: isEn
+			? '₩' + value.toLocaleString('en-US')
+			: value.toLocaleString('ko-KR') + '원'
+const pct = (v: number | null) =>
+	v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
+const dir = (v: number | null) =>
+	v == null ? 'im-flat' : v > 0 ? 'im-up' : v < 0 ? 'im-down' : 'im-flat'
 const mark = (v: number) => (v > 0 ? '▲ ' : v < 0 ? '▼ ' : '– ')
 
 // 서버에서 그리는 초기 표 (JS 없이도 읽히고 크롤러가 색인한다)
@@ -69,11 +76,31 @@ const MONTHS_EN = [
 const months = isEn ? MONTHS_EN : MONTHS_KO
 const analyses = ITEMS.map((item) => {
 	const a = buildAnalysis(item, defaultRegion, today)
-	const peak = a.seasonality.indexOf(Math.max(...a.seasonality))
-	const seasonDelta = a.nextMonthIndex - a.monthIndex
-	const summary = isEn
-		? `${a.percentile}th percentile within 12 months · ${pct(a.benchmarks[3].diffPct)} in 10 years · seasonal peak in ${months[peak]} · next month ${seasonDelta > 0 ? 'up' : seasonDelta < 0 ? 'down' : 'flat'} ${Math.abs(seasonDelta)}p`
-		: `최근 1년 중 ${a.percentile}번째 백분위 · 10년간 ${pct(a.benchmarks[3].diffPct)} · 계절 고점 ${months[peak]} · 다음 달 지수 ${seasonDelta > 0 ? '상승' : seasonDelta < 0 ? '하락' : '보합'} ${Math.abs(seasonDelta)}p`
+	const status = getItemStatus(item, today)
+	const seasonValues = a.seasonality.filter((v): v is number => v != null)
+	const peak = seasonValues.length ? a.seasonality.indexOf(Math.max(...seasonValues)) : -1
+	const seasonDelta =
+		a.nextMonthIndex != null && a.monthIndex != null ? a.nextMonthIndex - a.monthIndex : null
+	const parts = isEn
+		? [
+				status.stale &&
+					(status.lastSurvey ? `last survey ${formatDate(status.lastSurvey)}` : 'not surveyed'),
+				a.percentile != null && `${a.percentile}th percentile within 12 months`,
+				a.benchmarks[3].diffPct != null && `${pct(a.benchmarks[3].diffPct)} vs 10 years ago`,
+				peak >= 0 && `seasonal peak in ${months[peak]}`,
+				seasonDelta != null &&
+					`next month ${seasonDelta > 0 ? 'up' : seasonDelta < 0 ? 'down' : 'flat'} ${Math.abs(seasonDelta)}p`
+			]
+		: [
+				status.stale &&
+					(status.lastSurvey ? `마지막 조사 ${formatDate(status.lastSurvey)}` : '조사 없음'),
+				a.percentile != null && `최근 1년 중 ${a.percentile}번째 백분위`,
+				a.benchmarks[3].diffPct != null && `10년 전 같은 달 대비 ${pct(a.benchmarks[3].diffPct)}`,
+				peak >= 0 && `계절 고점 ${months[peak]}`,
+				seasonDelta != null &&
+					`다음 달 지수 ${seasonDelta > 0 ? '상승' : seasonDelta < 0 ? '하락' : '보합'} ${Math.abs(seasonDelta)}p`
+			]
+	const summary = parts.filter(Boolean).join(' · ')
 	return {
 		id: item.id,
 		label: isEn ? item.en : item.ko,
@@ -85,7 +112,7 @@ const analyses = ITEMS.map((item) => {
 })
 
 // item -> region -> 날짜순 가격 배열 (전일비는 클라이언트에서 계산)
-const series: Record<string, Record<string, number[]>> = {}
+const series: Record<string, Record<string, (number | null)[]>> = {}
 for (const item of ITEMS) {
 	series[item.id] = {}
 	for (const region of REGIONS) {
@@ -122,7 +149,10 @@ const payload = {
 	labels: {
 		range: isEn ? 'Range' : '범위',
 		latest: isEn ? 'Latest' : '최근',
-		noResults: isEn ? 'No matching crops.' : '검색 결과가 없다.'
+		noResults: isEn ? 'No matching crops.' : '검색 결과가 없다.',
+		noSurvey: isEn
+			? 'No KAMIS survey in this period (likely out of season).'
+			: '이 기간 KAMIS 조사가 없다 (제철이 아닐 가능성이 크다).'
 	}
 }
 
@@ -131,8 +161,8 @@ const pageTitle = isEn
 	? `Korean produce prices — wholesale market rates by region (${dateLabel})`
 	: `농산물 시세 — 지역별 도매가격 (${dateLabel} 기준)`
 const pageDescription = isEn
-	? `Daily wholesale prices for ${ITEMS.length} major Korean crops across ${REGIONS.length} public wholesale markets, with a 30-day trend chart and a 10-year outlook for each crop. Updated on ${dateLabel}.`
-	: `${dateLabel} 기준 배추·무·양파·마늘·대파·감자·사과·배·토마토·오이·청양고추·수박 등 주요 농산물 ${ITEMS.length}개 품목의 지역별 도매 시세표. 서울 가락, 강서, 부산 엄궁, 대구 북부, 광주 각화, 대전 오정 6개 공영도매시장 가격과 30일 추이 차트, 품목별 10년 시세 분석을 함께 제공한다.`
+	? `KAMIS wholesale prices for ${ITEMS.length} major Korean crops in ${REGIONS.length} cities (Seoul, Busan, Daegu, Gwangju, Daejeon), with a 30-survey-day trend chart and a 10-year monthly analysis for each crop. Latest survey ${dateLabel}.`
+	: `${dateLabel} KAMIS 조사 기준 배추·무·양파·마늘·대파·감자·사과·배·토마토·오이·청양고추·수박 등 주요 농산물 ${ITEMS.length}개 품목의 지역별 도매 시세표. 서울·부산·대구·광주·대전 도매시장 중도매인 판매가격과 최근 30개 조사일 추이 차트, 품목별 10년 월평균 분석을 함께 제공한다.`
 
 const jsonLd = [
 	{
@@ -191,13 +221,13 @@ const t = {
 	price: isEn ? 'Price' : '가격',
 	delta: isEn ? 'Change' : '전일비',
 	note: isEn
-		? 'KAMIS-based reference prices · historical records generated per date'
-		: 'KAMIS 기준가 기반 비교용 · 일자별 기록 자동 생성',
-	chart: isEn ? 'Trend · last 30 days' : '추이 최근 30일',
+		? 'Source: aT KAMIS (Public Data Portal) · wholesale intermediary selling prices · days without a survey show the previous survey value'
+		: '출처: aT KAMIS 가격정보(공공데이터포털) · 도매시장 중도매인 판매가격 · 조사가 없는 날은 직전 조사값',
+	chart: isEn ? 'Trend · last 30 survey days' : '추이 최근 30개 조사일',
 	high: isEn ? 'High' : '최고',
 	low: isEn ? 'Low' : '최저',
 	avg: isEn ? 'Average' : '평균',
-	change30: isEn ? '30-day change' : '30일 대비',
+	change30: isEn ? '30-day change' : '30개 조사일 대비',
 	tableView: isEn ? 'View as table' : '표로 보기',
 	analysisTitle: isEn ? 'Crop price analysis' : '품목별 시세 분석',
 	analysisLead: isEn
@@ -287,8 +317,7 @@ const t = {
 							<span class='im-price-sub'>{row.unit}</span>
 							<span class='im-num im-price-value'>{fmtServer(row.price)}</span>
 							<span class={`im-num im-price-delta ${dir(row.delta)}`}>
-								{mark(row.delta)}
-								{Math.abs(row.delta).toFixed(1)}%
+								{row.delta == null ? '–' : `${mark(row.delta)}${Math.abs(row.delta).toFixed(1)}%`}
 							</span>
 						</div>
 					))
@@ -410,20 +439,24 @@ const t = {
 		let geometry = null
 
 		const NS = 'http://www.w3.org/2000/svg'
-		const fmt = (v) => data.prefix + v.toLocaleString(data.locale) + data.suffix
+		const fmt = (v) => (v == null ? '–' : data.prefix + v.toLocaleString(data.locale) + data.suffix)
 		const fmtShort = (v) => v.toLocaleString(data.locale)
 		const dot = (iso) => iso.replace(/-/g, '.')
 		const short = (iso) => iso.slice(5).replace('-', '.')
 		const nameOf = (list, id) => (list.find((e) => e.id === id) || {}).label || ''
-		const pct = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
-		const cls = (v) => (v > 0 ? 'im-up' : v < 0 ? 'im-down' : 'im-flat')
+		const pct = (v) =>
+			v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
+		const cls = (v) => (v == null ? 'im-flat' : v > 0 ? 'im-up' : v < 0 ? 'im-down' : 'im-flat')
 		const mark = (v) => (v > 0 ? '▲ ' : v < 0 ? '▼ ' : '– ')
 
 		function cellFor(itemId, regionId, i) {
 			const values = data.series[itemId][regionId]
 			const price = values[i]
 			const prev = i > 0 ? values[i - 1] : price
-			return { price, delta: prev ? Math.round(((price - prev) / prev) * 1000) / 10 : 0 }
+			return {
+				price,
+				delta: price != null && prev ? Math.round(((price - prev) / prev) * 1000) / 10 : null
+			}
 		}
 
 		function el(tag, attrs, text) {
@@ -475,7 +508,7 @@ const t = {
 					['im-num im-price-value', fmt(c.price)],
 					[
 						'im-num im-price-delta ' + cls(c.delta),
-						mark(c.delta) + Math.abs(c.delta).toFixed(1) + '%'
+						c.delta == null ? '–' : mark(c.delta) + Math.abs(c.delta).toFixed(1) + '%'
 					]
 				]
 				cells.forEach(([className, value]) => {
@@ -512,13 +545,33 @@ const t = {
 		/* ---------- 차트 ---------- */
 		function renderChart() {
 			const values = data.series[item][region]
+			const known = values.filter((v) => v != null)
 			const width = Math.max(plot.clientWidth || 720, 320)
 			const height = width < 560 ? 260 : 320
+			const label0 = nameOf(data.items, item)
+			const meta0 = data.items.find((e) => e.id === item) || {}
+			if (!known.length) {
+				svg.textContent = ''
+				svg.setAttribute('viewBox', '0 0 ' + width + ' 60')
+				svg.setAttribute('width', width)
+				svg.setAttribute('height', 60)
+				svg.appendChild(el('text', { x: 0, y: 30, class: 'im-axis' }, data.labels.noSurvey))
+				titleEl.textContent =
+					label0 + (meta0.unit ? ' · ' + meta0.unit : '') + ' · ' + nameOf(data.regions, region)
+				;['im-stat-high', 'im-stat-low', 'im-stat-avg', 'im-stat-change'].forEach((id) => {
+					document.getElementById(id).textContent = '–'
+				})
+				descEl.textContent = data.labels.noSurvey
+				geometry = null
+				renderDataTable()
+				return
+			}
+			const firstI = values.findIndex((v) => v != null)
 			const padT = 18
 			const padB = 30
 			const padR = 16
-			const min = Math.min.apply(null, values)
-			const max = Math.max.apply(null, values)
+			const min = Math.min.apply(null, known)
+			const max = Math.max.apply(null, known)
 			const scale = niceScale(min, max, 4)
 			const yLabels = scale.ticks.map(fmtShort)
 			const padL = Math.max.apply(
@@ -589,19 +642,26 @@ const t = {
 			}
 
 			// 면 + 선
+			let started = false
 			const line = values
-				.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1))
+				.map((v, i) => {
+					if (v == null) return ''
+					const seg = (started ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)
+					started = true
+					return seg
+				})
+				.filter(Boolean)
 				.join(' ')
 			svg.appendChild(
 				el('path', {
 					d:
 						line +
 						' L' +
-						x(lastI).toFixed(1) +
+						x(values.length - 1 - [...values].reverse().findIndex((v) => v != null)).toFixed(1) +
 						' ' +
 						(padT + innerH) +
 						' L' +
-						padL +
+						x(firstI).toFixed(1) +
 						' ' +
 						(padT + innerH) +
 						' Z',
@@ -622,9 +682,11 @@ const t = {
 			)
 
 			// 마지막 값 직접 표기
-			svg.appendChild(el('circle', { cx: x(lastI), cy: y(values[lastI]), r: 6, fill: 'var(--bg)' }))
+			let lastK = lastI
+			while (lastK > 0 && values[lastK] == null) lastK--
+			svg.appendChild(el('circle', { cx: x(lastK), cy: y(values[lastK]), r: 6, fill: 'var(--bg)' }))
 			svg.appendChild(
-				el('circle', { cx: x(lastI), cy: y(values[lastI]), r: 4, fill: 'var(--ink)' })
+				el('circle', { cx: x(lastK), cy: y(values[lastK]), r: 4, fill: 'var(--ink)' })
 			)
 
 			// 크로스헤어
@@ -647,8 +709,8 @@ const t = {
 			titleEl.textContent =
 				label + (meta.unit ? ' · ' + meta.unit : '') + ' · ' + nameOf(data.regions, region)
 
-			const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length)
-			const change = Math.round(((values[lastI] - values[0]) / values[0]) * 1000) / 10
+			const avg = Math.round(known.reduce((a, b) => a + b, 0) / known.length)
+			const change = Math.round(((known[known.length - 1] - known[0]) / known[0]) * 1000) / 10
 			document.getElementById('im-stat-high').textContent = fmt(max)
 			document.getElementById('im-stat-low').textContent = fmt(min)
 			document.getElementById('im-stat-avg').textContent = fmt(avg)
@@ -713,6 +775,10 @@ const t = {
 			if (!geometry) return
 			cursor = Math.min(geometry.count - 1, Math.max(0, i))
 			const values = data.series[item][region]
+			if (values[cursor] == null) {
+				hideCursor()
+				return
+			}
 			const cx = geometry.x(cursor)
 			const cy = geometry.y(values[cursor])
 			const group = svg.querySelector('#im-cross')
