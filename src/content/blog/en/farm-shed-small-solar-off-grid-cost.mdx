@@ -1,0 +1,140 @@
+---
+title: 'Off-Grid Solar for a Farm Shed: 200W, 1kW and 3kW Costs'
+description: 'How to size panels, MPPT controller, pure sine inverter and LiFePO4 battery for a Korean farm hut, with 200W, 1kW and 3kW examples, market prices, farm hut rules and winter battery cautions.'
+pubDate: 2026-10-01
+heroImage: '/images/farm-shed-small-solar-off-grid-cost-hero.png'
+category: 'energy'
+author: 'imunfarm'
+tags: ['off-grid solar', 'farm shed power', 'LiFePO4 battery', 'small solar system']
+comments: true
+---
+
+A farm hut starts as shade and a tool store. Within a year most owners want a light after dark, a fan in summer, a CCTV camera, phone charging and eventually a water pump. Bringing in grid power means poles and connection costs.
+
+That is why small **off-grid solar** systems are popular for farm huts. The common mistake is buying a system that is either too small for the loads or much larger than needed.
+
+> Bottom line: **lights, a fan and CCTV can run on 200W of panels and one 12V 100Ah LiFePO4 battery. A small fridge pushes you to about 1kW, and a water pump or chainsaw needs a 3kW-class inverter. Complete 1kW off-grid kits in Korea sell for roughly 3.6–4.5 million won.**
+
+## 1. How much does 1kW of panels produce in Korea
+
+An analysis of about 3,800 Korean solar plants by Haezoom put the national average at **4.02 generating hours per day** in the first half of 2020 (3.99 in 2019). Industry estimates usually use 3.4–3.8 hours.
+
+- 1kW of panels makes roughly **3.5–4kWh per day**.
+- 200W makes roughly **0.7–0.8kWh per day**.
+- Winter, the rainy season and cloudy spells produce less.
+
+The calculations below assume 25% system losses through the controller, battery and inverter.
+
+## 2. Typical farm hut loads
+
+| Load                 | Power        | Note                                |
+| -------------------- | ------------ | ----------------------------------- |
+| LED lantern or light | 5–20W        | lightest load                       |
+| CCTV camera          | about 5W     | about 120Wh per day if always on    |
+| Fan                  | 30–60W       | summer afternoons                   |
+| Electric heating pad | 30–60W       | heavy if used for long winter hours |
+| Camping fridge       | 40–60W       | small household fridges 80–150W     |
+| Water pump           | 350–580W     | high startup surge                  |
+| Corded chainsaw      | 1,460–2,200W | needs a 3kW-class inverter          |
+
+Motors draw about three times their running power at startup, and some draw 4–10 times. The inverter must handle that surge.
+
+## 3. Three configurations
+
+Assumptions: 3.5 sun hours, 25% losses, two cloudy days of reserve, 80% battery depth of discharge.
+
+| Size       | Loads                      | Daily use    | Panels          | Battery                          | Inverter             |
+| ---------- | -------------------------- | ------------ | --------------- | -------------------------------- | -------------------- |
+| Basic 200W | LED, fan, CCTV, charging   | about 0.5kWh | 200W (2 × 100W) | 12V 100Ah LiFePO4 (about 1.3kWh) | 500–1,000W pure sine |
+| Living 1kW | basic + small fridge       | about 1.5kWh | 600W–1kW        | about 4kWh                       | 1–2kW pure sine      |
+| Work 3kW   | living + pump, power tools | 2–3kWh+      | 1–2kW           | 5kWh+, 24V or 48V                | 3kW pure sine        |
+
+Formulas:
+
+- **Panels** = daily use ÷ 3.5 ÷ 0.75 (e.g. 0.5kWh → about 190W → 200W)
+- **Battery** = daily use × 2 days ÷ 0.8 (e.g. 0.5kWh → 1.25kWh → one 12V 100Ah LiFePO4)
+- **Inverter** = running loads + largest motor surge + 20% headroom
+
+A fridge runs all day, so whether you need one is the first question that separates 200W from 1kW.
+
+## 4. Components
+
+**Panels**: several 100W panels are easy to handle for small systems; 400–500W panels are cheaper per watt above 1kW. Secure roof mounts against wind.
+
+**Charge controller**: PWM runs at about 75–80% efficiency, **MPPT at 95–98%**, harvesting 10–30% more energy, especially in cold weather.
+
+**Inverter**: choose **pure sine wave** for fridges, pumps and electronics, sized for surge.
+
+**Battery**:
+
+| Item         | LiFePO4                | Lead-acid (AGM)         |
+| ------------ | ---------------------- | ----------------------- |
+| Cycle life   | 3,000–6,000 at 80% DoD | 700–1,200 at 50% DoD    |
+| Usable depth | 80%+                   | shortens life below 50% |
+| Weight       | light                  | heavy                   |
+| Winter       | do not charge below 0℃ | capacity drops in cold  |
+
+## 5. Costs
+
+Example Korean retail prices (single listings, will vary):
+
+| Item                       | Example price                         |
+| -------------------------- | ------------------------------------- |
+| 100W panel                 | about 120,000 won                     |
+| 500W monocrystalline panel | about 220,000 won                     |
+| MPPT 30A / 40A / 60A       | about 141,000 / 232,000 / 501,000 won |
+| 3kW pure sine inverter     | about 283,000 to 1,272,000 won        |
+| 12V 100Ah LiFePO4          | about 440,000 to 660,000 won          |
+| 1kW off-grid kit           | about 3.6 to 4.5 million won          |
+
+| Size       | Estimated cost               | Note                                              |
+| ---------- | ---------------------------- | ------------------------------------------------- |
+| Basic 200W | around 1 million won (DIY)   | 2 panels, MPPT, one 100Ah battery, small inverter |
+| Living 1kW | 3.6–4.5 million won (kit)    | battery size drives the price                     |
+| Work 3kW   | 8–12 million won+ (estimate) | installation extra; get quotes                    |
+
+Most of the cost is the **battery**. Less nighttime use means a smaller battery.
+
+## 6. Farm hut rules and electrical inspection
+
+A _nongmak_ (farm hut) under Korea's Farmland Act rules is limited to **20㎡ of floor area** and may not be used as a residence. The government has interpreted that electricity, water and gas may be connected **temporarily**. Since December 2024, a **rural stay shelter** of up to 33㎡ is allowed for up to 12 years, with road access, an extinguisher and a smoke alarm required.
+
+Low-voltage generating equipment of **10kW or less** is classed as general-use electrical equipment, and the renewable energy cloud platform lists general-use solar of 10kW or less as subject to a **pre-use inspection**. Equipment under 30V not connected to higher voltage is not legally electrical equipment. Whether a fully off-grid system needs inspection or notification is not clearly stated, so confirm with **Korea Electrical Safety Corporation (1588-7500)** and your local government before installing.
+
+## 7. Winter and safety
+
+- **Do not charge LiFePO4 below 0℃.** Choose a battery with low-temperature charge cutoff or keep it from freezing. Usable capacity drops to about 80% below 0℃.
+- **Fit DC fuses or breakers close to the battery.**
+- **Ground battery enclosures and racks.**
+- **Anchor panels against wind.**
+- **Keep a fire extinguisher.**
+
+For grid-connected projects, see [100kW farmland solar profit](/en/blog/farmland-solar-100kw-monthly-profit/) and [agricultural ESS and self-consumption solar](/en/blog/agricultural-ess-solar-self-consumption-smartfarm/).
+
+## FAQ
+
+**Can I put solar on a farm hut?**
+Temporary electrical connection has been allowed by government interpretation, but local rules vary. Check first.
+
+**How many watts does a farm hut need?**
+200W with a 12V 100Ah LiFePO4 battery for lights, a fan and CCTV; about 1kW with a fridge.
+
+**Can it run a water pump?**
+Yes, but pumps surge at startup. A 350–580W pump needs a 2–3kW pure sine inverter and matching battery.
+
+**Is LiFePO4 fine in winter?**
+It works, but must not be charged below 0℃.
+
+## Conclusion
+
+Start with the loads, not the panels: lights and CCTV need 200W, a fridge needs 1kW, pumps and tools need 3kW. Batteries are most of the cost, and safety comes first: check with the electrical safety authority and include fuses, breakers, grounding and an extinguisher from day one.
+
+## References
+
+- Energy Daily, Haezoom analysis of Korean solar generating hours (2020).
+- Easylaw (Ministry of Government Legislation), general-use electrical equipment definitions.
+- Korea Energy Agency renewable energy cloud platform, inspection targets.
+- Korea.kr policy briefing on rural stay shelters (2024).
+- Nongmin Shinmun, farm hut utility interpretation (February 23, 2021) and rural stay shelter report (August 1, 2024).
+- Korean retailer listings (Danawa, Solar Center, Suncell), 2026; prices vary.
+- Manufacturer technical data for LiFePO4, lead-acid, MPPT and PWM.
