@@ -11,6 +11,9 @@ import {
 	getPriceAsOfDate
 } from '@/data/prices'
 import { siteConfig } from '@/site-config'
+import PriceSwitcher from '@/components/PriceSwitcher'
+import kamisItems from '@/data/kamis-items.json'
+import pricePhotos from '@/data/price-photos.json'
 
 const { locale = DEFAULT_LOCALE } = Astro.props
 const isEn = locale === 'en'
@@ -35,9 +38,15 @@ const dir = (v: number | null) =>
 	v == null ? 'im-flat' : v > 0 ? 'im-up' : v < 0 ? 'im-down' : 'im-flat'
 const mark = (v: number) => (v > 0 ? '▲ ' : v < 0 ? '▼ ' : '– ')
 
+const thumbOf = (id: string) =>
+	(pricePhotos as string[]).includes(id) ? `/images/prices/thumb/${id}.webp` : null
+const categoryOf = (id: string) =>
+	((kamisItems as Record<string, { codes: string[] }>)[id]?.codes[0] ?? '').split('-')[0]
+
 // 서버에서 그리는 초기 표 (JS 없이도 읽히고 크롤러가 색인한다)
 const initialRows = ITEMS.map((item) => ({
 	id: item.id,
+	photo: thumbOf(item.id),
 	label: isEn ? item.en : item.ko,
 	grade: isEn ? item.gradeEn : item.gradeKo,
 	unit: isEn ? item.unitEn : item.unitKo,
@@ -126,6 +135,7 @@ const payload = {
 	regions: REGIONS.map((r) => ({ id: r.id, label: isEn ? r.en : r.ko })),
 	items: ITEMS.map((i) => ({
 		id: i.id,
+		photo: thumbOf(i.id),
 		label: isEn ? i.en : i.ko,
 		grade: isEn ? i.gradeEn : i.gradeKo,
 		unit: isEn ? i.unitEn : i.unitKo,
@@ -143,6 +153,7 @@ const payload = {
 			.join(' ')
 			.toLowerCase()
 	})),
+	base: prefix,
 	locale: isEn ? 'en-US' : 'ko-KR',
 	prefix: isEn ? '₩' : '',
 	suffix: isEn ? '' : '원',
@@ -155,6 +166,22 @@ const payload = {
 			: '이 기간 KAMIS 조사가 없다 (제철이 아닐 가능성이 크다).'
 	}
 }
+
+const switchItems = ITEMS.map((entry) => {
+	const cell = table[latest][defaultRegion.id][entry.id]
+	return {
+		id: entry.id,
+		label: isEn ? entry.en : entry.ko,
+		category: categoryOf(entry.id),
+		unit: isEn ? entry.unitEn : entry.unitKo,
+		price: cell?.price ?? null,
+		delta: cell?.delta ?? null,
+		photo: thumbOf(entry.id),
+		search: [entry.id, entry.ko, entry.en, ...entry.keywordsKo, ...entry.keywordsEn]
+			.join(' ')
+			.toLowerCase()
+	}
+})
 
 const canonical = new URL(Astro.url.pathname, siteConfig.siteUrl).href
 const pageTitle = isEn
@@ -311,15 +338,31 @@ const t = {
 			<div id='im-price-rows'>
 				{
 					initialRows.map((row) => (
-						<div class='im-price-row'>
-							<span class='im-price-item'>{row.label}</span>
+						<a class='im-price-row' href={`${prefix}/prices/${row.id}/`}>
+							<span class='im-price-item'>
+								<span class='im-price-thumb'>
+									{row.photo ? (
+										<img
+											src={row.photo}
+											alt=''
+											width='32'
+											height='32'
+											loading='lazy'
+											decoding='async'
+										/>
+									) : (
+										<span aria-hidden='true'>{row.label.slice(0, 1)}</span>
+									)}
+								</span>
+								<span>{row.label}</span>
+							</span>
 							<span class='im-price-sub'>{row.grade}</span>
 							<span class='im-price-sub'>{row.unit}</span>
 							<span class='im-num im-price-value'>{fmtServer(row.price)}</span>
 							<span class={`im-num im-price-delta ${dir(row.delta)}`}>
 								{row.delta == null ? '–' : `${mark(row.delta)}${Math.abs(row.delta).toFixed(1)}%`}
 							</span>
-						</div>
+						</a>
 					))
 				}
 			</div>
@@ -328,9 +371,19 @@ const t = {
 
 		<section class='im-chart-section'>
 			<div class='im-chart-head'>
-				<div>
-					<p class='im-label'>{t.chart}</p>
-					<h2 class='im-chart-title' id='im-chart-title'></h2>
+				<div class='im-chart-who'>
+					<span class='im-price-thumb im-chart-thumb' id='im-chart-thumb'></span>
+					<div>
+						<p class='im-label'>{t.chart}</p>
+						<h2 class='im-chart-title' id='im-chart-title'></h2>
+						<PriceSwitcher
+							items={switchItems}
+							currentId={ITEMS[0].id}
+							prefix={prefix}
+							isEn={isEn}
+							mode='select'
+						/>
+					</div>
 				</div>
 				<dl class='im-chart-stats'>
 					<div><dt class='im-label'>{t.high}</dt><dd id='im-stat-high'></dd></div>
@@ -338,21 +391,6 @@ const t = {
 					<div><dt class='im-label'>{t.avg}</dt><dd id='im-stat-avg'></dd></div>
 					<div><dt class='im-label'>{t.change30}</dt><dd id='im-stat-change'></dd></div>
 				</dl>
-			</div>
-
-			<div class='im-tabs im-menu im-item-tabs' id='im-item-tabs'>
-				{
-					payload.items.map((item, index) => (
-						<button
-							type='button'
-							class='im-tab'
-							data-item={item.id}
-							aria-current={index === 0 ? 'true' : 'false'}
-						>
-							{item.label}
-						</button>
-					))
-				}
 			</div>
 
 			<figure class='im-chart' id='im-chart'>
@@ -433,7 +471,7 @@ const t = {
 		const tableBody = document.querySelector('#im-chart-data tbody')
 		const regionTabs = Array.from(document.querySelectorAll('[data-region]'))
 		const dateTabs = Array.from(document.querySelectorAll('[data-date]'))
-		const itemTabs = Array.from(document.querySelectorAll('[data-item]'))
+		const thumbEl = document.getElementById('im-chart-thumb')
 		const analysisRows = Array.from(document.querySelectorAll('[data-analysis-item]'))
 		const analysisEmpty = document.getElementById('im-analysis-empty')
 		const searchInput = document.getElementById('im-price-search')
@@ -441,7 +479,7 @@ const t = {
 		let region = regionTabs[0].dataset.region
 		let date = dateTabs[0].dataset.date
 		let query = ''
-		let item = itemTabs[0].dataset.item
+		let item = data.items[0].id
 		let chart = null
 
 		const fmt = (v) => (v == null ? '–' : data.prefix + v.toLocaleString(data.locale) + data.suffix)
@@ -472,12 +510,19 @@ const t = {
 		function ensureVisibleItem() {
 			const visible = visibleItems()
 			if (!visible.some((entry) => entry.id === item) && visible[0]) item = visible[0].id
-			itemTabs.forEach((tab) => {
-				const entry = data.items.find((e) => e.id === tab.dataset.item)
-				const show = !query || (entry && visible.some((v) => v.id === entry.id))
-				tab.hidden = !show
-				tab.setAttribute('aria-current', String(tab.dataset.item === item && show))
-			})
+		}
+
+		function renderThumb() {
+			const entry = data.items.find((e) => e.id === item) || {}
+			thumbEl.textContent = ''
+			if (entry.photo) {
+				const img = document.createElement('img')
+				img.src = entry.photo
+				img.alt = ''
+				img.width = 44
+				img.height = 44
+				thumbEl.appendChild(img)
+			} else thumbEl.textContent = (entry.label || '').slice(0, 1)
 		}
 
 		function renderAnalysisList() {
@@ -495,10 +540,27 @@ const t = {
 			rowsEl.textContent = ''
 			visible.forEach((entry) => {
 				const c = cellFor(entry.id, region, i)
-				const row = document.createElement('div')
+				const row = document.createElement('a')
 				row.className = 'im-price-row'
+				row.href = data.base + '/prices/' + entry.id + '/'
+				const name = document.createElement('span')
+				name.className = 'im-price-item'
+				const th = document.createElement('span')
+				th.className = 'im-price-thumb'
+				if (entry.photo) {
+					const img = document.createElement('img')
+					img.src = entry.photo
+					img.alt = ''
+					img.width = 32
+					img.height = 32
+					img.loading = 'lazy'
+					th.appendChild(img)
+				} else th.textContent = entry.label.slice(0, 1)
+				const label = document.createElement('span')
+				label.textContent = entry.label
+				name.append(th, label)
+				row.appendChild(name)
 				const cells = [
-					['im-price-item', entry.label],
 					['im-price-sub', entry.grade],
 					['im-price-sub', entry.unit],
 					['im-num im-price-value', fmt(c.price)],
@@ -789,14 +851,12 @@ const t = {
 				renderTable()
 			})
 		)
-		itemTabs.forEach((tab) =>
-			tab.addEventListener('click', () => {
-				item = tab.dataset.item
-				pick(itemTabs, tab)
-				hideCursor()
-				renderChart()
-			})
-		)
+		window.addEventListener('im-switch-select', (e) => {
+			item = e.detail
+			hideCursor()
+			renderThumb()
+			renderChart()
+		})
 		if (searchInput) {
 			searchInput.addEventListener('input', () => {
 				query = searchInput.value || ''
@@ -804,13 +864,17 @@ const t = {
 				renderTable()
 				renderAnalysisList()
 				hideCursor()
-				if (visibleItems().length > 0) renderChart()
+				if (visibleItems().length > 0) {
+					renderThumb()
+					renderChart()
+				}
 			})
 		}
 
 		ensureVisibleItem()
 		renderTable()
 		renderAnalysisList()
+		renderThumb()
 		renderChart()
 		if (window.ResizeObserver) {
 			let last = host.clientWidth
@@ -1193,5 +1257,64 @@ const t = {
 			justify-self: start;
 			text-align: left;
 		}
+	}
+
+	.im-price-table :global(a.im-price-row) {
+		align-items: center;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.im-price-table :global(a.im-price-row:hover .im-price-item > span:last-child) {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.im-price-table :global(.im-price-item) {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-width: 0;
+	}
+
+	:global(.im-price-thumb) {
+		display: grid;
+		flex: none;
+		place-items: center;
+		width: 32px;
+		height: 32px;
+		border-radius: 4px;
+		background: var(--line);
+		font-size: 12px;
+		font-weight: 700;
+		color: var(--muted);
+		overflow: hidden;
+	}
+
+	:global(.im-price-thumb img) {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		mix-blend-mode: multiply;
+	}
+
+	:global(html.dark .im-price-thumb img) {
+		mix-blend-mode: normal;
+	}
+
+	.im-chart-who {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+	}
+
+	.im-chart-thumb {
+		width: 56px;
+		height: 56px;
+		font-size: 18px;
+	}
+
+	.im-chart-who :global(.im-switch-open) {
+		margin-top: 10px;
 	}
 </style>

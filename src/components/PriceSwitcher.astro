@@ -19,9 +19,11 @@ type Props = {
 	currentId: string
 	prefix: string
 	isEn: boolean
+	/** link: 품목 페이지로 이동, select: 'im-switch-select' 이벤트만 보낸다 */
+	mode?: 'link' | 'select'
 }
 
-const { items, currentId, prefix, isEn } = Astro.props
+const { items, currentId, prefix, isEn, mode = 'link' } = Astro.props
 
 const categories = isEn
 	? [
@@ -51,7 +53,12 @@ const dir = (v: number | null) => (v == null || v === 0 ? 'im-flat' : v > 0 ? 'i
 	<span aria-hidden='true'>▾</span>
 </button>
 
-<dialog class='im-switch' id='im-switch' aria-label={isEn ? 'Choose a crop' : '품목 선택'}>
+<dialog
+	class='im-switch'
+	id='im-switch'
+	data-mode={mode}
+	aria-label={isEn ? 'Choose a crop' : '품목 선택'}
+>
 	<div class='im-switch-head'>
 		<p class='im-label'>{isEn ? 'Choose a crop' : '품목 선택'}</p>
 		<button
@@ -92,6 +99,7 @@ const dir = (v: number | null) => (v == null || v === 0 ? 'im-flat' : v > 0 ? 'i
 				<li data-cat={entry.category} data-q={entry.search}>
 					<a
 						href={`${prefix}/prices/${entry.id}/`}
+						data-switch-item={entry.id}
 						aria-current={entry.id === currentId ? 'page' : undefined}
 					>
 						<span class='im-switch-thumb'>
@@ -166,6 +174,21 @@ const dir = (v: number | null) => (v == null || v === 0 ? 'im-flat' : v > 0 ? 'i
 			if (e.target === dialog) shut()
 		})
 		q.addEventListener('input', filter)
+		if (dialog.dataset.mode === 'select') {
+			dialog.querySelectorAll<HTMLAnchorElement>('[data-switch-item]').forEach((a) =>
+				a.addEventListener('click', (e) => {
+					e.preventDefault()
+					dialog
+						.querySelectorAll('[data-switch-item]')
+						.forEach((x) => x.removeAttribute('aria-current'))
+					a.setAttribute('aria-current', 'page')
+					window.dispatchEvent(
+						new CustomEvent('im-switch-select', { detail: a.dataset.switchItem })
+					)
+					shut()
+				})
+			)
+		}
 		cats.forEach((tab) =>
 			tab.addEventListener('click', () => {
 				cat = tab.dataset.switchCat || 'all'

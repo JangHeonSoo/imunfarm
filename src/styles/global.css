@@ -609,10 +609,10 @@ html.dark .im-prose pre.astro-code span {
 		grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.1fr) minmax(0, 0.9fr);
 	}
 
-	.im-price-head span:nth-child(2),
-	.im-price-row span:nth-child(2),
-	.im-price-head span:nth-child(3),
-	.im-price-row span:nth-child(3) {
+	.im-price-head > span:nth-child(2),
+	.im-price-row > span:nth-child(2),
+	.im-price-head > span:nth-child(3),
+	.im-price-row > span:nth-child(3) {
 		display: none;
 	}
 }
