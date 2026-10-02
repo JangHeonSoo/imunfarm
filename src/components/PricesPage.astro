@@ -164,10 +164,10 @@ const payload = {
 	labels: {
 		range: isEn ? 'Range' : '범위',
 		latest: isEn ? 'Latest' : '최근',
-		noResults: isEn ? 'No matching crops.' : '검색 결과가 없다.',
+		noResults: isEn ? 'No matching crops.' : '검색 결과가 없습니다.',
 		noSurvey: isEn
 			? 'No KAMIS survey in this period (likely out of season).'
-			: '이 기간 KAMIS 조사가 없다 (제철이 아닐 가능성이 크다).'
+			: '이 기간에는 KAMIS 조사 자료가 없습니다.'
 	}
 }
 
@@ -269,7 +269,7 @@ const t = {
 	searchPlaceholder: isEn
 		? 'Search tomato, Shine Muscat, pepper…'
 		: '사과, 홍로, 샤인머스켓, 시금치, 피망…',
-	noResults: isEn ? 'No matching crops.' : '검색 결과가 없다.'
+	noResults: isEn ? 'No matching crops.' : '검색 결과가 없습니다.'
 }
 ---
 
@@ -771,11 +771,11 @@ const t = {
 			showToast(
 				adding
 					? EN
-						? 'Added to My crops · pinned at the top'
-						: '내 품목에 추가했다 · 맨 위에서 모아 본다'
+						? 'Added to My crops'
+						: '내 품목에 추가하였습니다'
 					: EN
 						? 'Removed from My crops'
-						: '내 품목에서 뺐다',
+						: '내 품목에서 삭제하였습니다',
 				adding
 			)
 		}
@@ -828,9 +828,9 @@ const t = {
 					return
 				}
 				await navigator.clipboard.writeText(link)
-				button.textContent = en ? 'Link copied' : '링크 복사됨'
+				button.textContent = en ? 'Link copied' : '링크를 복사하였습니다'
 			} catch {
-				window.prompt(en ? 'Copy this link' : '이 링크를 복사해 두세요', link)
+				window.prompt(en ? 'Copy this link' : '아래 링크를 복사해 주세요', link)
 			}
 			setTimeout(() => (button.textContent = en ? 'Copy my link' : '내 품목 링크'), 2000)
 		}
