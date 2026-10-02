@@ -69,6 +69,44 @@ export function analyzeMove(
 		context = true
 	}
 
+	// 1-2) 이 도시만 값이 멈춰 있다가 이미 움직인 다른 도시 수준으로 따라온 경우.
+	// 하루 변동만 보면 '이 지역만 움직임'으로 보이지만 실제로는 늦게 반영된 것이다.
+	let catchUp = false
+	let flatRun = 0
+	for (let k = i - 1; k > 0 && values[k] != null && values[k] === values[k - 1]; k--) flatRun++
+	if (!context && flatRun >= 3) {
+		const start = i - 1 - flatRun
+		const others = input.regions
+			.filter((r) => r.id !== regionId)
+			.map((r) => {
+				const s = input.series[itemId]?.[r.id] ?? []
+				const a = s[start]
+				const b = s[i]
+				return a && b != null ? { a, b } : null
+			})
+			.filter((o): o is { a: number; b: number } => o != null)
+		if (others.length >= 2) {
+			const moved = others.filter(
+				(o) => Math.sign(o.b - o.a) === sign && Math.abs(o.b / o.a - 1) >= 0.1
+			).length
+			const sorted = others.map((o) => o.b).sort((x, y) => x - y)
+			const mid = sorted.length >> 1
+			const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+			if (
+				moved >= Math.ceil(others.length / 2) &&
+				Math.abs(now - median) < Math.abs(prev - median)
+			) {
+				catchUp = true
+				context = true
+				reasons.push(
+					isEn
+						? `Was flat; caught up with other cities' ${sign > 0 ? 'rise' : 'fall'}`
+						: `멈춰 있던 값이 다른 도시 따라 ${sign > 0 ? '상승' : '하락'}`
+				)
+			}
+		}
+	}
+
 	// 2) 도매시장 반입량
 	const v = input.vol[itemId]?.[regionId]?.[input.dates[i]]
 	const hasVolume = v != null && Math.abs(v) >= 15
@@ -106,7 +144,7 @@ export function analyzeMove(
 				? `All ${same} cities ${sign > 0 ? 'up' : 'down'}`
 				: `${same}개 도시 모두 ${sign > 0 ? '상승' : '하락'}`
 		)
-	else if (onlyHere) reasons.push(isEn ? 'Only this city moved' : '이 지역만 움직임')
+	else if (onlyHere && !catchUp) reasons.push(isEn ? 'Only this city moved' : '이 지역만 움직임')
 
 	// 5) 계절 흐름, 6) 작년 같은 달
 	const w = input.why[itemId]?.[regionId]
@@ -133,7 +171,7 @@ export function analyzeMove(
 	// 점검 표시: 근거가 약한 큰 변동, 데이터 오류 의심
 	const abs = Math.abs(delta)
 	if (abs >= 60) flags.push(`하루 ${abs.toFixed(0)}% 변동: KAMIS 원자료 확인`)
-	if (abs >= 40 && onlyHere) flags.push('한 도시만 급변: 데이터 오류 가능')
+	if (abs >= 40 && onlyHere && !catchUp) flags.push('한 도시만 급변: 데이터 오류 가능')
 	if (abs >= 30 && !context && !hasVolume && !allCities && streak < 2)
 		flags.push('30% 넘는 변동인데 뒷받침하는 사실 없음')
 	if (abs >= 10 && seasonDir !== 0 && seasonDir !== sign && !context && !hasVolume)

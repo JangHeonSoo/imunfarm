@@ -53,6 +53,14 @@ const resolvedAltPath =
 			async
 			src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9192660979184684'
 			crossorigin='anonymous'></script>
+		<script is:inline>
+			// 모바일 앵커 광고가 상단에 붙으면 첫 화면 카드·차트의 터치를 가린다
+			;(window.adsbygoogle = window.adsbygoogle || []).push({
+				google_ad_client: 'ca-pub-9192660979184684',
+				enable_page_level_ads: true,
+				overlays: { bottom: true }
+			})
+		</script>
 		<script async src='https://www.googletagmanager.com/gtag/js?id=G-6ZQ577JL4Q'></script>
 		<script is:inline>
 			const dataLayer = window['dataLayer'] || []
