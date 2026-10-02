@@ -42,7 +42,7 @@ jobs:
 
       - name: Commit if changed
         run: |
-          if git diff --quiet -- src/data/generated/kamis/daily.json src/data/generated/kamis/monthly.json; then
+          if git diff --quiet -- src/data/generated/kamis/daily.json src/data/generated/kamis/monthly.json src/data/generated/kamis/volume.json; then
             echo "no new data"
             exit 0
           fi

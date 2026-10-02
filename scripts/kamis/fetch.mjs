@@ -5,6 +5,7 @@
  *   node scripts/kamis/fetch.mjs            # 일별: 마지막 저장일 이후만 이어 받기 (없으면 400일)
  *   node scripts/kamis/fetch.mjs --full     # 일별 400일 전체 다시 받기
  *   node scripts/kamis/fetch.mjs --monthly  # 월별 10년치도 함께 갱신
+ *   (출하량 volume.json 은 매번 최근 조사일 8일치를 갱신한다. 끄려면 --no-volume)
  *
  * 인증키는 환경변수 DATA_GO_KR_KEY 또는 repo 루트 .env 에서 읽는다.
  * 저장 파일은 빌드 때 그대로 읽히므로 배포 환경에는 키가 필요 없다.
@@ -40,10 +41,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const ymd = (d) => d.toISOString().slice(0, 10).replace(/-/g, '')
 const kstToday = () => new Date(Date.now() + 9 * 3600 * 1000)
 
-const call = async (service, params, attempt = 1) => {
+const call = async (service, params, attempt = 1, op = 'price') => {
 	const qs = new URLSearchParams({ serviceKey: KEY, returnType: 'JSON', numOfRows: String(PAGE), ...params })
 	try {
-		const res = await fetch(`${BASE}/${service}/price?${qs}`, { signal: AbortSignal.timeout(60000) })
+		const res = await fetch(`${BASE}/${service}/${op}?${qs}`, { signal: AbortSignal.timeout(90000) })
 		const text = await res.text()
 		const json = JSON.parse(text)
 		const body = json?.response?.body
@@ -53,14 +54,14 @@ const call = async (service, params, attempt = 1) => {
 	} catch (err) {
 		if (attempt >= 4) throw err
 		await sleep(1500 * attempt)
-		return call(service, params, attempt + 1)
+		return call(service, params, attempt + 1, op)
 	}
 }
 
-const callAll = async (service, params) => {
+const callAll = async (service, params, op = 'price') => {
 	const rows = []
 	for (let page = 1; ; page++) {
-		const { total, items } = await call(service, { ...params, pageNo: String(page) })
+		const { total, items } = await call(service, { ...params, pageNo: String(page) }, 1, op)
 		rows.push(...items)
 		if (!items.length || rows.length >= total) break
 	}
@@ -195,6 +196,63 @@ const fetchMonthly = async () => {
 	saveJson('monthly.json', { fromYm, toYm, series })
 }
 
+/**
+ * volume.json — 도매시장 출하(반입)량. 한국농수산식품유통공사_출하량 추이 정보.
+ *   dates: { "20261001": { "seoul": { "오이|백다다기": [오늘 kg, 1주 전 kg] } } }
+ * 오늘 값은 1주 전 값이 함께 있는 행만 더해 같은 출하처끼리 비교한다.
+ * 우리 5개 도시와 volume-items.json 에 있는 품목만 남긴다.
+ */
+const VOLUME_DAYS = 8
+const CITY_OF_MARKET = {
+	서울가락: 'seoul',
+	서울강서: 'seoul',
+	부산엄궁: 'busan',
+	부산반여: 'busan',
+	대구북부: 'daegu',
+	광주각화: 'gwangju',
+	광주서부: 'gwangju',
+	대전오정: 'daejeon',
+	대전노은: 'daejeon'
+}
+
+const fetchVolume = async () => {
+	const daily = loadJson('daily.json', null)
+	if (!daily) return
+	const mapping = JSON.parse(readFileSync(join(ROOT, 'src', 'data', 'volume-items.json'), 'utf8'))
+	const wanted = new Set(Object.values(mapping).flatMap((list) => list.map(([m]) => m)))
+	const surveyDates = new Set()
+	for (const bySgg of Object.values(daily.series))
+		for (const byDate of Object.values(bySgg)) for (const d of Object.keys(byDate)) surveyDates.add(d)
+	const recent = [...surveyDates].sort().slice(-VOLUME_DAYS)
+
+	const prev = loadJson('volume.json', { dates: {} })
+	const dates = {}
+	for (const d of recent) {
+		// 지난 날짜는 다시 받지 않는다. 최근 2일은 늦게 들어온 행이 있을 수 있어 다시 받는다.
+		if (prev.dates[d] && d < recent[recent.length - 2]) {
+			dates[d] = prev.dates[d]
+			continue
+		}
+		const rows = await callAll('shipmentSequel', { 'cond[spmt_ymd::EQ]': d }, 'info')
+		const agg = {}
+		for (const r of rows) {
+			const city = CITY_OF_MARKET[r.whsl_mrkt_nm]
+			if (!city || !wanted.has(r.gds_mclsf_nm)) continue
+			const now = Number(r.avg_spmt_amt)
+			const before = Number(r.ww1_bfr_avg_spmt_amt)
+			if (!now || !before) continue
+			const key = `${r.gds_mclsf_nm}|${r.gds_sclsf_nm}`
+			agg[city] ??= {}
+			const cell = (agg[city][key] ??= [0, 0])
+			cell[0] += now
+			cell[1] += before
+		}
+		dates[d] = agg
+		process.stdout.write(`volume ${d}: ${rows.length}\n`)
+	}
+	saveJson('volume.json', { dates })
+}
+
 /** prices.ts 의 품목 코드 목록 (kamis-items.json) */
 const loadWantedCombos = () => {
 	const p = join(ROOT, 'src', 'data', 'kamis-items.json')
@@ -205,6 +263,7 @@ const loadWantedCombos = () => {
 const main = async () => {
 	const lastDate = await fetchDaily()
 	if (args.has('--monthly') || args.has('--monthly-all')) await fetchMonthly()
+	if (!args.has('--no-volume')) await fetchVolume()
 	saveJson('meta.json', {
 		source: 'aT KAMIS 가격정보 (공공데이터포털 한국농수산식품유통공사_기간별 중도매인 가격정보, 연월별 도·소매가격정보)',
 		lastDate,
