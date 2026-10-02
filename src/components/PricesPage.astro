@@ -44,6 +44,24 @@ const categoryOf = (id: string) =>
 	((kamisItems as Record<string, { codes: string[] }>)[id]?.codes[0] ?? '').split('-')[0]
 
 // 서버에서 그리는 초기 표 (JS 없이도 읽히고 크롤러가 색인한다)
+// 오늘 많이 움직인 품목 (첫 화면 깜빡임 없이 서버에서 먼저 그린다)
+const initialMovers = ITEMS.map((item) => ({
+	item,
+	cell: table[latest][defaultRegion.id][item.id]
+}))
+	.filter((x) => x.cell.price != null && x.cell.delta)
+	.sort((a, b) => Math.abs(b.cell.delta ?? 0) - Math.abs(a.cell.delta ?? 0))
+	.slice(0, 10)
+	.map(({ item, cell }) => ({
+		id: item.id,
+		label: isEn ? item.en : item.ko,
+		photo: (pricePhotos as string[]).includes(item.id)
+			? `/images/prices/thumb/${item.id}.webp`
+			: null,
+		price: cell.price,
+		delta: cell.delta ?? 0
+	}))
+
 const initialRows = ITEMS.map((item) => ({
 	id: item.id,
 	photo: thumbOf(item.id),
@@ -274,6 +292,38 @@ const t = {
 	<div class='im-prices im-pad im-bottom'>
 		<div class='im-top-sm'></div>
 
+		<section
+			class='im-movers'
+			id='im-movers-section'
+			hidden={initialMovers.length === 0}
+			aria-label={isEn ? 'Biggest movers today' : '오늘 많이 움직인 품목'}
+		>
+			<div class='im-movers-head'>
+				<p class='im-label'>{isEn ? 'Biggest movers' : '오늘 많이 움직인 품목'}</p>
+				<p class='im-meta' id='im-movers-basis'>
+					{isEn ? defaultRegion.en : defaultRegion.ko} · {dateLabel} ·{' '}
+					{isEn ? 'vs previous survey' : '직전 조사일 대비'}
+				</p>
+			</div>
+			<div class='im-movers-row' id='im-movers'>
+				{
+					initialMovers.map((m) => (
+						<a class='im-mover' href={`${prefix}/prices/${m.id}/`}>
+							<span class='im-mover-photo'>
+								{m.photo && <img src={m.photo} alt='' width='64' height='64' decoding='async' />}
+							</span>
+							<span class='im-mover-name'>{m.label}</span>
+							<span class='im-mover-price'>{fmtServer(m.price)}</span>
+							<span class={`im-mover-change ${dir(m.delta)}`}>
+								{mark(m.delta)}
+								{Math.abs(m.delta).toFixed(1)}%
+							</span>
+						</a>
+					))
+				}
+			</div>
+		</section>
+
 		<div class='im-price-controls'>
 			<div>
 				<p class='im-label'>지역 Region</p>
@@ -355,6 +405,14 @@ const t = {
 									)}
 								</span>
 								<span>{row.label}</span>
+								<button
+									type='button'
+									class='im-fav'
+									aria-pressed='false'
+									aria-label={`${isEn ? 'Add to my crops' : '내 품목에 추가'}: ${row.label}`}
+								>
+									☆
+								</button>
 							</span>
 							<span class='im-price-sub'>{row.grade}</span>
 							<span class='im-price-sub'>{row.unit}</span>
@@ -533,12 +591,131 @@ const t = {
 			if (analysisEmpty) analysisEmpty.hidden = ids.size !== 0
 		}
 
+		/* ---------- 오늘 많이 움직인 품목 ---------- */
+		const moversEl = document.getElementById('im-movers')
+		const moversBasis = document.getElementById('im-movers-basis')
+		function renderMovers() {
+			const i = data.dates.indexOf(date)
+			const list = data.items
+				.map((entry) => ({ entry, c: cellFor(entry.id, region, i) }))
+				.filter((x) => x.c.price != null && x.c.delta)
+				.sort((a, b) => Math.abs(b.c.delta) - Math.abs(a.c.delta))
+				.slice(0, 10)
+			moversEl.textContent = ''
+			list.forEach(({ entry, c }) => {
+				const a = document.createElement('a')
+				a.className = 'im-mover'
+				a.href = data.base + '/prices/' + entry.id + '/'
+				const ph = document.createElement('span')
+				ph.className = 'im-mover-photo'
+				if (entry.photo) {
+					const img = document.createElement('img')
+					img.src = entry.photo
+					img.alt = ''
+					img.width = 64
+					img.height = 64
+					ph.appendChild(img)
+				}
+				const name = document.createElement('span')
+				name.className = 'im-mover-name'
+				name.textContent = entry.label
+				const price = document.createElement('span')
+				price.className = 'im-mover-price'
+				price.textContent = fmt(c.price)
+				const ch = document.createElement('span')
+				ch.className = 'im-mover-change ' + cls(c.delta)
+				ch.textContent = mark(c.delta) + Math.abs(c.delta).toFixed(1) + '%'
+				a.append(ph, name, price, ch)
+				moversEl.appendChild(a)
+			})
+			moversBasis.textContent =
+				nameOf(data.regions, region) +
+				' · ' +
+				dot(date) +
+				(data.base === '/en' ? ' · vs previous survey' : ' · 직전 조사일 대비')
+			document.getElementById('im-movers-section').hidden = list.length === 0
+		}
+
+		/* ---------- 내 품목 (이 브라우저에만 저장) ---------- */
+		const FAV_KEY = 'imunfarm:fav-items'
+		const validIds = new Set(data.items.map((e) => e.id))
+		// ?my=peanut,cabbage 로 들어오면 그 목록을 내 품목으로 쓴다 (즐겨찾기·다른 기기용)
+		try {
+			const fromUrl = new URLSearchParams(location.search).get('my')
+			if (fromUrl != null) {
+				const ids = fromUrl.split(',').filter((id) => validIds.has(id))
+				localStorage.setItem(FAV_KEY, JSON.stringify(ids))
+			}
+		} catch {}
+		function getFavs() {
+			try {
+				return JSON.parse(localStorage.getItem(FAV_KEY) || '[]')
+			} catch {
+				return []
+			}
+		}
+		function setFavs(list) {
+			try {
+				localStorage.setItem(FAV_KEY, JSON.stringify(list))
+			} catch {}
+		}
+		function toggleFav(id) {
+			const favs = getFavs()
+			setFavs(favs.includes(id) ? favs.filter((x) => x !== id) : [...favs, id])
+			renderTable()
+		}
+
+		function myLink() {
+			const url = new URL(location.origin + location.pathname)
+			url.searchParams.set('my', getFavs().join(','))
+			return url.toString().replace(/%2C/g, ',')
+		}
+
+		async function shareMine(button) {
+			const link = myLink()
+			const en = data.base === '/en'
+			try {
+				if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
+					await navigator.share({ title: en ? 'My crop prices' : '내 품목 시세', url: link })
+					return
+				}
+				await navigator.clipboard.writeText(link)
+				button.textContent = en ? 'Link copied' : '링크 복사됨'
+			} catch {
+				window.prompt(en ? 'Copy this link' : '이 링크를 복사해 두세요', link)
+			}
+			setTimeout(() => (button.textContent = en ? 'Copy my link' : '내 품목 링크'), 2000)
+		}
+
 		/* ---------- 표 ---------- */
 		function renderTable() {
 			const i = data.dates.indexOf(date)
-			const visible = visibleItems()
+			const favs = getFavs()
+			const all = visibleItems()
+			const mine = all.filter((e) => favs.includes(e.id))
+			const visible = mine.length ? [...mine, ...all.filter((e) => !favs.includes(e.id))] : all
 			rowsEl.textContent = ''
-			visible.forEach((entry) => {
+			const groupHead = (text, withLink) => {
+				const h = document.createElement('div')
+				h.className = 'im-price-group'
+				const t = document.createElement('span')
+				t.className = 'im-label'
+				t.textContent = text
+				h.appendChild(t)
+				if (withLink) {
+					const b = document.createElement('button')
+					b.type = 'button'
+					b.className = 'im-price-share im-meta'
+					b.textContent = data.base === '/en' ? 'Copy my link' : '내 품목 링크'
+					b.addEventListener('click', () => shareMine(b))
+					h.appendChild(b)
+				}
+				rowsEl.appendChild(h)
+			}
+			visible.forEach((entry, k) => {
+				if (mine.length && k === 0) groupHead(data.base === '/en' ? 'My crops' : '내 품목', true)
+				if (mine.length && k === mine.length)
+					groupHead(data.base === '/en' ? 'All crops' : '전체 품목')
 				const c = cellFor(entry.id, region, i)
 				const row = document.createElement('a')
 				row.className = 'im-price-row'
@@ -558,7 +735,22 @@ const t = {
 				} else th.textContent = entry.label.slice(0, 1)
 				const label = document.createElement('span')
 				label.textContent = entry.label
-				name.append(th, label)
+				const star = document.createElement('button')
+				star.type = 'button'
+				star.className = 'im-fav'
+				const on = favs.includes(entry.id)
+				star.setAttribute('aria-pressed', String(on))
+				star.setAttribute(
+					'aria-label',
+					(on ? '내 품목에서 빼기: ' : '내 품목에 추가: ') + entry.label
+				)
+				star.textContent = on ? '★' : '☆'
+				star.addEventListener('click', (e) => {
+					e.preventDefault()
+					e.stopPropagation()
+					toggleFav(entry.id)
+				})
+				name.append(th, label, star)
 				row.appendChild(name)
 				const cells = [
 					['im-price-sub', entry.grade],
@@ -584,6 +776,7 @@ const t = {
 				rowsEl.appendChild(row)
 			}
 			basisEl.textContent = nameOf(data.regions, region) + ' · ' + dot(date)
+			renderMovers()
 		}
 
 		/* ---------- 차트 (uPlot) ---------- */
@@ -1316,5 +1509,126 @@ const t = {
 
 	.im-chart-who :global(.im-switch-open) {
 		margin-top: 10px;
+	}
+
+	.im-movers {
+		margin-bottom: clamp(28px, 5vh, 48px);
+		border-top: 1px solid var(--ink);
+		padding-top: 14px;
+	}
+
+	.im-movers-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 8px;
+	}
+
+	.im-movers-head p {
+		margin: 0;
+	}
+
+	.im-movers-row {
+		display: flex;
+		gap: clamp(14px, 2vw, 22px);
+		margin-top: 14px;
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+		scrollbar-width: none;
+		padding-bottom: 4px;
+	}
+
+	.im-movers-row::-webkit-scrollbar {
+		display: none;
+	}
+
+	.im-movers-row :global(.im-mover) {
+		display: grid;
+		flex: none;
+		gap: 4px;
+		width: 116px;
+		scroll-snap-align: start;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.im-movers-row :global(.im-mover-photo) {
+		display: block;
+		width: 100%;
+		aspect-ratio: 1;
+		border-radius: 4px;
+		background: var(--line);
+		overflow: hidden;
+		margin-bottom: 4px;
+	}
+
+	.im-movers-row :global(.im-mover-photo img) {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		mix-blend-mode: multiply;
+	}
+
+	:global(html.dark) .im-movers-row :global(.im-mover-photo img) {
+		mix-blend-mode: normal;
+	}
+
+	.im-movers-row :global(.im-mover-name) {
+		font-size: 13px;
+		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.im-movers-row :global(.im-mover-price) {
+		font-size: 14px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-movers-row :global(.im-mover-change) {
+		font-size: 13px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-price-table :global(.im-price-group) {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		margin: 18px 0 0;
+		padding-bottom: 8px;
+		border-bottom: 1px solid var(--ink);
+	}
+
+	.im-price-table :global(.im-price-share) {
+		border: 0;
+		border-bottom: 1px solid var(--ink);
+		background: none;
+		padding: 0 0 1px;
+		color: var(--ink);
+		cursor: pointer;
+	}
+
+	.im-movers[hidden] {
+		display: none;
+	}
+
+	.im-price-table :global(.im-fav) {
+		border: 0;
+		background: none;
+		flex: none;
+		padding: 2px 0 2px 6px;
+		margin-left: auto;
+		color: var(--muted);
+		font-size: 15px;
+		line-height: 1;
+		cursor: pointer;
+	}
+
+	.im-price-table :global(.im-fav[aria-pressed='true']) {
+		color: var(--ink);
 	}
 </style>
