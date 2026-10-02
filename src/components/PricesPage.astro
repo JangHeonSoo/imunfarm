@@ -14,8 +14,8 @@ import { siteConfig } from '@/site-config'
 import PriceSwitcher from '@/components/PriceSwitcher'
 import kamisItems from '@/data/kamis-items.json'
 import pricePhotos from '@/data/price-photos.json'
-import volumeItems from '@/data/volume-items.json'
-import volumeFile from '@/data/generated/kamis/volume.json'
+import { buildMoversInput } from '@/data/movers-input'
+import { buildMovers } from '@/data/movers'
 
 const { locale = DEFAULT_LOCALE } = Astro.props
 const isEn = locale === 'en'
@@ -46,23 +46,14 @@ const categoryOf = (id: string) =>
 	((kamisItems as Record<string, { codes: string[] }>)[id]?.codes[0] ?? '').split('-')[0]
 
 // 서버에서 그리는 초기 표 (JS 없이도 읽히고 크롤러가 색인한다)
-// 오늘 많이 움직인 품목 (첫 화면 깜빡임 없이 서버에서 먼저 그린다)
-const initialMovers = ITEMS.map((item) => ({
-	item,
-	cell: table[latest][defaultRegion.id][item.id]
-}))
-	.filter((x) => x.cell.price != null && x.cell.delta)
-	.sort((a, b) => Math.abs(b.cell.delta ?? 0) - Math.abs(a.cell.delta ?? 0))
-	.slice(0, 10)
-	.map(({ item, cell }) => ({
-		id: item.id,
-		label: isEn ? item.en : item.ko,
-		photo: (pricePhotos as string[]).includes(item.id)
-			? `/images/prices/thumb/${item.id}.webp`
-			: null,
-		price: cell.price,
-		delta: cell.delta ?? 0
-	}))
+// 오늘 많이 움직인 품목과 근거 (첫 화면 깜빡임 없이 서버에서 먼저 그린다)
+const moversInput = buildMoversInput(isEn, today)
+const initialMovers = buildMovers(moversInput, defaultRegion.id, dates.length - 1, isEn).map(
+	(m) => ({
+		...m,
+		photo: thumbOf(m.id)
+	})
+)
 
 const initialRows = ITEMS.map((item) => ({
 	id: item.id,
@@ -103,10 +94,8 @@ const MONTHS_EN = [
 	'Dec'
 ]
 const months = isEn ? MONTHS_EN : MONTHS_KO
-const analysisById: Record<string, ReturnType<typeof buildAnalysis>> = {}
 const analyses = ITEMS.map((item) => {
 	const a = buildAnalysis(item, defaultRegion, today)
-	analysisById[item.id] = a
 	const status = getItemStatus(item, today)
 	const seasonValues = a.seasonality.filter((v): v is number => v != null)
 	const peak = seasonValues.length ? a.seasonality.indexOf(Math.max(...seasonValues)) : -1
@@ -142,61 +131,11 @@ const analyses = ITEMS.map((item) => {
 	}
 })
 
-// item -> region -> 날짜순 가격 배열 (전일비는 클라이언트에서 계산)
-const series: Record<string, Record<string, (number | null)[]>> = {}
-for (const item of ITEMS) {
-	series[item.id] = {}
-	for (const region of REGIONS) {
-		series[item.id][region.id] = dates.map((date) => table[date][region.id][item.id].price)
-	}
-}
-
-// 많이 움직인 품목의 '왜' 근거: 지역별 계절지수(10년)와 작년 같은 달 대비
-const why: Record<string, Record<string, { season: (number | null)[]; yoy: number | null }>> = {}
-for (const item of ITEMS) {
-	why[item.id] = {}
-	for (const region of REGIONS) {
-		const a =
-			region.id === defaultRegion.id ? analysisById[item.id] : buildAnalysis(item, region, today)
-		why[item.id][region.id] = { season: a.seasonality, yoy: a.benchmarks[0]?.diffPct ?? null }
-	}
-}
-
-// 도매시장 반입량 1주 전 대비 (%). 1주 전 물량이 500kg 미만이면 비교하지 않는다.
-type VolumeCell = [number, number]
-const volumeDates = (
-	volumeFile as { dates: Record<string, Record<string, Record<string, VolumeCell>>> }
-).dates
-const volMap = volumeItems as Record<string, [string, string[] | null][]>
-const vol: Record<string, Record<string, Record<string, number>>> = {}
-for (const item of ITEMS) {
-	const rules = volMap[item.id]
-	if (!rules) continue
-	vol[item.id] = {}
-	for (const region of REGIONS) {
-		vol[item.id][region.id] = {}
-		for (const iso of dates) {
-			const byKey = volumeDates[iso.replace(/-/g, '')]?.[region.id]
-			if (!byKey) continue
-			let now = 0
-			let before = 0
-			for (const [key, [a, b]] of Object.entries(byKey)) {
-				const [m, sc] = key.split('|')
-				if (rules.some(([rm, rs]) => rm === m && (!rs || rs.includes(sc)))) {
-					now += a
-					before += b
-				}
-			}
-			if (before >= 500) vol[item.id][region.id][iso] = Math.round(((now - before) / before) * 100)
-		}
-	}
-}
-
 const payload = {
-	vol,
-	why,
+	vol: moversInput.vol,
+	why: moversInput.why,
 	dates,
-	series,
+	series: moversInput.series,
 	regions: REGIONS.map((r) => ({ id: r.id, label: isEn ? r.en : r.ko })),
 	items: ITEMS.map((i) => ({
 		id: i.id,
@@ -389,6 +328,11 @@ const t = {
 							<span class={`im-mover-change ${dir(m.delta)}`}>
 								{mark(m.delta)}
 								{Math.abs(m.delta).toFixed(1)}%
+							</span>
+							<span class='im-mover-why'>
+								{m.reasons.map((text) => (
+									<span>{text}</span>
+								))}
 							</span>
 						</a>
 					))
@@ -583,6 +527,7 @@ const t = {
 	// @ts-nocheck
 	import uPlot from 'uplot'
 	import 'uplot/dist/uPlot.min.css'
+	import { buildMovers } from '@/data/movers'
 
 	function initPrices() {
 		const node = document.getElementById('im-price-data')
@@ -663,90 +608,20 @@ const t = {
 			if (analysisEmpty) analysisEmpty.hidden = ids.size !== 0
 		}
 
-		/* ---------- 움직인 이유 (데이터로 확인되는 사실만) ---------- */
 		const EN = data.base === '/en'
-		function whyFor(itemId, regionId, i) {
-			const values = data.series[itemId][regionId]
-			const now = values[i]
-			const out = []
-			if (now == null) return out
-			const deltaAt = (k) => {
-				const a = values[k]
-				const b = values[k - 1]
-				return a != null && b ? a - b : 0
-			}
-			const sign = Math.sign(deltaAt(i))
-			// 도매시장 반입량 (가격이 움직인 가장 직접적인 이유)
-			const v = ((data.vol[itemId] || {})[regionId] || {})[data.dates[i]]
-			if (v != null && Math.abs(v) >= 15)
-				out.push(
-					EN
-						? `Arrivals ${v > 0 ? '+' : '−'}${Math.abs(v)}% vs last week`
-						: `반입량 1주 전보다 ${v > 0 ? '+' : '−'}${Math.abs(v)}%`
-				)
-			// 연속 상승·하락
-			let streak = 0
-			for (let k = i; k > 0 && Math.sign(deltaAt(k)) === sign && sign !== 0; k--) streak++
-			if (streak >= 2)
-				out.push(
-					EN
-						? `${streak} surveys in a row ${sign > 0 ? 'up' : 'down'}`
-						: `${streak}일 연속 ${sign > 0 ? '상승' : '하락'}`
-				)
-			// 다른 도시도 같은 방향인지
-			const dirs = data.regions
-				.map((r) => {
-					const v = data.series[itemId][r.id]
-					return v[i] != null && v[i - 1] ? Math.sign(v[i] - v[i - 1]) : null
-				})
-				.filter((x) => x != null)
-			const same = dirs.filter((d) => d === sign).length
-			if (sign !== 0 && dirs.length >= 3) {
-				if (same === dirs.length)
-					out.push(
-						EN
-							? `All ${same} cities ${sign > 0 ? 'up' : 'down'}`
-							: `${same}개 도시 모두 ${sign > 0 ? '상승' : '하락'}`
-					)
-				else if (same === 1) out.push(EN ? 'Only this city moved' : '이 지역만 움직임')
-			}
-			// 계절 흐름: 이번 달 계절지수가 지난달보다 높은지 낮은지
-			const w = (data.why[itemId] || {})[regionId]
-			const month = Number(data.dates[i].slice(5, 7)) - 1
-			if (w) {
-				const s1 = w.season[month]
-				const s0 = w.season[(month + 11) % 12]
-				if (s1 && s0) {
-					const d = (s1 / s0 - 1) * 100
-					if (Math.abs(d) >= 3)
-						out.push(
-							EN
-								? `Seasonally ${d > 0 ? 'rising' : 'falling'} now`
-								: `이맘때 보통 ${d > 0 ? '오르는' : '내리는'} 시기`
-						)
-				}
-				if (w.yoy != null && Math.abs(w.yoy) >= 10)
-					out.push(
-						EN
-							? `${w.yoy > 0 ? '+' : '−'}${Math.abs(w.yoy).toFixed(0)}% vs last year`
-							: `작년 같은 달보다 ${w.yoy > 0 ? '+' : '−'}${Math.abs(w.yoy).toFixed(0)}%`
-					)
-			}
-			return out.slice(0, 2)
-		}
 
 		/* ---------- 오늘 많이 움직인 품목 ---------- */
 		const moversEl = document.getElementById('im-movers')
 		const moversBasis = document.getElementById('im-movers-basis')
 		function renderMovers() {
 			const i = data.dates.indexOf(date)
-			const list = data.items
-				.map((entry) => ({ entry, c: cellFor(entry.id, region, i) }))
-				.filter((x) => x.c.price != null && x.c.delta)
-				.sort((a, b) => Math.abs(b.c.delta) - Math.abs(a.c.delta))
-				.slice(0, 10)
+			const list = buildMovers(data, region, i, EN).map((m) => ({
+				entry: data.items.find((e) => e.id === m.id),
+				c: { price: m.price, delta: m.delta },
+				reasons: m.reasons
+			}))
 			moversEl.textContent = ''
-			list.forEach(({ entry, c }) => {
+			list.forEach(({ entry, c, reasons: why }) => {
 				const a = document.createElement('a')
 				a.className = 'im-mover'
 				a.draggable = false
@@ -773,7 +648,7 @@ const t = {
 				ch.textContent = mark(c.delta) + Math.abs(c.delta).toFixed(1) + '%'
 				const reasons = document.createElement('span')
 				reasons.className = 'im-mover-why'
-				whyFor(entry.id, region, i).forEach((text) => {
+				why.forEach((text) => {
 					const line = document.createElement('span')
 					line.textContent = text
 					reasons.appendChild(line)
