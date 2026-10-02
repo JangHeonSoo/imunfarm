@@ -51,10 +51,11 @@ const resolvedAltPath =
 		<ProviderTheme />
 		<script
 			async
-			src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9192660979184684'
+			src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
 			crossorigin='anonymous'></script>
 		<script is:inline>
-			// 모바일 앵커 광고가 상단에 붙으면 첫 화면 카드·차트의 터치를 가린다
+			// 모바일 앵커 광고가 상단에 붙으면 첫 화면 카드·차트의 터치를 가린다.
+			// src에 ?client=를 붙이면 자동 광고 설정이 두 번 들어가 overlays가 무시된다.
 			;(window.adsbygoogle = window.adsbygoogle || []).push({
 				google_ad_client: 'ca-pub-9192660979184684',
 				enable_page_level_ads: true,
