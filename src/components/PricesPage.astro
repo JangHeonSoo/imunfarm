@@ -300,17 +300,42 @@ const t = {
 		>
 			<div class='im-movers-head'>
 				<p class='im-label'>{isEn ? 'Biggest movers' : '오늘 많이 움직인 품목'}</p>
-				<p class='im-meta' id='im-movers-basis'>
-					{isEn ? defaultRegion.en : defaultRegion.ko} · {dateLabel} ·{' '}
-					{isEn ? 'vs previous survey' : '직전 조사일 대비'}
-				</p>
+				<div class='im-movers-tools'>
+					<p class='im-meta' id='im-movers-basis'>
+						{isEn ? defaultRegion.en : defaultRegion.ko} · {dateLabel} ·{' '}
+						{isEn ? 'vs previous survey' : '직전 조사일 대비'}
+					</p>
+					<div class='im-movers-nav'>
+						<button
+							type='button'
+							class='im-movers-arrow'
+							data-movers-dir='-1'
+							aria-label={isEn ? 'Previous' : '이전'}>‹</button
+						>
+						<button
+							type='button'
+							class='im-movers-arrow'
+							data-movers-dir='1'
+							aria-label={isEn ? 'Next' : '다음'}>›</button
+						>
+					</div>
+				</div>
 			</div>
 			<div class='im-movers-row' id='im-movers'>
 				{
 					initialMovers.map((m) => (
-						<a class='im-mover' href={`${prefix}/prices/${m.id}/`}>
+						<a class='im-mover' href={`${prefix}/prices/${m.id}/`} draggable='false'>
 							<span class='im-mover-photo'>
-								{m.photo && <img src={m.photo} alt='' width='64' height='64' decoding='async' />}
+								{m.photo && (
+									<img
+										src={m.photo}
+										alt=''
+										width='64'
+										height='64'
+										decoding='async'
+										draggable='false'
+									/>
+								)}
 							</span>
 							<span class='im-mover-name'>{m.label}</span>
 							<span class='im-mover-price'>{fmtServer(m.price)}</span>
@@ -605,6 +630,7 @@ const t = {
 			list.forEach(({ entry, c }) => {
 				const a = document.createElement('a')
 				a.className = 'im-mover'
+				a.draggable = false
 				a.href = data.base + '/prices/' + entry.id + '/'
 				const ph = document.createElement('span')
 				ph.className = 'im-mover-photo'
@@ -614,6 +640,7 @@ const t = {
 					img.alt = ''
 					img.width = 64
 					img.height = 64
+					img.draggable = false
 					ph.appendChild(img)
 				}
 				const name = document.createElement('span')
@@ -634,7 +661,68 @@ const t = {
 				dot(date) +
 				(data.base === '/en' ? ' · vs previous survey' : ' · 직전 조사일 대비')
 			document.getElementById('im-movers-section').hidden = list.length === 0
+			moversEl.scrollLeft = 0
+			requestAnimationFrame(updateArrows)
 		}
+
+		/* 마우스로 잡고 끌어 넘기기 (터치는 브라우저 기본 스크롤 그대로) */
+		let dragStartX = 0
+		let dragStartLeft = 0
+		let dragging = false
+		let dragged = false
+		moversEl.addEventListener('pointerdown', (e) => {
+			if (e.pointerType !== 'mouse' || e.button !== 0) return
+			dragging = true
+			dragged = false
+			dragStartX = e.clientX
+			dragStartLeft = moversEl.scrollLeft
+		})
+		window.addEventListener('pointermove', (e) => {
+			if (!dragging) return
+			const dx = e.clientX - dragStartX
+			if (!dragged && Math.abs(dx) > 4) {
+				dragged = true
+				moversEl.classList.add('is-dragging')
+			}
+			if (dragged) moversEl.scrollLeft = dragStartLeft - dx
+		})
+		window.addEventListener('pointerup', () => {
+			if (!dragging) return
+			dragging = false
+			moversEl.classList.remove('is-dragging')
+			updateArrows()
+		})
+		// 끌고 난 직후의 클릭은 링크 이동으로 치지 않는다
+		moversEl.addEventListener(
+			'click',
+			(e) => {
+				if (dragged) {
+					e.preventDefault()
+					e.stopPropagation()
+					dragged = false
+				}
+			},
+			true
+		)
+
+		const arrows = Array.from(document.querySelectorAll('[data-movers-dir]'))
+		function updateArrows() {
+			const max = moversEl.scrollWidth - moversEl.clientWidth
+			arrows.forEach((b) => {
+				b.disabled =
+					b.dataset.moversDir === '-1' ? moversEl.scrollLeft <= 2 : moversEl.scrollLeft >= max - 2
+			})
+			document.querySelector('.im-movers-nav').hidden = max <= 2
+		}
+		arrows.forEach((b) =>
+			b.addEventListener('click', () => {
+				moversEl.scrollBy({
+					left: Number(b.dataset.moversDir) * moversEl.clientWidth * 0.8,
+					behavior: 'smooth'
+				})
+			})
+		)
+		moversEl.addEventListener('scroll', () => updateArrows(), { passive: true })
 
 		/* ---------- 내 품목 (이 브라우저에만 저장) ---------- */
 		const FAV_KEY = 'imunfarm:fav-items'
@@ -1630,5 +1718,63 @@ const t = {
 
 	.im-price-table :global(.im-fav[aria-pressed='true']) {
 		color: var(--ink);
+	}
+
+	.im-movers-tools {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+	}
+
+	.im-movers-nav {
+		display: flex;
+		gap: 6px;
+	}
+
+	.im-movers-nav[hidden] {
+		display: none;
+	}
+
+	.im-movers-arrow {
+		width: 28px;
+		height: 28px;
+		border: 1px solid var(--ink);
+		border-radius: 50%;
+		background: none;
+		color: var(--ink);
+		font-size: 16px;
+		line-height: 1;
+		cursor: pointer;
+	}
+
+	.im-movers-arrow:disabled {
+		opacity: 0.25;
+		cursor: default;
+	}
+
+	.im-movers-row {
+		cursor: grab;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	.im-movers-row.is-dragging {
+		cursor: grabbing;
+		scroll-snap-type: none;
+	}
+
+	.im-movers-row.is-dragging :global(.im-mover) {
+		pointer-events: none;
+	}
+
+	.im-movers-row :global(.im-mover),
+	.im-movers-row :global(img) {
+		-webkit-user-drag: none;
+	}
+
+	@media (hover: none) {
+		.im-movers-nav {
+			display: none;
+		}
 	}
 </style>
