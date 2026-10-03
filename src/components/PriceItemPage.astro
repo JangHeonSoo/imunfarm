@@ -108,6 +108,18 @@ const sameGroup = others.filter(
 const sameCat = others.filter((e) => e.category === myCat && !sameGroup.includes(e))
 const related6 = [...siblings, ...sameGroup, ...sameCat].slice(0, 6)
 
+// 상단 네 칸: 가장 비싼 곳, 최근 평균, 1년 전 같은 달
+const priced = regionRows.filter((r) => r.price != null)
+const topRegion = priced.length > 1 ? priced[0] : null
+const seoulPrice = table[latest][REGIONS[0].id][item.id]?.price ?? null
+const yearAgo = analysis.benchmarks[0]
+const vsAvg =
+	analysis.current != null && analysis.windowAvg
+		? Math.round(((analysis.current - analysis.windowAvg) / analysis.windowAvg) * 1000) / 10
+		: null
+const nameMain = name.replace(/\s*\(.*\)\s*$/, '')
+const nameVariety = name.match(/\((.*)\)\s*$/)?.[1] ?? null
+
 const dateLabel = formatDate(latest)
 const surveyLabel = analysis.currentDate ? formatDate(analysis.currentDate) : null
 const seasonValues = analysis.seasonality.filter((v): v is number => v != null)
@@ -256,22 +268,88 @@ const t = {
 				)
 			}
 			<div>
-				<h1 class='im-item-title'>{isEn ? `${name} price` : `${name} 시세`}</h1>
-
-				<div class='im-item-hero'>
-					<p class='im-item-price' id='im-item-price'>{fmt(analysis.current)}</p>
-					<p class='im-meta'>
-						{grade} · {unit} · <span id='im-item-date'>{surveyLabel ?? dateLabel}</span> ·{' '}
-						<span id='im-item-region'>{isEn ? 'Seoul' : '서울'}</span>
-					</p>
-					{staleNote && <p class='im-meta'>{staleNote}</p>}
-					<p class={`im-item-change ${dir(analysis.trend30)}`} id='im-item-change'>
-						{isEn ? '30 survey days' : '30개 조사일'}
-						{pct(analysis.trend30)}
-					</p>
-				</div>
+				<h1 class='im-item-title'>
+					{nameMain}
+					{isEn ? ' price' : ' 시세'}
+					{nameVariety && <span class='im-item-variety'> {nameVariety}</span>}
+				</h1>
+				<p class='im-item-sub'>
+					{grade} · {unit} · {isEn ? 'KAMIS wholesale intermediary price' : 'KAMIS 중도매인 판매가'}
+				</p>
+				{staleNote && <p class='im-meta'>{staleNote}</p>}
 			</div>
 		</div>
+
+		<dl class='im-item-key'>
+			<div>
+				<dt>
+					<span id='im-item-region'>{isEn ? 'Seoul' : '서울'}</span> ·{' '}
+					<span id='im-item-date'>{surveyLabel ?? dateLabel}</span>
+				</dt>
+				<dd>
+					<span class='im-item-price' id='im-item-price'>{fmt(analysis.current)}</span>
+					<span class={`im-item-change ${dir(analysis.trend30)}`} id='im-item-change'>
+						{isEn ? '30 survey days' : '30개 조사일'}
+						{pct(analysis.trend30)}
+					</span>
+				</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'Highest market today' : '가장 비싼 곳'}</dt>
+				<dd>
+					<span class='im-item-key-v'>
+						{topRegion ? `${topRegion.label} ${fmt(topRegion.price)}` : '–'}
+					</span>
+					<span class='im-item-key-s'>
+						{
+							topRegion && seoulPrice != null && topRegion.price !== seoulPrice
+								? isEn
+									? `${fmt(topRegion.price! - seoulPrice)} above Seoul`
+									: `서울보다 ${fmt(topRegion.price! - seoulPrice)} 높습니다`
+								: isEn
+									? 'Same as Seoul'
+									: '서울이 가장 높습니다'
+						}
+					</span>
+				</dd>
+			</div>
+			<div>
+				<dt>{isEn ? '30-survey-day average' : '최근 30개 조사일 평균'}</dt>
+				<dd>
+					<span class='im-item-key-v'>{fmt(analysis.windowAvg)}</span>
+					<span class='im-item-key-s'>
+						{
+							vsAvg == null
+								? '–'
+								: vsAvg === 0
+									? isEn
+										? 'Today equals the average'
+										: '오늘 값이 평균과 같습니다'
+									: isEn
+										? `Today is ${Math.abs(vsAvg).toFixed(1)}% ${vsAvg > 0 ? 'above' : 'below'}`
+										: `오늘은 평균보다 ${Math.abs(vsAvg).toFixed(1)}% ${vsAvg > 0 ? '높습니다' : '낮습니다'}`
+						}
+					</span>
+				</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'vs same month last year' : '1년 전 같은 달보다'}</dt>
+				<dd>
+					<span class={`im-item-key-v ${dir(yearAgo.diffPct)}`}>{pct(yearAgo.diffPct)}</span>
+					<span class='im-item-key-s'>
+						{
+							yearAgo.avg != null
+								? isEn
+									? `${yearAgo.year} average ${fmt(yearAgo.avg)}`
+									: `${yearAgo.year}년 같은 달 평균 ${fmt(yearAgo.avg)}`
+								: isEn
+									? 'No survey last year'
+									: '작년 같은 달 조사 없음'
+						}
+					</span>
+				</dd>
+			</div>
+		</dl>
 
 		<PriceChart
 			series={buildItemSeries(item, today)}
@@ -378,34 +456,117 @@ const t = {
 
 	.im-item-title {
 		margin: clamp(16px, 2vw, 26px) 0 0;
-		font-size: clamp(32px, 5vw, 68px);
-		font-weight: 800;
-		letter-spacing: 0.01em;
-		line-height: 1.04;
+		font-size: clamp(30px, 4.2vw, 52px);
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1.12;
+		text-wrap: balance;
 	}
 
-	.im-item-hero {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 8px clamp(14px, 2vw, 26px);
-		margin-top: clamp(18px, 2.4vw, 28px);
-	}
-
-	.im-item-hero p {
-		margin: 0;
-	}
-
-	.im-item-price {
-		font-size: clamp(30px, 3.6vw, 46px);
-		font-weight: 800;
-		letter-spacing: -0.01em;
-	}
-
-	.im-item-change {
-		font-size: 14px;
+	.im-item-variety {
+		display: block;
+		margin-top: 6px;
+		color: var(--muted);
+		font-size: clamp(15px, 1.6vw, 19px);
 		font-weight: 600;
+		letter-spacing: 0;
+	}
+
+	.im-item-sub {
+		margin: 10px 0 0;
+		color: var(--muted);
+		font-size: 14px;
+	}
+
+	.im-item-key {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		margin: clamp(22px, 3vw, 32px) 0 clamp(26px, 3.4vw, 40px);
+		border-top: 1px solid var(--ink);
+		border-bottom: 1px solid var(--ink);
 		font-variant-numeric: tabular-nums;
+	}
+
+	.im-item-key > div {
+		padding: 16px 18px 18px 0;
+	}
+
+	.im-item-key > div:nth-child(even) {
+		padding-left: 18px;
+		border-left: 1px solid var(--line);
+	}
+
+	.im-item-key > div:nth-child(n + 3) {
+		border-top: 1px solid var(--line);
+	}
+
+	.im-item-key dt {
+		font-size: 13px;
+		font-weight: 700;
+	}
+
+	.im-item-key dd {
+		display: grid;
+		gap: 6px;
+		margin: 8px 0 0;
+	}
+
+	.im-item-price,
+	.im-item-key-v {
+		font-size: clamp(24px, 3vw, 34px);
+		font-weight: 800;
+		line-height: 1.1;
+		letter-spacing: -0.02em;
+	}
+
+	.im-item-key-s,
+	.im-item-change {
+		color: var(--muted);
+		font-size: 13px;
+		line-height: 1.5;
+	}
+
+	.im-item-change.im-up {
+		color: var(--up);
+	}
+
+	.im-item-change.im-down {
+		color: var(--down);
+	}
+
+	@media (max-width: 640px) {
+		.im-item-price,
+		.im-item-key-v {
+			font-size: 21px;
+		}
+
+		.im-item-key > div {
+			padding: 14px 12px 14px 0;
+		}
+
+		.im-item-key > div:nth-child(even) {
+			padding-left: 12px;
+		}
+
+		.im-item-key-s,
+		.im-item-change {
+			font-size: 12px;
+		}
+	}
+
+	@media (max-width: 340px) {
+		.im-item-key {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.im-item-key > div:nth-child(even) {
+			padding-left: 0;
+			border-left: 0;
+		}
+
+		.im-item-key > div + div {
+			border-top: 1px solid var(--line);
+		}
 	}
 
 	.im-item-lead {

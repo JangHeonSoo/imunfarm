@@ -55,14 +55,37 @@ const initialMovers = buildMovers(moversInput, defaultRegion.id, dates.length - 
 	})
 )
 
+// 분류 소제목 (KAMIS 부류 코드 첫 자리)
+const CAT_LABELS: Record<string, string> = isEn
+	? { '400': 'Fruit', '100': 'Grains and beans', '300': 'Special crops', '200': 'Vegetables' }
+	: { '400': '과일', '100': '식량작물', '300': '특용작물', '200': '채소' }
+
+// 최근 조사일 범위 안에서 오늘 값의 위치 (0 = 최저, 1 = 최고)
+const rangeOf = (values: (number | null)[], i: number) => {
+	const cur = values[i]
+	const known = values.slice(0, i + 1).filter((v): v is number => v != null)
+	if (cur == null || known.length < 5) return null
+	const lo = Math.min(...known)
+	const hi = Math.max(...known)
+	return { lo, hi, pos: hi > lo ? (cur - lo) / (hi - lo) : 0.5 }
+}
+
 const initialRows = ITEMS.map((item) => ({
 	id: item.id,
 	photo: thumbOf(item.id),
 	label: isEn ? item.en : item.ko,
 	grade: isEn ? item.gradeEn : item.gradeKo,
 	unit: isEn ? item.unitEn : item.unitKo,
+	cat: categoryOf(item.id),
+	range: rangeOf(moversInput.series[item.id][defaultRegion.id], dates.length - 1),
 	...table[latest][defaultRegion.id][item.id]
 }))
+const initialCounts = {
+	down: initialRows.filter((r) => r.price != null && r.delta != null && r.delta < 0).length,
+	up: initialRows.filter((r) => r.price != null && r.delta != null && r.delta > 0).length,
+	flat: initialRows.filter((r) => r.price != null && (r.delta == null || r.delta === 0)).length
+}
+const catCount = (cat: string) => initialRows.filter((r) => r.cat === cat).length
 
 // 품목별 분석 요약 — 차트 아래 목록
 const MONTHS_KO = [
@@ -137,8 +160,10 @@ const payload = {
 	dates,
 	series: moversInput.series,
 	regions: REGIONS.map((r) => ({ id: r.id, label: isEn ? r.en : r.ko })),
+	catLabels: CAT_LABELS,
 	items: ITEMS.map((i) => ({
 		id: i.id,
+		cat: categoryOf(i.id),
 		photo: thumbOf(i.id),
 		label: isEn ? i.en : i.ko,
 		grade: isEn ? i.gradeEn : i.gradeKo,
@@ -251,6 +276,7 @@ const t = {
 	unit: isEn ? 'Unit' : '단위',
 	price: isEn ? 'Price' : '가격',
 	delta: isEn ? 'Change' : '전일비',
+	range: isEn ? 'Today within recent low–high' : '최근 조사일 최저–최고 중 오늘',
 	note: isEn
 		? 'Source: aT KAMIS (Public Data Portal) · wholesale intermediary selling prices · days without a survey show the previous survey value'
 		: '출처: aT KAMIS 가격정보(공공데이터포털) · 도매시장 중도매인 판매가격 · 조사가 없는 날은 직전 조사값',
@@ -277,6 +303,38 @@ const t = {
 	{jsonLd.map((schema) => <script type='application/ld+json' set:html={JSON.stringify(schema)} />)}
 	<div class='im-prices im-pad im-bottom'>
 		<div class='im-top-sm'></div>
+
+		<header class='im-prices-top'>
+			<div>
+				<h1>{isEn ? "Today's Korean produce wholesale prices" : '오늘 농산물 도매 시세'}</h1>
+				<p class='im-prices-sub' id='im-prices-sub'>
+					{isEn ? 'KAMIS wholesale intermediary prices' : 'KAMIS 중도매인 판매가'} ·{' '}
+					<span id='im-prices-when'>
+						{isEn ? defaultRegion.en : defaultRegion.ko}
+						{dateLabel}
+					</span>{' '}
+					{isEn ? 'survey' : '조사'} · {ITEMS.length}
+					{isEn ? ' crops' : '개 품목'}
+				</p>
+			</div>
+			<dl
+				class='im-prices-sum'
+				aria-label={isEn ? 'Change vs previous survey' : '직전 조사일 대비'}
+			>
+				<div>
+					<dt>{isEn ? 'Down' : '내린 품목'}</dt>
+					<dd class='im-down' data-count='down'>{initialCounts.down}</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Up' : '오른 품목'}</dt>
+					<dd class='im-up' data-count='up'>{initialCounts.up}</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Unchanged' : '그대로'}</dt>
+					<dd data-count='flat'>{initialCounts.flat}</dd>
+				</div>
+			</dl>
+		</header>
 
 		<section
 			class='im-movers'
@@ -410,48 +468,82 @@ const t = {
 		<div class='im-price-table'>
 			<div class='im-price-head'>
 				<span>{t.item}</span>
-				<span>{t.grade}</span>
-				<span>{t.unit}</span>
 				<span class='im-num'>{t.price}</span>
 				<span class='im-num'>{t.delta}</span>
+				<span class='im-price-range-h'>{t.range}</span>
 			</div>
 			<div id='im-price-rows'>
 				{
-					initialRows.map((row) => (
-						<a class='im-price-row' href={`${prefix}/prices/${row.id}/`}>
-							<span class='im-price-item'>
-								<button
-									type='button'
-									class='im-fav'
-									aria-pressed='false'
-									title={isEn ? 'Add to my crops' : '내 품목에 추가'}
-									aria-label={`${isEn ? 'Add to my crops' : '내 품목에 추가'}: ${row.label}`}
-								>
-									☆
-								</button>
-								<span class='im-price-thumb'>
-									{row.photo ? (
-										<img
-											src={row.photo}
-											alt=''
-											width='32'
-											height='32'
-											loading='lazy'
-											decoding='async'
-										/>
-									) : (
-										<span aria-hidden='true'>{row.label.slice(0, 1)}</span>
+					initialRows.map((row, k) => (
+						<Fragment>
+							{(k === 0 || initialRows[k - 1].cat !== row.cat) && CAT_LABELS[row.cat] && (
+								<div class='im-price-cat'>
+									<h2>{CAT_LABELS[row.cat]}</h2>
+									<span>
+										{catCount(row.cat)}
+										{isEn ? ' crops' : '개 품목'}
+									</span>
+								</div>
+							)}
+							<a class='im-price-row' href={`${prefix}/prices/${row.id}/`}>
+								<span class='im-price-item'>
+									<button
+										type='button'
+										class='im-fav'
+										aria-pressed='false'
+										title={isEn ? 'Add to my crops' : '내 품목에 추가'}
+										aria-label={`${isEn ? 'Add to my crops' : '내 품목에 추가'}: ${row.label}`}
+									>
+										☆
+									</button>
+									<span class='im-price-thumb'>
+										{row.photo ? (
+											<img
+												src={row.photo}
+												alt=''
+												width='32'
+												height='32'
+												loading='lazy'
+												decoding='async'
+											/>
+										) : (
+											<span aria-hidden='true'>{row.label.slice(0, 1)}</span>
+										)}
+									</span>
+									<span class='im-price-name'>
+										<span>{row.label}</span>
+										<small>
+											{row.grade} · {row.unit}
+										</small>
+									</span>
+								</span>
+								<span class='im-num im-price-value'>{fmtServer(row.price)}</span>
+								<span class={`im-num im-price-delta ${dir(row.delta)}`}>
+									{!row.delta ? '–' : `${mark(row.delta)}${Math.abs(row.delta).toFixed(1)}%`}
+								</span>
+								<span class='im-price-range'>
+									{row.range && row.range.hi === row.range.lo && (
+										<span class='im-range-same'>
+											{isEn ? 'Same price on every recent survey' : '최근 조사일 내내 같은 값'}
+										</span>
+									)}
+									{row.range && row.range.hi > row.range.lo && (
+										<Fragment>
+											<span>{row.range.lo.toLocaleString(isEn ? 'en-US' : 'ko-KR')}</span>
+											<span class='im-range-bar'>
+												<i
+													class={
+														row.range.pos >= 0.8 ? 'is-hi' : row.range.pos <= 0.2 ? 'is-lo' : ''
+													}
+													style={`left:${(row.range.pos * 100).toFixed(1)}%`}
+												/>
+											</span>
+											<span>{row.range.hi.toLocaleString(isEn ? 'en-US' : 'ko-KR')}</span>
+										</Fragment>
 									)}
 								</span>
-								<span>{row.label}</span>
-							</span>
-							<span class='im-price-sub'>{row.grade}</span>
-							<span class='im-price-sub'>{row.unit}</span>
-							<span class='im-num im-price-value'>{fmtServer(row.price)}</span>
-							<span class={`im-num im-price-delta ${dir(row.delta)}`}>
-								{row.delta == null ? '–' : `${mark(row.delta)}${Math.abs(row.delta).toFixed(1)}%`}
-							</span>
-						</a>
+							</a>
+						</Fragment>
 					))
 				}
 			</div>
@@ -850,6 +942,41 @@ const t = {
 		}
 
 		/* ---------- 표 ---------- */
+		const whenEl = document.getElementById('im-prices-when')
+		const countEls = Array.from(document.querySelectorAll('[data-count]'))
+		const num = (v) => v.toLocaleString(data.locale)
+		// 최근 조사일 최저–최고 사이에서 오늘 값의 위치
+		function rangeEl(itemId, i) {
+			const wrap = document.createElement('span')
+			wrap.className = 'im-price-range'
+			const values = data.series[itemId][region]
+			const cur = values[i]
+			const known = values.slice(0, i + 1).filter((v) => v != null)
+			if (cur == null || known.length < 5) return wrap
+			const lo = Math.min(...known)
+			const hi = Math.max(...known)
+			if (hi === lo) {
+				const same = document.createElement('span')
+				same.className = 'im-range-same'
+				same.textContent = EN ? 'Same price on every recent survey' : '최근 조사일 내내 같은 값'
+				wrap.appendChild(same)
+				return wrap
+			}
+			const pos = (cur - lo) / (hi - lo)
+			const a = document.createElement('span')
+			a.textContent = num(lo)
+			const bar = document.createElement('span')
+			bar.className = 'im-range-bar'
+			const dotEl = document.createElement('i')
+			if (pos >= 0.8) dotEl.className = 'is-hi'
+			else if (pos <= 0.2) dotEl.className = 'is-lo'
+			dotEl.style.left = (pos * 100).toFixed(1) + '%'
+			bar.appendChild(dotEl)
+			const b = document.createElement('span')
+			b.textContent = num(hi)
+			wrap.append(a, bar, b)
+			return wrap
+		}
 		function renderTable() {
 			const i = data.dates.indexOf(date)
 			const favs = getFavs()
@@ -873,6 +1000,19 @@ const t = {
 					b.addEventListener('click', () => shareMine(b))
 					h.appendChild(b)
 				}
+				rowsEl.appendChild(h)
+			}
+			const catTotals = {}
+			all.forEach((e) => (catTotals[e.cat] = (catTotals[e.cat] || 0) + 1))
+			let lastCat = null
+			const catHead = (cat) => {
+				const h = document.createElement('div')
+				h.className = 'im-price-cat'
+				const name = document.createElement('h2')
+				name.textContent = data.catLabels[cat]
+				const n = document.createElement('span')
+				n.textContent = catTotals[cat] + (EN ? ' crops' : '개 품목')
+				h.append(name, n)
 				rowsEl.appendChild(h)
 			}
 			visible.forEach((entry, k) => {
@@ -899,7 +1039,12 @@ const t = {
 					th.appendChild(img)
 				} else th.textContent = entry.label.slice(0, 1)
 				const label = document.createElement('span')
-				label.textContent = entry.label
+				label.className = 'im-price-name'
+				const labelText = document.createElement('span')
+				labelText.textContent = entry.label
+				const labelSub = document.createElement('small')
+				labelSub.textContent = entry.grade + ' · ' + entry.unit
+				label.append(labelText, labelSub)
 				const star = document.createElement('button')
 				star.type = 'button'
 				star.className = 'im-fav'
@@ -925,12 +1070,10 @@ const t = {
 				name.append(star, th, label)
 				row.appendChild(name)
 				const cells = [
-					['im-price-sub', entry.grade],
-					['im-price-sub', entry.unit],
 					['im-num im-price-value', fmt(c.price)],
 					[
 						'im-num im-price-delta ' + cls(c.delta),
-						c.delta == null ? '–' : mark(c.delta) + Math.abs(c.delta).toFixed(1) + '%'
+						!c.delta ? '–' : mark(c.delta) + Math.abs(c.delta).toFixed(1) + '%'
 					]
 				]
 				cells.forEach(([className, value]) => {
@@ -939,6 +1082,11 @@ const t = {
 					span.textContent = value
 					row.appendChild(span)
 				})
+				row.appendChild(rangeEl(entry.id, i))
+				if (row.dataset.section === 'all' && entry.cat !== lastCat) {
+					lastCat = entry.cat
+					if (data.catLabels[entry.cat]) catHead(entry.cat)
+				}
 				rowsEl.appendChild(row)
 			})
 			if (visible.length === 0) {
@@ -948,6 +1096,14 @@ const t = {
 				rowsEl.appendChild(row)
 			}
 			basisEl.textContent = nameOf(data.regions, region) + ' · ' + dot(date)
+			whenEl.textContent = nameOf(data.regions, region) + ' ' + dot(date)
+			const counts = { down: 0, up: 0, flat: 0 }
+			data.items.forEach((e) => {
+				const c = cellFor(e.id, region, i)
+				if (c.price == null) return
+				counts[c.delta > 0 ? 'up' : c.delta < 0 ? 'down' : 'flat']++
+			})
+			countEls.forEach((el) => (el.textContent = counts[el.dataset.count]))
 			renderMovers()
 		}
 
@@ -1264,6 +1420,55 @@ const t = {
 	.im-prices {
 		width: min(1180px, 100%);
 		margin-inline: auto;
+	}
+
+	.im-prices-top {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 20px 40px;
+		align-items: end;
+		margin-bottom: clamp(26px, 4vh, 40px);
+	}
+
+	.im-prices-top h1 {
+		margin: 0;
+		font-size: clamp(30px, 4.2vw, 52px);
+		font-weight: 700;
+		line-height: 1.12;
+		letter-spacing: -0.02em;
+		text-wrap: balance;
+	}
+
+	.im-prices-sub {
+		margin: 12px 0 0;
+		color: var(--muted);
+		font-size: 15px;
+		line-height: 1.6;
+	}
+
+	.im-prices-sum {
+		display: flex;
+		gap: 28px;
+		margin: 0;
+	}
+
+	.im-prices-sum dt {
+		color: var(--muted);
+		font-size: 13px;
+	}
+
+	.im-prices-sum dd {
+		margin: 2px 0 0;
+		font-size: 26px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		font-variant-numeric: tabular-nums;
+	}
+
+	@media (max-width: 760px) {
+		.im-prices-top {
+			grid-template-columns: minmax(0, 1fr);
+		}
 	}
 
 	.im-price-controls {
@@ -1630,7 +1835,7 @@ const t = {
 		text-decoration: none;
 	}
 
-	.im-price-table :global(a.im-price-row:hover .im-price-item > span:last-child) {
+	.im-price-table :global(a.im-price-row:hover .im-price-name > span) {
 		text-decoration: underline;
 		text-underline-offset: 3px;
 	}
