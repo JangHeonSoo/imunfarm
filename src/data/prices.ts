@@ -1595,3 +1595,33 @@ export const buildItemSeries = (item: Item, today = getPriceAsOfDate()): ItemSer
 }
 
 export const formatDate = (iso: string) => iso.replace(/-/g, '.')
+
+export type MarketQuote = {
+	price: number
+	/** 이 값이 조사된 날 */
+	date: string
+	/** 같은 값이 이어지기 시작한 조사일 (값이 늦게 바뀌는 시장 표시용) */
+	since: string
+}
+
+/** 계산기용: 품목·지역별 기준일 시세와 그 값이 언제부터 같았는지 */
+export const buildMarketQuotes = (today = getPriceAsOfDate()) => {
+	const asOf = keyOfDate(today)
+	const quotes: Record<string, Record<string, MarketQuote | null>> = {}
+	for (const item of ITEMS) {
+		quotes[item.id] = {}
+		for (const region of REGIONS) {
+			const hit = valueOn(item, region, asOf)
+			if (!hit) {
+				quotes[item.id][region.id] = null
+				continue
+			}
+			const series = dailyOf(item, region)
+			const keys = keysOf(series)
+			let k = keys.indexOf(hit.date)
+			while (k > 0 && series.get(keys[k - 1]) === hit.price) k--
+			quotes[item.id][region.id] = { price: hit.price, date: hit.date, since: keys[k] }
+		}
+	}
+	return { asOf, quotes }
+}

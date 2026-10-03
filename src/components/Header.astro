@@ -6,10 +6,16 @@ const prefix = getLocalePrefix(locale)
 ---
 
 <header class='im-header'>
-	<span></span>
+	<a
+		class='im-header-link im-header-tools'
+		href={`${prefix}/tools/`}
+		aria-current={active === 'tools' ? 'page' : undefined}
+	>
+		계산기 <span>Tools</span>
+	</a>
 	<a class='im-wordmark' href={`${prefix}/`} aria-label='IMUN.FARM'>IMUN.FARM</a>
 	<a
-		class='im-header-prices'
+		class='im-header-link im-header-prices'
 		href={`${prefix}/prices/`}
 		aria-current={active === 'prices' ? 'page' : undefined}
 	>
@@ -38,8 +44,15 @@ const prefix = getLocalePrefix(locale)
 		opacity: 0.5;
 	}
 
+	.im-header-tools {
+		justify-self: start;
+	}
+
 	.im-header-prices {
 		justify-self: end;
+	}
+
+	.im-header-link {
 		align-self: end;
 		padding-bottom: 3px;
 		color: var(--ink);
@@ -51,12 +64,18 @@ const prefix = getLocalePrefix(locale)
 		border-bottom: 1px solid transparent;
 	}
 
-	.im-header-prices[aria-current='page'] {
+	.im-header-link[aria-current='page'] {
 		border-bottom-color: var(--ink);
 	}
 
-	.im-header-prices span {
+	.im-header-link span {
 		font-weight: 500;
 		color: var(--muted);
+	}
+
+	@media (max-width: 380px) {
+		.im-header-link span {
+			display: none;
+		}
 	}
 </style>

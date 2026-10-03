@@ -1,0 +1,431 @@
+---
+import ToolShell from '@/components/tools/ToolShell'
+import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+import { SOLAR, SOLAR_SCENARIOS, computeSolar } from '@/data/tools'
+
+const { locale = DEFAULT_LOCALE } = Astro.props
+const isEn = locale === 'en'
+const prefix = getLocalePrefix(locale)
+
+const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
+const won = (v: number) => (isEn ? '₩' + num(v) : num(v) + '원')
+/** 만 원 단위 (한국어) */
+const man = (v: number) =>
+	isEn ? '₩' + (v / 1e6).toFixed(1) + 'M' : Math.round(v / 10000).toLocaleString('ko-KR') + '만 원'
+const basisLabel = isEn
+	? `SMP·REC ${SOLAR.basis.replace('-', '.')}`
+	: `SMP·REC ${SOLAR.basis.slice(0, 4)}년 ${+SOLAR.basis.slice(5)}월 기준`
+
+const defaults = {
+	kw: 100,
+	yieldPerKw: SOLAR.yieldPerKw,
+	smp: SOLAR.smp,
+	rec: SOLAR.rec,
+	weight: 1,
+	costPerKw: SOLAR.costPerKw,
+	opexPerKw: SOLAR.opexPerKw,
+	loanPct: 0,
+	ratePct: 4.5,
+	years: 10
+}
+const r = computeSolar(defaults)
+const scenarios = (['low', 'now', 'high'] as const).map((key) => {
+	const s = SOLAR_SCENARIOS[key]
+	return { key, ...s, out: computeSolar({ ...defaults, ...s }) }
+})
+const scenarioName = (key: string) =>
+	({
+		low: isEn ? 'Conservative' : '보수',
+		now: isEn ? 'Current' : '현재',
+		high: isEn ? 'Optimistic' : '낙관'
+	})[key]
+
+const fields = [
+	{ id: 'kw', ko: '설비 용량', en: 'Capacity', unit: 'kW', step: '10', help: null },
+	{
+		id: 'yieldPerKw',
+		ko: 'kW당 연 발전량',
+		en: 'Annual yield per kW',
+		unit: 'kWh',
+		step: '50',
+		help: isEn
+			? 'Typical 1,200–1,400 depending on shading and orientation'
+			: '음영·방향에 따라 보통 1,200–1,400'
+	},
+	{
+		id: 'smp',
+		ko: 'SMP 단가',
+		en: 'SMP',
+		unit: isEn ? 'KRW/kWh' : '원/kWh',
+		step: '0.01',
+		help: null
+	},
+	{
+		id: 'rec',
+		ko: 'REC 단가',
+		en: 'REC price',
+		unit: isEn ? 'KRW/REC' : '원/REC',
+		step: '100',
+		help: null
+	},
+	{
+		id: 'weight',
+		ko: 'REC 가중치',
+		en: 'REC weight',
+		unit: '',
+		step: '0.1',
+		help: isEn
+			? 'Depends on site and size; confirm with the Korea Energy Agency'
+			: '입지·용량별로 다르니 한국에너지공단 기준 확인'
+	},
+	{
+		id: 'costPerKw',
+		ko: 'kW당 총 시공비',
+		en: 'Total cost per kW',
+		unit: isEn ? 'KRW' : '원',
+		step: '10000',
+		help: isEn ? '100 kW projects: about ₩1.6M–2.2M per kW' : '100kW 기준 kW당 160만–220만 원'
+	},
+	{
+		id: 'opexPerKw',
+		ko: 'kW당 연 운영비',
+		en: 'Annual O&M per kW',
+		unit: isEn ? 'KRW' : '원',
+		step: '1000',
+		help: isEn ? 'Inspection, insurance, monitoring' : '점검·보험·통신·잡비'
+	},
+	{ id: 'loanPct', ko: '대출 비율', en: 'Loan share', unit: '%', step: '5', help: null },
+	{ id: 'ratePct', ko: '대출 금리', en: 'Interest rate', unit: '%', step: '0.1', help: null },
+	{
+		id: 'years',
+		ko: '상환 기간',
+		en: 'Loan term',
+		unit: isEn ? 'yrs' : '년',
+		step: '1',
+		help: null
+	}
+]
+
+const title = isEn
+	? 'Solar Income Calculator 2026: Monthly Profit and Payback from SMP and REC'
+	: '태양광 발전 수익 계산기 2026: SMP·REC로 월 수익과 회수기간 계산'
+const description = isEn
+	? `Enter capacity, cost and loan to estimate solar revenue, monthly profit and payback. Default SMP ₩${SOLAR.smp}/kWh and REC ₩${num(SOLAR.rec)} (${SOLAR.basis}). 100 kW example: about ${man(r.monthlyNet)} a month after O&M.`
+	: `설비 용량·시공비·대출을 넣으면 태양광 매출, 월 순수익, 회수기간을 계산합니다. 기본값 SMP ${SOLAR.smp}원, REC ${num(SOLAR.rec)}원(${SOLAR.basis.slice(0, 4)}년 ${+SOLAR.basis.slice(5)}월). 100kW 예시 운영비 차감 후 월 약 ${man(r.monthlyNet)}.`
+
+const faq = isEn
+	? [
+			{
+				q: 'How much does a 100 kW solar plant earn a month?',
+				a: `With SMP ₩${SOLAR.smp}/kWh, REC ₩${num(SOLAR.rec)}, weight 1.0 and 1,300 kWh per kW a year, revenue is about ${man(r.revenue)} a year and about ${man(r.monthlyNet)} a month after O&M, before loan payments, tax and land rent.`
+			},
+			{
+				q: 'How often do SMP and REC prices change?',
+				a: 'Both move every month with fuel costs, grid conditions and REC supply. The defaults here are updated monthly; try the conservative scenario before committing.'
+			},
+			{
+				q: 'Does this work for farmland or agrivoltaic solar?',
+				a: 'The revenue formula is the same, but permits, grid connection and REC weights differ by site. Check land use, permits and grid capacity before trusting the numbers.'
+			},
+			{
+				q: 'What happens when I add a loan?',
+				a: 'Annual loan payments (equal principal and interest) are subtracted from net profit, showing the cash that actually reaches your account.'
+			}
+		]
+	: [
+			{
+				q: '100kW 태양광은 한 달에 얼마 남나요?',
+				a: `SMP ${SOLAR.smp}원, REC ${num(SOLAR.rec)}원, 가중치 1.0, kW당 연 1,300kWh로 계산하면 연 매출은 약 ${man(r.revenue)}, 운영비를 뺀 월 순수익은 약 ${man(r.monthlyNet)}입니다. 대출 원리금, 세금, 토지 임대료는 빠진 금액입니다.`
+			},
+			{
+				q: 'SMP와 REC는 얼마나 자주 바뀌나요?',
+				a: '연료비, 계통 상황, REC 수급에 따라 매달 움직입니다. 이 계산기의 기본값은 매달 갱신하며, 투자 결정 전에는 보수 시나리오로도 꼭 계산해 보세요.'
+			},
+			{
+				q: '농지 태양광이나 영농형 태양광도 같은 식으로 계산하나요?',
+				a: '매출 계산식은 같지만 인허가, 계통 연계, REC 가중치가 입지마다 다릅니다. 땅이 가능한지, 계통에 물릴 수 있는지 먼저 확인한 뒤 숫자를 보셔야 합니다.'
+			},
+			{
+				q: '대출을 넣으면 무엇이 달라지나요?',
+				a: '원리금 균등상환으로 계산한 연 상환액을 순수익에서 빼서, 실제로 통장에 남는 월 현금흐름을 보여 드립니다.'
+			}
+		]
+
+const related = [
+	{
+		href: `${prefix}/blog/solar-profitability-september-2026-smp-rec-construction-cost/`,
+		title: isEn
+			? 'Solar profitability, September 2026'
+			: '2026년 9월 기준 태양광 수익성, SMP·REC·시공비까지 현실 계산',
+		sub: isEn ? 'Scenario tables behind this calculator' : '이 계산기 기준값의 근거'
+	},
+	{
+		href: `${prefix}/blog/farmland-solar-100kw-monthly-profit/`,
+		title: isEn
+			? 'Farmland solar: 100 kW monthly profit'
+			: '농지 태양광 수익 계산, 100kW 기준 월 얼마 남을까',
+		sub: null
+	},
+	{
+		href: `${prefix}/blog/kepco-grid-connection-capacity-solar-risk/`,
+		title: isEn
+			? 'KEPCO grid connection capacity risk'
+			: '한전 계통연계 가능 용량 확인법, 태양광 접속 리스크 먼저 보는 법',
+		sub: null
+	},
+	{
+		href: `${prefix}/blog/agrivoltaic-permit-guide/`,
+		title: isEn ? 'Agrivoltaic permit guide' : '영농형 태양광 허가 받을 때 지자체가 보는 핵심 조건',
+		sub: null
+	}
+].map((l) => ({ ...l, sub: l.sub ?? undefined }))
+
+const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
+---
+
+<ToolShell
+	locale={locale}
+	title={title}
+	description={description}
+	h1={isEn ? 'Solar income calculator' : '태양광 발전 수익 계산기'}
+	lede={isEn
+		? 'Estimate revenue, monthly profit and payback from capacity, SMP, REC and construction cost. Add a loan to see the cash that actually remains.'
+		: '설비 용량과 SMP·REC 단가, 시공비로 매출과 월 순수익, 회수기간을 계산합니다. 대출을 넣으면 실제로 손에 남는 현금까지 보여 드립니다.'}
+	basis={basisLabel}
+	faq={faq}
+	related={related}
+	path='/tools/solar-income-calculator/'
+>
+	<form class='im-tool-form' id='im-solar-form' onsubmit='return false'>
+		<div class='im-field is-wide'>
+			<span class='im-label'>{isEn ? 'Price scenario' : '단가 시나리오'}</span>
+			<div class='im-chips'>
+				{
+					scenarios.map((s) => (
+						<button
+							type='button'
+							class='im-chip'
+							data-scenario={s.key}
+							aria-pressed={s.key === 'now' ? 'true' : 'false'}
+						>
+							{scenarioName(s.key)} · SMP {s.smp} · REC {num(s.rec)}
+						</button>
+					))
+				}
+			</div>
+		</div>
+		{
+			fields.map((f) => (
+				<label class='im-field'>
+					<span class='im-label'>{isEn ? f.en : f.ko}</span>
+					<span class='im-input'>
+						<input
+							data-field={f.id}
+							type='number'
+							inputmode='decimal'
+							min='0'
+							step={f.step}
+							value={(defaults as Record<string, number>)[f.id]}
+						/>
+						{f.unit && <span class='im-unit'>{f.unit}</span>}
+					</span>
+					{f.help && <span class='im-field-help'>{f.help}</span>}
+				</label>
+			))
+		}
+	</form>
+
+	<section class='im-tool-result' aria-live='polite'>
+		<p class='im-label'>{isEn ? 'Monthly profit after O&M' : '운영비를 뺀 월 순수익'}</p>
+		<div class='im-tool-best'>
+			<span class='im-tool-big' id='im-solar-big'>{won(r.monthlyNet)}</span>
+			<span class='im-tool-best-side'>
+				<strong>{isEn ? 'Payback' : '단순 회수'}</strong>
+				<span id='im-solar-payback'
+					>{
+						r.payback ? (isEn ? `${r.payback.toFixed(1)} yrs` : `${r.payback.toFixed(1)}년`) : '–'
+					}</span
+				>
+			</span>
+		</div>
+		<dl class='im-tool-stats' id='im-solar-stats'>
+			<div>
+				<dt>{isEn ? 'Annual generation' : '연 발전량'}</dt><dd data-out='kwh'>{num(r.kwh)} kWh</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'SMP revenue' : 'SMP 수익'}</dt><dd data-out='smpRevenue'>
+					{man(r.smpRevenue)}
+				</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'REC revenue' : 'REC 수익'}</dt><dd data-out='recRevenue'>
+					{man(r.recRevenue)}
+				</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'Annual revenue' : '연 매출'}</dt><dd data-out='revenue'>{man(r.revenue)}</dd>
+			</div>
+			<div><dt>{isEn ? 'Annual O&M' : '연 운영비'}</dt><dd data-out='opex'>{man(r.opex)}</dd></div>
+			<div>
+				<dt>{isEn ? 'Annual net profit' : '연 순수익'}</dt><dd data-out='net'>{man(r.net)}</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'Total investment' : '총 투자비'}</dt><dd data-out='cost'>{man(r.cost)}</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'Annual loan payment' : '연 대출 원리금'}</dt><dd data-out='debt'>
+					{man(r.debt)}
+				</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'Monthly cash after loan' : '대출 후 월 현금'}</dt><dd data-out='monthlyCash'>
+					{won(r.monthlyCash)}
+				</dd>
+			</div>
+		</dl>
+		<div class='im-tool-notes'>
+			<p>
+				<strong
+					>{
+						isEn
+							? 'Before tax, land rent and permit delays.'
+							: '세금, 토지 임대료, 인허가 지연 비용은 빠진 금액입니다.'
+					}</strong
+				>
+				{
+					isEn
+						? ' SMP and REC change monthly and output varies with shading, soiling and inverter efficiency, so compare the conservative scenario as well. REC weights differ by site and capacity.'
+						: ' SMP와 REC는 매달 바뀌고, 발전량은 음영·오염·인버터 효율에 따라 달라집니다. 보수 시나리오로도 함께 계산해 보세요. REC 가중치는 입지와 용량에 따라 다릅니다.'
+				}
+			</p>
+		</div>
+	</section>
+
+	<section class='im-tool-section'>
+		<h2 class='im-label'>{isEn ? 'Three scenarios for 100 kW' : '100kW 시나리오 비교'}</h2>
+		<table class='im-tool-table'>
+			<thead>
+				<tr>
+					<th>{isEn ? 'Scenario' : '시나리오'}</th>
+					<th class='is-hide-sm'>SMP · REC</th>
+					<th class='is-hide-sm'>{isEn ? 'Cost' : '시공비'}</th>
+					<th>{isEn ? 'Monthly net' : '월 순수익'}</th>
+					<th>{isEn ? 'Payback' : '회수'}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{
+					scenarios.map((s) => (
+						<tr>
+							<td>{scenarioName(s.key)}</td>
+							<td class='is-hide-sm'>
+								{s.smp} · {num(s.rec)}
+							</td>
+							<td class='is-hide-sm'>{man(s.out.cost)}</td>
+							<td>{man(s.out.monthlyNet)}</td>
+							<td>
+								{s.out.payback?.toFixed(1)}
+								{isEn ? ' yrs' : '년'}
+							</td>
+						</tr>
+					))
+				}
+			</tbody>
+		</table>
+	</section>
+
+	<section class='im-tool-section'>
+		<h2 class='im-label'>{isEn ? 'How it is calculated' : '계산 방법'}</h2>
+		<pre>{
+			isEn
+				? 'Generation   = capacity (kW) × yield per kW\nSMP revenue  = generation × SMP\nREC revenue  = generation ÷ 1,000 × weight × REC price\nNet profit   = SMP + REC revenue − O&M\nPayback      = total cost ÷ annual net profit'
+				: '연 발전량   = 설비 용량(kW) × kW당 연 발전량\nSMP 수익    = 연 발전량 × SMP 단가\nREC 수익    = 연 발전량 ÷ 1,000 × 가중치 × REC 단가\n연 순수익   = SMP 수익 + REC 수익 − 연 운영비\n단순 회수기간 = 총 투자비 ÷ 연 순수익'}</pre>
+		<p>
+			{
+				isEn
+					? `Defaults: land SMP average shown on the one-stop business portal and the land REC spot average for ${SOLAR.basis}, 1,300 kWh per kW a year, ₩35,000 O&M per kW a year, ₩1.8M construction per kW.`
+					: `기본값은 원스톱 사업정보 통합포털의 ${SOLAR.basis.slice(0, 4)}년 ${+SOLAR.basis.slice(5)}월 육지 SMP 평균과 REC 현물 육지 평균, kW당 연 1,300kWh, kW당 연 운영비 3만 5천 원, kW당 시공비 180만 원입니다.`
+			}
+		</p>
+	</section>
+
+	<script type='application/json' id='im-solar-data' set:html={JSON.stringify(data)} />
+</ToolShell>
+
+<script>
+	import { computeSolar, type SolarInput } from '@/data/tools'
+
+	const data = JSON.parse(document.getElementById('im-solar-data')!.textContent || '{}') as {
+		defaults: SolarInput
+		scenarios: Record<string, { smp: number; rec: number; costPerKw: number }>
+		isEn: boolean
+	}
+	const { isEn } = data
+	const inputs = Array.from(
+		document.querySelectorAll<HTMLInputElement>('#im-solar-form [data-field]')
+	)
+	const chips = Array.from(
+		document.querySelectorAll<HTMLButtonElement>('#im-solar-form [data-scenario]')
+	)
+	const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
+	const won = (v: number) => (isEn ? '₩' + num(v) : num(v) + '원')
+	const man = (v: number) =>
+		isEn
+			? '₩' + (v / 1e6).toFixed(1) + 'M'
+			: Math.round(v / 10000).toLocaleString('ko-KR') + '만 원'
+	const field = (id: string) => inputs.find((el) => el.dataset.field === id)!
+
+	function read(): SolarInput {
+		const v = {} as Record<string, number>
+		inputs.forEach((el) => (v[el.dataset.field!] = Math.max(0, Number(el.value) || 0)))
+		return v as unknown as SolarInput
+	}
+
+	function render() {
+		const r = computeSolar(read())
+		document.getElementById('im-solar-big')!.textContent = won(r.monthlyNet)
+		document.getElementById('im-solar-payback')!.textContent = r.payback
+			? isEn
+				? `${r.payback.toFixed(1)} yrs`
+				: `${r.payback.toFixed(1)}년`
+			: '–'
+		const out: Record<string, string> = {
+			kwh: num(r.kwh) + ' kWh',
+			smpRevenue: man(r.smpRevenue),
+			recRevenue: man(r.recRevenue),
+			revenue: man(r.revenue),
+			opex: man(r.opex),
+			net: man(r.net),
+			cost: man(r.cost),
+			debt: man(r.debt),
+			monthlyCash: won(r.monthlyCash)
+		}
+		document.querySelectorAll<HTMLElement>('#im-solar-stats [data-out]').forEach((dd) => {
+			dd.textContent = out[dd.dataset.out!]
+		})
+		const s = read()
+		chips.forEach((c) => {
+			const sc = data.scenarios[c.dataset.scenario!]
+			c.setAttribute(
+				'aria-pressed',
+				String(sc.smp === s.smp && sc.rec === s.rec && sc.costPerKw === s.costPerKw)
+			)
+		})
+	}
+
+	chips.forEach((c) =>
+		c.addEventListener('click', () => {
+			const sc = data.scenarios[c.dataset.scenario!]
+			field('smp').value = String(sc.smp)
+			field('rec').value = String(sc.rec)
+			field('costPerKw').value = String(sc.costPerKw)
+			render()
+		})
+	)
+	inputs.forEach((el) => el.addEventListener('input', render))
+
+	const params = new URLSearchParams(location.search)
+	const kw = Number(params.get('kw'))
+	if (kw > 0) field('kw').value = String(kw)
+	render()
+</script>

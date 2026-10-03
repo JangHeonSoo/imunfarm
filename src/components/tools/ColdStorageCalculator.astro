@@ -1,0 +1,376 @@
+---
+import ToolShell from '@/components/tools/ToolShell'
+import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+import { COLD_ANCHORS, COLD_TARIFF, COLD_USAGE, CROPS, computeCold } from '@/data/tools'
+
+const { locale = DEFAULT_LOCALE } = Astro.props
+const isEn = locale === 'en'
+const prefix = getLocalePrefix(locale)
+
+const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
+const won = (v: number) => (isEn ? '₩' + num(v) : num(v) + '원')
+const man = (v: number) =>
+	isEn ? '₩' + (v / 1e6).toFixed(1) + 'M' : Math.round(v / 10000).toLocaleString('ko-KR') + '만 원'
+const range = (a: number, b: number) =>
+	isEn ? `${man(a)}–${man(b)}` : `${Math.round(a / 10000).toLocaleString('ko-KR')}만–${man(b)}`
+const usageName = (id: string) =>
+	({ low: isEn ? 'Light' : '적게', mid: isEn ? 'Normal' : '보통', high: isEn ? 'Heavy' : '많이' })[
+		id
+	]
+
+const defaults = { pyeong: 5, usage: 35, subsidy: 50, crop: 'apple' }
+const r = computeCold(defaults.pyeong, defaults.usage, defaults.subsidy)
+const crop = CROPS.find((c) => c.id === defaults.crop)!
+const anchorRows = COLD_ANCHORS.map((a) => ({ ...a, out: computeCold(a.pyeong, 35, 50) }))
+
+const title = isEn
+	? 'Farm Cold Storage Cost Calculator: Build Cost and Electricity by Size'
+	: '농업용 저온저장고 설치비 계산기: 3평·5평·10평 가격과 전기료'
+const description = isEn
+	? `Enter size, usage and subsidy to estimate cold storage build cost, your share and monthly electricity, with storage temperature and humidity by crop. 5 pyeong example: ${range(r.min, r.max)}, about ${won(r.monthly)} a month in power.`
+	: `평수·사용 정도·보조금 비율을 넣으면 저온저장고 설치비 범위와 자부담, 월 전기료를 계산하고 품목별 저장 온도·습도를 알려 드립니다. 5평 예시 설치비 ${range(r.min, r.max)}, 월 전기료 약 ${won(r.monthly)}.`
+
+const faq = isEn
+	? [
+			{
+				q: 'How much does a farm cold storage room cost?',
+				a: `As a planning range: 3 pyeong about ₩6.5M–9M, 5 pyeong ₩11M–17M, 10 pyeong ₩25M–38M or more. Electrical work, foundations and contracted power can push costs higher.`
+			},
+			{
+				q: 'What is the monthly electricity bill?',
+				a: `Using the KEPCO agricultural (B) low-voltage tariff of ₩${COLD_TARIFF.basicPerKw}/kW and ₩${COLD_TARIFF.perKwh}/kWh, a 5 pyeong room at normal use comes to about ${won(r.monthly)} a month before VAT and other charges.`
+			},
+			{
+				q: 'How does the subsidy work?',
+				a: 'Local governments often cover part of the cost, commonly around half, with eligibility and contractor rules. Enter your expected subsidy rate to see your own share.'
+			},
+			{
+				q: 'Can I store different crops together?',
+				a: 'Not always. Apples and pears give off ethylene, which softens persimmons and makes carrots bitter. Crops needing 0℃ and crops needing 7–15℃ also cannot share one room.'
+			}
+		]
+	: [
+			{
+				q: '저온저장고 3평·5평·10평은 얼마인가요?',
+				a: '견적 비교용 범위로 3평 약 650만–900만 원, 5평 1,100만–1,700만 원, 10평 2,500만–3,800만 원 이상입니다. 전기 인입, 기초 공사, 계약전력 조건에 따라 더 올라갈 수 있습니다.'
+			},
+			{
+				q: '저온저장고 전기료는 한 달에 얼마인가요?',
+				a: `한전 농사용전력(을) 저압 기본요금 ${num(COLD_TARIFF.basicPerKw)}원/kW, 전력량요금 ${COLD_TARIFF.perKwh}원/kWh로 계산하면 5평 보통 사용 기준 월 약 ${won(r.monthly)}입니다. 부가세와 각종 부가 항목은 빠진 금액입니다.`
+			},
+			{
+				q: '보조금은 얼마나 나오나요?',
+				a: '지자체 보조사업으로 설치비의 절반 정도를 지원하는 경우가 많지만, 대상과 시공업체 조건이 지역마다 다릅니다. 예상 보조율을 넣으시면 자부담을 바로 계산합니다.'
+			},
+			{
+				q: '여러 품목을 같이 보관해도 되나요?',
+				a: '품목에 따라 안 됩니다. 사과·배는 에틸렌을 많이 내서 단감은 빨리 물러지고 당근은 쓴맛이 납니다. 0℃ 품목과 7–15℃ 품목도 한 저장고에 둘 수 없습니다.'
+			}
+		]
+
+const related = [
+	{
+		href: `${prefix}/blog/cold-storage-price-2026-3-5-10-pyeong/`,
+		title: isEn
+			? 'Farm cold storage prices 2026: 3, 5 and 10 pyeong'
+			: '농업용 저온저장고 가격표 2026: 3평·5평·10평 설치비와 전기료',
+		sub: isEn ? 'Ranges behind this calculator' : '이 계산기 기준값의 근거'
+	},
+	{
+		href: `${prefix}/blog/cold-storage-electricity-cost-3-5-10-pyeong/`,
+		title: isEn
+			? 'Cold storage electricity cost by size'
+			: '농업용 저온저장고 전기비 계산법, 3평·5평·10평 기준',
+		sub: undefined
+	},
+	{
+		href: `${prefix}/blog/cold-storage-temperature-humidity-by-crop/`,
+		title: isEn
+			? 'Cold storage temperature and humidity by crop'
+			: '저온저장고 온도 설정표: 품목별 온도·습도',
+		sub: undefined
+	},
+	{
+		href: `${prefix}/blog/agricultural-cold-storage-profitability/`,
+		title: isEn
+			? 'Is a farm cold storage room worth it'
+			: '농업용 저온저장고, 설치비와 전기료까지 따져야 돈이 된다',
+		sub: undefined
+	}
+]
+
+const data = { defaults, crops: CROPS, isEn }
+---
+
+<ToolShell
+	locale={locale}
+	title={title}
+	description={description}
+	h1={isEn ? 'Farm cold storage cost calculator' : '농업용 저온저장고 설치비 계산기'}
+	lede={isEn
+		? 'Estimate build cost, your share after subsidy and monthly electricity from the size of the room. Pick a crop to see its storage temperature and humidity.'
+		: '평수로 설치비 범위와 보조금을 뺀 자부담, 월 전기료를 계산합니다. 보관할 품목을 고르면 적정 온도와 습도도 함께 알려 드립니다.'}
+	basis={isEn
+		? `KEPCO tariff ${COLD_TARIFF.basis.replace(/-/g, '.')}`
+		: `한전 요금표 ${COLD_TARIFF.basis.replace(/-/g, '.')} 적용`}
+	faq={faq}
+	related={related}
+	path='/tools/cold-storage-cost-calculator/'
+>
+	<form class='im-tool-form' id='im-cold-form' onsubmit='return false'>
+		<div class='im-field is-wide'>
+			<span class='im-label'>{isEn ? 'Size (pyeong, 1 pyeong ≈ 3.3 ㎡)' : '평수'}</span>
+			<div class='im-chips'>
+				{
+					[3, 5, 10].map((p) => (
+						<button
+							type='button'
+							class='im-chip'
+							data-pyeong={p}
+							aria-pressed={p === defaults.pyeong ? 'true' : 'false'}
+						>
+							{p}
+							{isEn ? ' pyeong' : '평'}
+						</button>
+					))
+				}
+				<label class='im-input' style='height:40px;width:130px'>
+					<input
+						id='im-cold-pyeong'
+						type='number'
+						inputmode='decimal'
+						min='1'
+						max='30'
+						step='0.5'
+						value={defaults.pyeong}
+						aria-label={isEn ? 'Size in pyeong' : '평수 직접 입력'}
+					/>
+					<span class='im-unit'>{isEn ? 'pyeong' : '평'}</span>
+				</label>
+			</div>
+		</div>
+		<div class='im-field is-wide'>
+			<span class='im-label'
+				>{isEn ? 'How often the compressor runs' : '사용 정도 (냉동기 가동률)'}</span
+			>
+			<div class='im-chips'>
+				{
+					COLD_USAGE.map((u) => (
+						<button
+							type='button'
+							class='im-chip'
+							data-usage={u.pct}
+							aria-pressed={u.pct === defaults.usage ? 'true' : 'false'}
+						>
+							{usageName(u.id)} {u.pct}%
+						</button>
+					))
+				}
+			</div>
+		</div>
+		<label class='im-field'>
+			<span class='im-label'>{isEn ? 'Subsidy rate' : '보조금 비율'}</span>
+			<span class='im-input'>
+				<input
+					id='im-cold-subsidy'
+					type='number'
+					inputmode='numeric'
+					min='0'
+					max='90'
+					step='5'
+					value={defaults.subsidy}
+				/>
+				<span class='im-unit'>%</span>
+			</span>
+		</label>
+		<label class='im-field is-4 is-full-sm'>
+			<span class='im-label'>{isEn ? 'Main crop to store' : '주로 보관할 품목'}</span>
+			<span class='im-input is-select'>
+				<select id='im-cold-crop'>
+					{
+						CROPS.map((c) => (
+							<option value={c.id} selected={c.id === defaults.crop}>
+								{isEn ? c.en : c.ko}
+							</option>
+						))
+					}
+				</select>
+			</span>
+		</label>
+	</form>
+
+	<section class='im-tool-result' aria-live='polite'>
+		<p class='im-label'>{isEn ? 'Estimated build cost' : '예상 설치비'}</p>
+		<div class='im-tool-best'>
+			<span class='im-tool-big' id='im-cold-big'>{range(r.min, r.max)}</span>
+			<span class='im-tool-best-side'>
+				<strong>{isEn ? 'Your share' : '자부담'}</strong>
+				<span id='im-cold-self'>{range(r.selfMin, r.selfMax)}</span>
+			</span>
+		</div>
+		<dl class='im-tool-stats' id='im-cold-stats'>
+			<div>
+				<dt>{isEn ? 'Compressor (assumed)' : '냉동기 소비전력 가정'}</dt><dd data-out='kw'>
+					{r.kw.toFixed(1)} kW
+				</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'Monthly use' : '월 사용량'}</dt><dd data-out='kwh'>{num(r.kwh)} kWh</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'Monthly electricity' : '월 전기료'}</dt><dd data-out='monthly'>
+					{won(r.monthly)}
+				</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'Yearly electricity' : '연 전기료'}</dt><dd data-out='yearly'>
+					{won(r.yearly)}
+				</dd>
+			</div>
+			<div>
+				<dt>{isEn ? 'Storage temperature' : '저장 온도'}</dt><dd data-crop='temp'>{crop.temp}</dd>
+			</div>
+			<div><dt>{isEn ? 'Humidity' : '상대습도'}</dt><dd data-crop='rh'>{crop.rh}</dd></div>
+		</dl>
+		<div class='im-tool-notes'>
+			<p id='im-cold-crop-note'>
+				<strong>{isEn ? crop.en : crop.ko}</strong>
+				{isEn ? ` · ${crop.lifeEn} · ${crop.noteEn}` : ` · ${crop.life} · ${crop.note}`}
+			</p>
+			<p>
+				<strong
+					>{isEn ? 'A planning range, not a quote.' : '견적이 아니라 비교용 범위입니다.'}</strong
+				>
+				{
+					isEn
+						? ' Electrical service, foundations, doors and contracted power change the price. Electricity excludes VAT, the power industry fund and fuel adjustments. Above 10 pyeong the range is extrapolated, so get a site quote.'
+						: ' 전기 인입, 기초 공사, 출입문 사양, 계약전력에 따라 금액이 달라집니다. 전기료는 부가세, 전력산업기반기금, 연료비조정액이 빠진 금액입니다. 10평이 넘는 규모는 비율로 늘린 값이라 반드시 현장 견적을 받아 보세요.'
+				}
+			</p>
+		</div>
+	</section>
+
+	<section class='im-tool-section'>
+		<h2 class='im-label'>{isEn ? 'Reference sizes' : '평형별 기준값 (보통 사용, 보조금 50%)'}</h2>
+		<table class='im-tool-table'>
+			<thead>
+				<tr>
+					<th>{isEn ? 'Size' : '규모'}</th>
+					<th>{isEn ? 'Build cost' : '설치비'}</th>
+					<th class='is-hide-sm'>{isEn ? 'Your share' : '자부담'}</th>
+					<th>{isEn ? 'Power / month' : '월 전기료'}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{
+					anchorRows.map((a) => (
+						<tr>
+							<td>
+								{a.pyeong}
+								{isEn ? ' pyeong' : '평'} · {a.kw}kW
+							</td>
+							<td>{range(a.out.min, a.out.max)}</td>
+							<td class='is-hide-sm'>{range(a.out.selfMin, a.out.selfMax)}</td>
+							<td>{won(a.out.monthly)}</td>
+						</tr>
+					))
+				}
+			</tbody>
+		</table>
+	</section>
+
+	<section class='im-tool-section'>
+		<h2 class='im-label'>{isEn ? 'How it is calculated' : '계산 방법'}</h2>
+		<pre>{
+			isEn
+				? 'Monthly kWh   = compressor kW × run rate × 24 h × 30 days\nEnergy charge = monthly kWh × ₩' + COLD_TARIFF.perKwh + '\nBasic charge  = compressor kW × ₩' + num(COLD_TARIFF.basicPerKw) + '\nYour share    = build cost × (1 − subsidy rate)'
+				: '월 사용량  = 냉동기 소비전력(kW) × 가동률 × 24시간 × 30일\n전력량요금 = 월 사용량 × ' + COLD_TARIFF.perKwh + '원\n기본요금   = 냉동기 소비전력 × ' + num(COLD_TARIFF.basicPerKw) + '원\n자부담     = 설치비 × (1 − 보조금 비율)'}</pre>
+		<p>
+			{
+				isEn
+					? 'Build cost ranges come from local government subsidy notices and installer quotes summarised in our cold storage price guide; sizes between 3, 5 and 10 pyeong are interpolated. Storage conditions come from the Rural Development Administration and USDA Handbook 66.'
+					: '설치비 범위는 지자체 보조사업 공고와 시공 견적을 정리한 IMUN.FARM 저온저장고 가격표 글의 값이며, 3·5·10평 사이 평수는 비례해서 계산합니다. 품목별 저장 조건은 농촌진흥청 자료와 USDA Handbook 66을 따랐습니다.'
+			}
+		</p>
+	</section>
+
+	<script type='application/json' id='im-cold-data' set:html={JSON.stringify(data)} />
+</ToolShell>
+
+<script>
+	import { CROPS, computeCold } from '@/data/tools'
+
+	const isEn = JSON.parse(document.getElementById('im-cold-data')!.textContent || '{}')
+		.isEn as boolean
+	const pyeongIn = document.getElementById('im-cold-pyeong') as HTMLInputElement
+	const subsidyIn = document.getElementById('im-cold-subsidy') as HTMLInputElement
+	const cropSel = document.getElementById('im-cold-crop') as HTMLSelectElement
+	const pyeongChips = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-pyeong]'))
+	const usageChips = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-usage]'))
+	let usage = Number(
+		usageChips.find((c) => c.getAttribute('aria-pressed') === 'true')?.dataset.usage || 35
+	)
+
+	const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
+	const won = (v: number) => (isEn ? '₩' + num(v) : num(v) + '원')
+	const man = (v: number) =>
+		isEn
+			? '₩' + (v / 1e6).toFixed(1) + 'M'
+			: Math.round(v / 10000).toLocaleString('ko-KR') + '만 원'
+	const range = (a: number, b: number) =>
+		isEn ? `${man(a)}–${man(b)}` : `${Math.round(a / 10000).toLocaleString('ko-KR')}만–${man(b)}`
+
+	function render() {
+		const pyeong = Math.max(0.5, Number(pyeongIn.value) || 0)
+		const subsidy = Math.min(100, Math.max(0, Number(subsidyIn.value) || 0))
+		const r = computeCold(pyeong, usage, subsidy)
+		document.getElementById('im-cold-big')!.textContent = range(r.min, r.max)
+		document.getElementById('im-cold-self')!.textContent = range(r.selfMin, r.selfMax)
+		const out: Record<string, string> = {
+			kw: r.kw.toFixed(1) + ' kW',
+			kwh: num(r.kwh) + ' kWh',
+			monthly: won(r.monthly),
+			yearly: won(r.yearly)
+		}
+		document.querySelectorAll<HTMLElement>('#im-cold-stats [data-out]').forEach((dd) => {
+			dd.textContent = out[dd.dataset.out!]
+		})
+		const crop = CROPS.find((c) => c.id === cropSel.value)!
+		document.querySelectorAll<HTMLElement>('#im-cold-stats [data-crop]').forEach((dd) => {
+			dd.textContent = (crop as Record<string, string>)[dd.dataset.crop!]
+		})
+		const note = document.getElementById('im-cold-crop-note')!
+		note.innerHTML = ''
+		const strong = document.createElement('strong')
+		strong.textContent = isEn ? crop.en : crop.ko
+		note.append(
+			strong,
+			isEn ? ` · ${crop.lifeEn} · ${crop.noteEn}` : ` · ${crop.life} · ${crop.note}`
+		)
+		pyeongChips.forEach((c) =>
+			c.setAttribute('aria-pressed', String(Number(c.dataset.pyeong) === pyeong))
+		)
+		usageChips.forEach((c) =>
+			c.setAttribute('aria-pressed', String(Number(c.dataset.usage) === usage))
+		)
+	}
+
+	pyeongChips.forEach((c) =>
+		c.addEventListener('click', () => {
+			pyeongIn.value = c.dataset.pyeong!
+			render()
+		})
+	)
+	usageChips.forEach((c) =>
+		c.addEventListener('click', () => {
+			usage = Number(c.dataset.usage)
+			render()
+		})
+	)
+	;[pyeongIn, subsidyIn].forEach((el) => el.addEventListener('input', render))
+	cropSel.addEventListener('change', render)
+
+	const p = Number(new URLSearchParams(location.search).get('pyeong'))
+	if (p > 0) pyeongIn.value = String(p)
+	render()
+</script>

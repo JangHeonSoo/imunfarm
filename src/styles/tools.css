@@ -1,0 +1,586 @@
+/* 농업 계산기 (/tools/) 공통 스타일. 사이트 본문과 같은 760px 한 줄 폭, 흑백 에디토리얼. */
+
+.im-tool {
+	width: min(calc(var(--measure) + 2 * var(--gutter)), 100%);
+	margin: 0 auto;
+	padding: clamp(22px, 3vw, 34px) var(--gutter) var(--bottom);
+}
+
+.im-tool-crumb {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 0;
+}
+
+.im-tool-crumb a:hover {
+	color: var(--ink);
+}
+
+.im-tool h1 {
+	margin: 10px 0 10px;
+	font-size: clamp(26px, 3.4vw, 40px);
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: -0.01em;
+}
+
+.im-tool-lede {
+	margin: 0 0 26px;
+	color: var(--muted);
+	font-size: 15px;
+	line-height: 1.7;
+}
+
+/* 입력 */
+.im-tool-form {
+	display: grid;
+	grid-template-columns: repeat(6, minmax(0, 1fr));
+	gap: 16px 18px;
+	padding-top: 18px;
+	border-top: 1px solid var(--ink);
+}
+
+.im-field {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	grid-column: span 2;
+	gap: 7px;
+	align-content: start;
+	min-width: 0;
+}
+
+.im-field.is-wide {
+	grid-column: 1 / -1;
+}
+
+.im-field.is-half {
+	grid-column: span 3;
+}
+
+.im-field.is-4 {
+	grid-column: span 4;
+}
+
+.im-field.is-narrow {
+	grid-column: span 1;
+}
+
+.im-field > .im-label {
+	margin: 0;
+}
+
+.im-input {
+	position: relative;
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	gap: 8px;
+	height: 46px;
+	padding: 0 12px;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	background: transparent;
+	transition: border-color 0.15s;
+}
+
+.im-input:focus-within {
+	border-color: var(--ink);
+}
+
+.im-input input,
+.im-input select {
+	flex: 1 1 0;
+	width: 100%;
+	min-width: 0;
+	height: 100%;
+	border: 0;
+	background: transparent;
+	color: var(--ink);
+	font: inherit;
+	font-size: 15px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	outline: none;
+	appearance: none;
+	-webkit-appearance: none;
+}
+
+.im-input select {
+	padding-right: 18px;
+	cursor: pointer;
+}
+
+.im-input select option {
+	background: var(--bg);
+	color: var(--ink);
+}
+
+.im-input.is-select::after {
+	content: '▾';
+	position: absolute;
+	right: 12px;
+	color: var(--ink);
+	font-size: 13px;
+	pointer-events: none;
+}
+
+.im-input img {
+	flex: none;
+	width: 30px;
+	height: 30px;
+	border-radius: 4px;
+	object-fit: cover;
+	mix-blend-mode: multiply;
+}
+
+html.dark .im-input img {
+	mix-blend-mode: normal;
+}
+
+.im-input small,
+.im-input .im-unit {
+	flex: none;
+	color: var(--muted);
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+.im-input input::-webkit-outer-spin-button,
+.im-input input::-webkit-inner-spin-button {
+	margin: 0;
+	-webkit-appearance: none;
+}
+
+.im-input input[type='number'] {
+	-moz-appearance: textfield;
+}
+
+.im-field-help {
+	margin: 0;
+	color: var(--muted);
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.im-costs {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.im-costs .im-input {
+	height: 40px;
+	padding: 0 10px;
+}
+
+.im-costs .im-input input {
+	font-size: 13px;
+	text-align: right;
+}
+
+.im-costs .im-input span {
+	color: var(--muted);
+	font-size: 13px;
+	font-weight: 500;
+}
+
+/* 선택 칩 (시나리오, 평수, 사용 정도) */
+.im-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.im-chip {
+	min-height: 40px;
+	padding: 0 14px;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: none;
+	color: var(--ink);
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.im-chip[aria-pressed='true'] {
+	border-color: var(--ink);
+	background: var(--ink);
+	color: var(--bg);
+}
+
+/* 결과 */
+.im-tool-result {
+	margin-top: 30px;
+	padding-top: 18px;
+	border-top: 1px solid var(--ink);
+}
+
+.im-tool-best {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 6px 16px;
+	margin-top: 6px;
+}
+
+.im-tool-big {
+	font-size: clamp(34px, 5vw, 52px);
+	font-weight: 800;
+	line-height: 1.05;
+	letter-spacing: -0.01em;
+	font-variant-numeric: tabular-nums;
+}
+
+.im-tool-best-side {
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.im-tool-best-side strong {
+	margin-right: 6px;
+	font-size: 18px;
+	font-weight: 700;
+}
+
+.im-up-text {
+	color: var(--up);
+}
+
+.im-down-text {
+	color: var(--down);
+}
+
+.im-tool-stats {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0;
+	margin-top: 22px;
+	border-top: 1px solid var(--line);
+}
+
+.im-tool-stats > div {
+	display: grid;
+	gap: 4px;
+	padding: 14px 12px 14px 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.im-tool-stats dt {
+	color: var(--muted);
+	font-size: 12px;
+}
+
+.im-tool-stats dd {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.im-tool-table {
+	width: 100%;
+	margin-top: 18px;
+	border-collapse: collapse;
+	font-size: 14px;
+}
+
+.im-tool-table th {
+	padding: 8px 6px;
+	border-bottom: 1px solid var(--line);
+	color: var(--muted);
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: 0.1em;
+	text-align: right;
+	text-transform: uppercase;
+}
+
+.im-tool-table td {
+	padding: 12px 6px;
+	border-bottom: 1px solid var(--line);
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	vertical-align: top;
+}
+
+.im-tool-table th:first-child,
+.im-tool-table td:first-child {
+	text-align: left;
+}
+
+.im-tool-table tr.is-top td {
+	font-weight: 700;
+}
+
+.im-tool-rank {
+	margin-right: 6px;
+	color: var(--muted);
+	font-weight: 600;
+}
+
+.im-tool-warn {
+	display: block;
+	margin-top: 3px;
+	color: var(--up);
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.im-bar {
+	display: block;
+	height: 4px;
+	margin-top: 6px;
+	margin-left: auto;
+	border-radius: 2px;
+	background: var(--faint);
+}
+
+tr.is-top .im-bar {
+	background: var(--ink);
+}
+
+.im-tool-notes {
+	margin-top: 22px;
+	color: var(--muted);
+	font-size: 13px;
+	line-height: 1.75;
+}
+
+.im-tool-notes p {
+	margin: 0 0 8px;
+}
+
+.im-tool-notes strong {
+	color: var(--ink);
+	font-weight: 600;
+}
+
+.im-tool-notes a,
+.im-tool-section a.im-inline {
+	color: var(--ink);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+/* 설명 (검색엔진·사용자 공용) */
+.im-tool-section {
+	margin-top: 40px;
+	padding-top: 14px;
+	border-top: 1px solid var(--ink);
+	font-size: 15px;
+	line-height: 1.75;
+}
+
+.im-tool-section h2 {
+	margin: 0 0 12px;
+}
+
+.im-tool-section p {
+	margin: 0 0 12px;
+}
+
+.im-tool-section pre {
+	overflow-x: auto;
+	margin: 0 0 12px;
+	padding: 12px 14px;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	font-size: 13px;
+	line-height: 1.6;
+}
+
+.im-tool-section .im-tool-table {
+	margin-top: 4px;
+}
+
+.im-tool-pick {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--ink);
+	font: inherit;
+	font-weight: 600;
+	text-align: left;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	cursor: pointer;
+}
+
+.im-tool-faq {
+	margin-top: 40px;
+	padding-top: 14px;
+	border-top: 1px solid var(--ink);
+}
+
+.im-tool-faq h2,
+.im-tool-related h2 {
+	margin: 0 0 4px;
+}
+
+.im-tool-faq details {
+	border-bottom: 1px solid var(--line);
+}
+
+.im-tool-faq summary {
+	padding: 14px 0;
+	font-size: 15px;
+	font-weight: 600;
+	cursor: pointer;
+	list-style: none;
+}
+
+.im-tool-faq summary::-webkit-details-marker {
+	display: none;
+}
+
+.im-tool-faq summary::after {
+	content: '+';
+	float: right;
+	color: var(--muted);
+	font-weight: 500;
+}
+
+.im-tool-faq details[open] summary::after {
+	content: '−';
+}
+
+.im-tool-faq details p {
+	margin: 0 0 14px;
+	color: var(--muted);
+	font-size: 14px;
+	line-height: 1.7;
+}
+
+.im-tool-related {
+	margin-top: 36px;
+	padding-top: 14px;
+	border-top: 1px solid var(--ink);
+}
+
+.im-tool-related a {
+	display: block;
+	padding: 12px 0;
+	border-bottom: 1px solid var(--line);
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.im-tool-related a span {
+	display: block;
+	margin-top: 3px;
+	color: var(--muted);
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.im-tool-related a:hover,
+.im-tools-hub a:hover h2 {
+	opacity: 0.6;
+}
+
+.im-tool-more {
+	margin: 28px 0 0;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+/* /tools/ 목록 */
+.im-tools-hub {
+	border-top: 1px solid var(--ink);
+}
+
+.im-tools-hub a {
+	display: grid;
+	grid-template-columns: 44px minmax(0, 1fr) auto;
+	gap: 18px;
+	align-items: start;
+	padding: 22px 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.im-tools-no {
+	padding-top: 4px;
+	color: var(--muted);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.im-tools-hub h2 {
+	margin: 0 0 6px;
+	font-size: 20px;
+	font-weight: 700;
+}
+
+.im-tools-hub p {
+	margin: 0;
+	color: var(--muted);
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.im-tools-hub p.im-tools-ex {
+	margin-top: 10px;
+	color: var(--ink);
+	font-size: 13px;
+}
+
+.im-tools-go {
+	margin-top: 2px;
+	padding: 7px 14px;
+	border: 1px solid var(--ink);
+	border-radius: 999px;
+	font-size: 13px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+	.im-tool-form {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.im-field,
+	.im-field.is-half,
+	.im-field.is-4,
+	.im-field.is-narrow {
+		grid-column: span 1;
+	}
+
+	.im-field.is-full-sm {
+		grid-column: 1 / -1;
+	}
+
+	.im-costs {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.im-tool-stats {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.im-tool-table .is-hide-sm {
+		display: none;
+	}
+
+	.im-tools-hub a {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 12px;
+	}
+
+	.im-tools-no {
+		display: none;
+	}
+
+	.im-tools-go {
+		justify-self: start;
+	}
+}
+
+.im-tool .im-label {
+	text-transform: none;
+}

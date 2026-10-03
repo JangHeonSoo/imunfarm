@@ -1,0 +1,132 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+import { ITEMS, buildMarketQuotes, getPriceAsOfDate, REGIONS } from '@/data/prices'
+import { SOLAR, computeCold, computeMarket, computeSolar, feeFor } from '@/data/tools'
+import '../../styles/tools.css'
+
+const { locale = DEFAULT_LOCALE } = Astro.props
+const isEn = locale === 'en'
+const prefix = getLocalePrefix(locale)
+const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
+const won = (v: number) => (isEn ? '₩' + num(v) : num(v) + '원')
+const man = (v: number) =>
+	isEn ? '₩' + (v / 1e6).toFixed(1) + 'M' : Math.round(v / 10000).toLocaleString('ko-KR') + '만 원'
+
+// 예시 1: 방울토마토 100상자 (오늘 시세, 운송비 제외)
+const { asOf, quotes } = buildMarketQuotes(getPriceAsOfDate())
+const sample = ITEMS.find((i) => i.id === 'cherry-tomato')!
+const marketRows = computeMarket({
+	regions: REGIONS.map((r) => {
+		const q = quotes[sample.id][r.id]
+		return {
+			id: r.id,
+			label: isEn ? r.en : r.ko,
+			price: q?.price ?? null,
+			date: q?.date ?? null,
+			since: q?.since ?? null
+		}
+	}),
+	qty: 100,
+	feePct: feeFor(sample.id),
+	transport: {}
+})
+const best = marketRows[0]
+const seoul = marketRows.find((r) => r.id === 'seoul')
+const solar = computeSolar({
+	kw: 100,
+	yieldPerKw: SOLAR.yieldPerKw,
+	smp: SOLAR.smp,
+	rec: SOLAR.rec,
+	weight: 1,
+	costPerKw: SOLAR.costPerKw,
+	opexPerKw: SOLAR.opexPerKw,
+	loanPct: 0,
+	ratePct: 0,
+	years: 1
+})
+const cold = computeCold(5, 35, 50)
+
+const tools = [
+	{
+		href: `${prefix}/tools/produce-market-calculator/`,
+		title: isEn ? 'Produce market sales calculator' : '농산물 시장별 판매 금액 계산기',
+		text: isEn
+			? "Enter crop, quantity and transport cost to see which of Seoul, Busan, Daegu, Gwangju and Daejeon pays the most at today's prices."
+			: '품목과 수량, 운송비를 넣으면 서울·부산·대구·광주·대전 중 어디에 내는 게 유리한지 오늘 시세로 비교합니다.',
+		ex:
+			best && seoul
+				? isEn
+					? `e.g. cherry tomatoes, 100 × 3 kg → ${best.label} ${won(best.net)}, ${won(best.net - seoul.net)} more than Seoul (${asOf})`
+					: `예) 방울토마토 3kg 100상자 → ${best.label} ${won(best.net)}, 서울보다 ${won(best.net - seoul.net)} 많음 (${asOf.replace(/-/g, '.')} 기준)`
+				: null
+	},
+	{
+		href: `${prefix}/tools/solar-income-calculator/`,
+		title: isEn ? 'Solar income calculator' : '태양광 발전 수익 계산기',
+		text: isEn
+			? 'Estimate revenue, monthly profit and payback from capacity, SMP, REC, construction cost and loans.'
+			: '설비 용량과 SMP·REC 단가, 시공비, 대출로 매출과 월 순수익, 투자금 회수기간을 계산합니다.',
+		ex: isEn
+			? `e.g. 100 kW → about ${man(solar.monthlyNet)} a month after O&M, payback ${solar.payback?.toFixed(1)} years`
+			: `예) 100kW → 운영비 뺀 월 약 ${man(solar.monthlyNet)}, 단순 회수 ${solar.payback?.toFixed(1)}년`
+	},
+	{
+		href: `${prefix}/tools/cold-storage-cost-calculator/`,
+		title: isEn ? 'Farm cold storage cost calculator' : '농업용 저온저장고 설치비 계산기',
+		text: isEn
+			? 'Pick a size and crop to see build cost, your share after subsidy, monthly electricity and storage conditions.'
+			: '평수와 보관 품목을 고르면 설치비 범위와 자부담, 월 전기료, 품목별 적정 온도·습도를 알려 드립니다.',
+		ex: isEn
+			? `e.g. 5 pyeong → ${man(cold.min)}–${man(cold.max)}, about ${won(cold.monthly)} a month in power`
+			: `예) 5평 → 설치비 ${Math.round(cold.min / 10000).toLocaleString('ko-KR')}만–${man(cold.max)}, 월 전기료 약 ${won(cold.monthly)}`
+	}
+]
+
+const title = isEn
+	? 'Farm Calculators: Market Sales, Solar Income, Cold Storage'
+	: '농업 계산기: 시장별 판매 금액·태양광 수익·저온저장고 설치비'
+const description = isEn
+	? 'Free farm calculators built on daily KAMIS prices and public data: which market pays more today, solar income and payback, and cold storage build and power costs.'
+	: '오늘 KAMIS 시세와 공개 자료로 바로 계산하는 무료 농업 계산기. 어느 시장에 팔면 더 받는지, 태양광 월 수익과 회수기간, 저온저장고 설치비와 전기료를 계산합니다.'
+const jsonLd = {
+	'@context': 'https://schema.org',
+	'@type': 'ItemList',
+	name: isEn ? 'Farm calculators' : '농업 계산기',
+	itemListElement: tools.map((t, k) => ({
+		'@type': 'ListItem',
+		position: k + 1,
+		name: t.title,
+		url: new URL(t.href, Astro.site).href
+	}))
+}
+---
+
+<BaseLayout title={title} description={description} locale={locale} active='tools'>
+	<div class='im-tool'>
+		<h1>{isEn ? 'Farm calculators' : '농업 계산기'}</h1>
+		<p class='im-tool-lede'>
+			{
+				isEn
+					? 'Calculated from today’s KAMIS prices and public data. Change the numbers to fit your own farm.'
+					: '오늘 KAMIS 시세와 공개 자료로 바로 계산합니다. 숫자를 바꿔 가며 내 농장 조건에 맞춰 보세요.'
+			}
+		</p>
+		<div class='im-tools-hub'>
+			{
+				tools.map((t, k) => (
+					<a href={t.href}>
+						<span class='im-tools-no'>{String(k + 1).padStart(2, '0')}</span>
+						<div>
+							<h2>{t.title}</h2>
+							<p>{t.text}</p>
+							{t.ex && <p class='im-tools-ex'>{t.ex}</p>}
+						</div>
+						<span class='im-tools-go'>{isEn ? 'Calculate →' : '계산하기 →'}</span>
+					</a>
+				))
+			}
+		</div>
+	</div>
+	<script type='application/ld+json' set:html={JSON.stringify(jsonLd)} />
+</BaseLayout>

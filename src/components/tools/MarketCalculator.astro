@@ -1,0 +1,594 @@
+---
+import ToolShell from '@/components/tools/ToolShell'
+import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+import { ITEMS, REGIONS, buildMarketQuotes, getPriceAsOfDate } from '@/data/prices'
+import { FLAT_WARN_DAYS, MARKET_EXCLUDE, computeMarket, feeFor } from '@/data/tools'
+import kamisItems from '@/data/kamis-items.json'
+import pricePhotos from '@/data/price-photos.json'
+
+const { locale = DEFAULT_LOCALE } = Astro.props
+const isEn = locale === 'en'
+const prefix = getLocalePrefix(locale)
+
+const { asOf, quotes } = buildMarketQuotes(getPriceAsOfDate())
+const dot = (iso: string) => iso.replace(/-/g, '.')
+const md = (iso: string) =>
+	isEn ? iso.slice(5).replace('-', '/') : `${+iso.slice(5, 7)}월 ${+iso.slice(8, 10)}일`
+const DAY = 86400000
+const ms = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10))
+const won = (v: number) =>
+	isEn ? '₩' + Math.round(v).toLocaleString('en-US') : Math.round(v).toLocaleString('ko-KR') + '원'
+const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
+
+const CATS = [
+	{ code: '200', ko: '채소', en: 'Vegetables' },
+	{ code: '400', ko: '과일', en: 'Fruit' },
+	{ code: '100', ko: '곡물·서류', en: 'Grains & tubers' },
+	{ code: '300', ko: '특용작물·버섯', en: 'Specialty crops' }
+]
+const catOf = (id: string) =>
+	((kamisItems as Record<string, { codes: string[] }>)[id]?.codes[0] ?? '').split('-')[0]
+const photoOf = (id: string) =>
+	(pricePhotos as string[]).includes(id) ? `/images/prices/thumb/${id}.webp` : null
+const kgOf = (unit: string) => {
+	const m = unit.match(/^([\d.]+)\s*kg$/i)
+	return m ? Number(m[1]) : null
+}
+/** 기본 수량: 약 300kg 어치 (kg 단위가 아니면 10) */
+const defaultQty = (unit: string) => {
+	const kg = kgOf(unit)
+	return kg ? Math.min(100, Math.max(1, Math.round(300 / kg))) : 10
+}
+
+const regions = REGIONS.map((r) => ({ id: r.id, label: isEn ? r.en : r.ko }))
+const items = ITEMS.filter((item) => !MARKET_EXCLUDE.has(item.id))
+	.map((item) => ({
+		id: item.id,
+		label: isEn ? item.en : item.ko,
+		unit: isEn ? item.unitEn : item.unitKo,
+		grade: isEn ? item.gradeEn : item.gradeKo,
+		cat: catOf(item.id),
+		photo: photoOf(item.id),
+		fee: feeFor(item.id),
+		qty: defaultQty(item.unitKo),
+		q: Object.fromEntries(
+			REGIONS.map((r) => {
+				const v = quotes[item.id][r.id]
+				return [r.id, v ? [v.price, v.date, v.since] : null]
+			})
+		) as Record<string, [number, string, string] | null>
+	}))
+	.filter((item) => Object.values(item.q).filter(Boolean).length >= 2)
+
+const fresh = (item: (typeof items)[number]) =>
+	Object.entries(item.q).filter(([, v]) => v && v[1] === asOf) as [
+		string,
+		[number, string, string]
+	][]
+
+// 오늘 시장 간 가격 차이가 큰 품목 (오늘 조사된 시장 3곳 이상)
+const spreads = items
+	.map((item) => {
+		const f = fresh(item)
+		if (f.length < 3) return null
+		const sorted = [...f].sort((a, b) => b[1][0] - a[1][0])
+		const hi = sorted[0]
+		const lo = sorted[sorted.length - 1]
+		return { item, hi, lo, gap: (hi[1][0] - lo[1][0]) / lo[1][0] }
+	})
+	.filter((x): x is NonNullable<typeof x> => x != null)
+	.sort((a, b) => b.gap - a.gap)
+	.slice(0, 10)
+
+const preferred = items.find((i) => i.id === 'cherry-tomato' && fresh(i).length >= 3)
+const initial = preferred ?? spreads[0]?.item ?? items[0]
+const rows = computeMarket({
+	regions: regions.map((r) => {
+		const v = initial.q[r.id]
+		return { ...r, price: v?.[0] ?? null, date: v?.[1] ?? null, since: v?.[2] ?? null }
+	}),
+	qty: initial.qty,
+	feePct: initial.fee,
+	transport: {}
+})
+const best = rows[0]
+const seoulRow = rows.find((r) => r.id === 'seoul')
+const versus = best.id === 'seoul' ? rows[1] : seoulRow
+// 다른 시장 과반은 그사이 값이 바뀌었는데 이 시장만 멈춰 있을 때만 표시한다 (원래 값이 잘 안 바뀌는 품목 제외)
+const flatNote = (r: { id: string; date: string; since: string }) =>
+	r.date !== asOf
+		? isEn
+			? `Last surveyed ${md(r.date)}`
+			: `${md(r.date)} 조사값`
+		: (ms(asOf) - ms(r.since)) / DAY > FLAT_WARN_DAYS &&
+			  rows.filter((o) => o.id !== r.id && o.since > r.since).length * 2 > rows.length - 1
+			? isEn
+				? `Same price since ${md(r.since)}`
+				: `${md(r.since)}부터 같은 값`
+			: ''
+
+const title = isEn
+	? 'Produce Market Sales Calculator: Compare 5 Korean Wholesale Markets Today'
+	: '농산물 시장별 판매 금액 계산기: 오늘 도매시세로 5개 도시 비교'
+const description = isEn
+	? `KAMIS survey of ${dot(asOf)}: enter crop, quantity, commission and transport cost to see which wholesale market (Seoul, Busan, Daegu, Gwangju, Daejeon) leaves you the most.`
+	: `${dot(asOf)} KAMIS 조사 기준. 품목·수량·수수료·운송비를 넣으면 서울·부산·대구·광주·대전 도매시장 중 손에 남는 돈이 가장 많은 곳을 계산합니다.`
+
+const faq = isEn
+	? [
+			{
+				q: 'Is this what I will actually be paid?',
+				a: 'No. KAMIS prices are what wholesale intermediaries sell at, so auction prices paid to growers are usually lower. Use the result to compare markets, and check the auction price at your consignee before shipping.'
+			},
+			{
+				q: 'What commission rate should I use?',
+				a: 'The legal ceiling is 7% of the sale for fruit and vegetables and 2% for grains (rice, beans, sesame, peanuts and similar). Each market sets its own rate within that ceiling, so the actual rate may be lower.'
+			},
+			{
+				q: 'When are prices updated?',
+				a: 'Every morning after the latest KAMIS survey is published. KAMIS does not survey on weekends and holidays, so the previous survey is used on those days.'
+			},
+			{
+				q: 'Why has one market shown the same price for days?',
+				a: 'Markets with few trades sometimes update their survey price late. The calculator marks those markets so you can treat the gap with caution.'
+			}
+		]
+	: [
+			{
+				q: '이 금액이 실제로 받는 돈인가요?',
+				a: '아닙니다. KAMIS 가격은 도매시장 중도매인이 파는 가격이라, 농가가 경매로 받는 경락가는 보통 이보다 낮습니다. 시장 간 비교용으로 쓰시고, 출하 전에는 출하처의 경락가를 함께 확인해 주세요.'
+			},
+			{
+				q: '위탁수수료는 몇 %로 넣어야 하나요?',
+				a: '법정 상한은 청과부류(채소·과일·버섯·감자·고구마 등) 거래금액의 7%, 양곡부류(쌀·콩·팥·참깨·땅콩 등) 2%입니다. 시장마다 이 한도 안에서 따로 정하므로 실제 요율은 더 낮을 수 있습니다.'
+			},
+			{
+				q: '시세는 언제 바뀌나요?',
+				a: 'KAMIS 최신 조사 결과가 공개되면 매일 새벽에 갱신됩니다. 주말과 공휴일에는 조사가 없어 직전 조사값을 씁니다.'
+			},
+			{
+				q: '왜 어떤 시장은 며칠째 같은 값인가요?',
+				a: '거래가 적은 시장은 조사 가격이 늦게 바뀌는 경우가 있습니다. 계산기에서 따로 표시해 드리니, 그 시장과의 차이는 조심해서 봐 주세요.'
+			},
+			{
+				q: '운송비는 어떻게 넣나요?',
+				a: '각 시장까지 실어 가는 데 드는 총비용(차량비, 상하차비 등)을 원 단위로 넣으시면 손에 남는 돈 순위에 바로 반영됩니다.'
+			}
+		]
+
+const related = [
+	{
+		href: `${prefix}/prices/${initial.id}/`,
+		title: isEn
+			? `${initial.label} price chart · 5 cities`
+			: `${initial.label} 시세 차트 · 5개 도시 비교`,
+		sub: `${prefix}/prices/${initial.id}/`
+	},
+	{
+		href: `${prefix}/prices/`,
+		title: isEn ? "Today's wholesale prices for 72 crops" : '오늘의 농산물 도매 시세표 72개 품목',
+		sub: isEn ? 'Daily KAMIS survey' : 'KAMIS 매일 조사'
+	},
+	{
+		href: `${prefix}/blog/cherry-tomato-price-outlook-october-2026/`,
+		title: isEn
+			? 'Korean cherry tomato prices, October 2026'
+			: '방울토마토 가격 상승 이유와 전망: 2026년 10월',
+		sub: isEn ? 'Why prices tripled and started falling' : '3배 오른 뒤 꺾이기 시작한 이유'
+	},
+	{
+		href: `${prefix}/blog/late-green-pepper-price-2026-autumn/`,
+		title: isEn ? 'Late-season green pepper prices, October 2026' : '늦풋고추 가격 2026년 10월',
+		sub: isEn ? 'Grading and shipping before frost' : '첫서리 전 출하 판단'
+	}
+]
+
+const data = { asOf, regions, items, flatWarnDays: FLAT_WARN_DAYS, isEn, prefix }
+---
+
+<ToolShell
+	locale={locale}
+	title={title}
+	description={description}
+	h1={isEn ? 'Which market pays more today' : '어느 시장에 팔면 더 받을까'}
+	lede={isEn
+		? "Compare today's wholesale prices in five cities. After commission and transport, markets are ranked by what you keep."
+		: '오늘 도매시장 시세로 5개 도시의 판매 금액을 비교합니다. 수수료와 운송비를 빼고 손에 남는 돈 순서로 보여 드립니다.'}
+	basis={isEn ? `KAMIS survey ${dot(asOf)}` : `KAMIS ${dot(asOf)} 조사 기준`}
+	faq={faq}
+	related={related}
+	path='/tools/produce-market-calculator/'
+>
+	<form class='im-tool-form' id='im-market-form' onsubmit='return false'>
+		<label class='im-field is-4 is-full-sm'>
+			<span class='im-label'>{isEn ? 'Crop' : '품목'}</span>
+			<span class='im-input is-select'>
+				<img
+					id='im-market-photo'
+					src={initial.photo ?? ''}
+					alt=''
+					width='30'
+					height='30'
+					hidden={!initial.photo}
+				/>
+				<select id='im-market-item' name='item'>
+					{
+						CATS.map((c) => (
+							<optgroup label={isEn ? c.en : c.ko}>
+								{items
+									.filter((i) => i.cat === c.code)
+									.map((i) => (
+										<option value={i.id} selected={i.id === initial.id}>
+											{i.label} · {i.grade} {i.unit}
+										</option>
+									))}
+							</optgroup>
+						))
+					}
+				</select>
+			</span>
+		</label>
+		<label class='im-field is-narrow'>
+			<span class='im-label' id='im-market-qty-label'>
+				{isEn ? `Quantity (${initial.unit})` : `수량 (${initial.unit} 단위)`}
+			</span>
+			<span class='im-input'>
+				<input
+					id='im-market-qty'
+					name='qty'
+					type='number'
+					inputmode='numeric'
+					min='1'
+					value={initial.qty}
+				/>
+				<span class='im-unit'>{isEn ? 'units' : '개'}</span>
+			</span>
+		</label>
+		<label class='im-field is-narrow'>
+			<span class='im-label'>{isEn ? 'Commission' : '위탁수수료'}</span>
+			<span class='im-input'>
+				<input
+					id='im-market-fee'
+					name='fee'
+					type='number'
+					inputmode='decimal'
+					min='0'
+					max='20'
+					step='0.1'
+					value={initial.fee}
+				/>
+				<span class='im-unit'>%</span>
+			</span>
+		</label>
+		<div class='im-field is-wide'>
+			<span class='im-label'
+				>{
+					isEn ? 'Transport cost to each market (optional, KRW)' : '시장까지 운송비 (선택, 원)'
+				}</span
+			>
+			<div class='im-costs'>
+				{
+					regions.map((r) => (
+						<label class='im-input'>
+							<span>{r.label}</span>
+							<input
+								data-region={r.id}
+								type='number'
+								inputmode='numeric'
+								min='0'
+								step='10000'
+								placeholder='0'
+								aria-label={`${r.label} ${isEn ? 'transport cost' : '운송비'}`}
+							/>
+						</label>
+					))
+				}
+			</div>
+		</div>
+	</form>
+
+	<section class='im-tool-result' aria-live='polite'>
+		<p class='im-label'>
+			{isEn ? 'Market that leaves you the most' : '손에 남는 돈이 가장 많은 곳'}
+		</p>
+		<div class='im-tool-best'>
+			<span class='im-tool-big' id='im-market-big'>{won(best.net)}</span>
+			<span class='im-tool-best-side'>
+				<strong id='im-market-city'>{best.label}</strong>
+				<span class='im-up-text' id='im-market-diff'>
+					{
+						versus &&
+							(isEn
+								? `+${won(best.net - versus.net)} vs ${versus.label}`
+								: `${versus.label}보다 +${won(best.net - versus.net)}`)
+					}
+				</span>
+			</span>
+		</div>
+		<table class='im-tool-table'>
+			<thead>
+				<tr>
+					<th>{isEn ? 'Market' : '시장'}</th>
+					<th>{isEn ? 'Price' : '오늘 시세'}</th>
+					<th class='is-hide-sm'>{isEn ? 'Sales' : '판매 금액'}</th>
+					<th class='is-hide-sm'>{isEn ? 'Fee + transport' : '수수료·운송비'}</th>
+					<th>{isEn ? 'You keep' : '손에 남는 돈'}</th>
+				</tr>
+			</thead>
+			<tbody id='im-market-rows'>
+				{
+					rows.map((r, k) => {
+						const note = flatNote(r)
+						return (
+							<tr class={k === 0 ? 'is-top' : ''}>
+								<td>
+									<span class='im-tool-rank'>{k + 1}</span>
+									{r.label}
+									{note && <span class='im-tool-warn'>{note}</span>}
+								</td>
+								<td>{num(r.price)}</td>
+								<td class='is-hide-sm'>{num(r.gross)}</td>
+								<td class='is-hide-sm'>−{num(r.cost)}</td>
+								<td>
+									{num(r.net)}
+									<span class='im-bar' style={`width:${Math.max(4, (r.net / best.net) * 100)}%`} />
+								</td>
+							</tr>
+						)
+					})
+				}
+			</tbody>
+		</table>
+		<div class='im-tool-notes'>
+			<p>
+				<strong>{isEn ? 'For comparison only.' : '이 금액은 참고용입니다.'}</strong>
+				{
+					isEn
+						? ' KAMIS prices are what wholesale intermediaries sell at, so the auction price paid to growers is usually lower. The commission defaults to the legal ceiling for the crop group (7% for fruit and vegetables, 2% for grains); each market sets its own rate within it.'
+						: ' KAMIS 가격은 도매시장 중도매인이 파는 값이라, 농가가 경매로 받는 값은 보통 이보다 낮습니다. 위탁수수료는 품목 부류별 법정 상한(청과 7%, 양곡 2%)을 기본값으로 넣었고, 시장마다 실제 요율은 다를 수 있습니다.'
+				}
+			</p>
+			<p>
+				{
+					isEn
+						? 'Markets marked in red have not changed their price for several surveys or were not surveyed today; their gap may close late.'
+						: '빨간 글씨로 표시된 시장은 며칠째 같은 값이거나 오늘 조사되지 않은 곳입니다. 다른 시장과의 차이가 늦게 좁혀질 수 있습니다.'
+				}
+				{' '}
+				<a id='im-market-chart' href={`${prefix}/prices/${initial.id}/`}>
+					{isEn ? 'See the price chart →' : '이 품목 시세 차트 보기 →'}
+				</a>
+			</p>
+		</div>
+	</section>
+
+	{
+		spreads.length > 0 && (
+			<section class='im-tool-section'>
+				<h2 class='im-label'>
+					{isEn ? 'Biggest gaps between markets today' : '오늘 시장 간 가격 차이가 큰 품목'}
+				</h2>
+				<table class='im-tool-table'>
+					<thead>
+						<tr>
+							<th>{isEn ? 'Crop' : '품목'}</th>
+							<th>{isEn ? 'Highest' : '가장 높은 곳'}</th>
+							<th class='is-hide-sm'>{isEn ? 'Lowest' : '가장 낮은 곳'}</th>
+							<th>{isEn ? 'Gap' : '차이'}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{spreads.map((s) => (
+							<tr>
+								<td>
+									<button type='button' class='im-tool-pick' data-pick={s.item.id}>
+										{s.item.label}
+									</button>
+									<span class='im-tool-warn' style='color:var(--muted)'>
+										{s.item.grade} {s.item.unit}
+									</span>
+								</td>
+								<td>
+									{regions.find((r) => r.id === s.hi[0])?.label} {num(s.hi[1][0])}
+								</td>
+								<td class='is-hide-sm'>
+									{regions.find((r) => r.id === s.lo[0])?.label} {num(s.lo[1][0])}
+								</td>
+								<td>+{(s.gap * 100).toFixed(0)}%</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+				<p class='im-field-help' style='margin-top:10px'>
+					{isEn
+						? `Only markets surveyed on ${dot(asOf)} are compared. Tap a crop to calculate it.`
+						: `${dot(asOf)}에 조사된 시장만 비교했습니다. 품목을 누르면 위 계산기로 바로 계산합니다.`}
+				</p>
+			</section>
+		)
+	}
+
+	<section class='im-tool-section'>
+		<h2 class='im-label'>{isEn ? 'How it is calculated' : '계산 방법'}</h2>
+		<pre>{
+			isEn
+				? 'Sales        = today\'s price × quantity\nCommission   = sales × commission %\nYou keep     = sales − commission − transport'
+				: '판매 금액    = 오늘 시세 × 수량\n위탁수수료   = 판매 금액 × 수수료율\n손에 남는 돈 = 판매 금액 − 위탁수수료 − 운송비'}</pre>
+		<p>
+			{
+				isEn
+					? 'Prices are the KAMIS daily wholesale intermediary prices for top-grade produce in Seoul, Busan, Daegu, Gwangju and Daejeon, the same data as the IMUN.FARM price table. Imported items are excluded.'
+					: '시세는 IMUN.FARM 시세표와 같은 KAMIS 일별 중도매인 판매가격(상품 기준)이며, 서울·부산·대구·광주·대전 도매시장 값입니다. 수입품은 농가가 내는 품목이 아니어서 뺐습니다.'
+			}
+		</p>
+	</section>
+
+	<script type='application/json' id='im-market-data' set:html={JSON.stringify(data)} />
+</ToolShell>
+
+<script>
+	import { computeMarket } from '@/data/tools'
+
+	type Q = [number, string, string] | null
+	type Item = {
+		id: string
+		label: string
+		unit: string
+		photo: string | null
+		fee: number
+		qty: number
+		q: Record<string, Q>
+	}
+	const data = JSON.parse(document.getElementById('im-market-data')!.textContent || '{}') as {
+		asOf: string
+		regions: { id: string; label: string }[]
+		items: Item[]
+		flatWarnDays: number
+		isEn: boolean
+		prefix: string
+	}
+	const { isEn, asOf } = data
+	const $ = (id: string) => document.getElementById(id) as HTMLElement
+	const itemSel = $('im-market-item') as HTMLSelectElement
+	const qtyIn = $('im-market-qty') as HTMLInputElement
+	const feeIn = $('im-market-fee') as HTMLInputElement
+	const costIns = Array.from(
+		document.querySelectorAll<HTMLInputElement>('#im-market-form [data-region]')
+	)
+	const DAY = 86400000
+	const ms = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10))
+	const md = (iso: string) =>
+		isEn ? iso.slice(5).replace('-', '/') : `${+iso.slice(5, 7)}월 ${+iso.slice(8, 10)}일`
+	const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
+	const won = (v: number) => (isEn ? '₩' + num(v) : num(v) + '원')
+	const byId = new Map(data.items.map((i) => [i.id, i]))
+
+	const COST_KEY = 'imunfarm:market-transport'
+	try {
+		const saved = JSON.parse(localStorage.getItem(COST_KEY) || '{}')
+		costIns.forEach((el) => {
+			if (saved[el.dataset.region!]) el.value = String(saved[el.dataset.region!])
+		})
+	} catch {}
+
+	function noteOf(
+		r: { id: string; date: string; since: string },
+		rows: { id: string; since: string }[]
+	) {
+		if (r.date !== asOf) return isEn ? `Last surveyed ${md(r.date)}` : `${md(r.date)} 조사값`
+		if (
+			(ms(asOf) - ms(r.since)) / DAY > data.flatWarnDays &&
+			rows.filter((o) => o.id !== r.id && o.since > r.since).length * 2 > rows.length - 1
+		)
+			return isEn ? `Same price since ${md(r.since)}` : `${md(r.since)}부터 같은 값`
+		return ''
+	}
+
+	function render() {
+		const item = byId.get(itemSel.value)
+		if (!item) return
+		const transport: Record<string, number> = {}
+		costIns.forEach((el) => (transport[el.dataset.region!] = Math.max(0, Number(el.value) || 0)))
+		try {
+			localStorage.setItem(COST_KEY, JSON.stringify(transport))
+		} catch {}
+		const rows = computeMarket({
+			regions: data.regions.map((r) => {
+				const v = item.q[r.id]
+				return { ...r, price: v?.[0] ?? null, date: v?.[1] ?? null, since: v?.[2] ?? null }
+			}),
+			qty: Math.max(0, Number(qtyIn.value) || 0),
+			feePct: Math.max(0, Number(feeIn.value) || 0),
+			transport
+		})
+		const tbody = $('im-market-rows')
+		tbody.textContent = ''
+		const best = rows[0]
+		const top = best ? Math.max(best.net, 1) : 1
+		rows.forEach((r, k) => {
+			const tr = document.createElement('tr')
+			if (k === 0) tr.className = 'is-top'
+			const note = noteOf(r, rows)
+			const cells = [
+				`<span class="im-tool-rank">${k + 1}</span>${r.label}${note ? `<span class="im-tool-warn">${note}</span>` : ''}`,
+				num(r.price),
+				num(r.gross),
+				'−' + num(r.cost),
+				`${num(r.net)}<span class="im-bar" style="width:${Math.max(4, Math.min(100, (r.net / top) * 100))}%"></span>`
+			]
+			cells.forEach((html, c) => {
+				const td = document.createElement('td')
+				if (c === 2 || c === 3) td.className = 'is-hide-sm'
+				td.innerHTML = html
+				tr.appendChild(td)
+			})
+			tbody.appendChild(tr)
+		})
+		$('im-market-big').textContent = best ? won(best.net) : '–'
+		$('im-market-city').textContent = best ? best.label : ''
+		const vs = best && (best.id === 'seoul' ? rows[1] : rows.find((r) => r.id === 'seoul'))
+		$('im-market-diff').textContent =
+			best && vs
+				? isEn
+					? `+${won(best.net - vs.net)} vs ${vs.label}`
+					: `${vs.label}보다 +${won(best.net - vs.net)}`
+				: ''
+		const chart = $('im-market-chart') as HTMLAnchorElement
+		chart.href = `${data.prefix}/prices/${item.id}/`
+	}
+
+	function selectItem(id: string, resetInputs: boolean) {
+		const item = byId.get(id)
+		if (!item) return
+		itemSel.value = id
+		if (resetInputs) {
+			qtyIn.value = String(item.qty)
+			feeIn.value = String(item.fee)
+		}
+		$('im-market-qty-label').textContent = isEn
+			? `Quantity (${item.unit})`
+			: `수량 (${item.unit} 단위)`
+		const photo = $('im-market-photo') as HTMLImageElement
+		if (item.photo) {
+			photo.src = item.photo
+			photo.hidden = false
+		} else photo.hidden = true
+		render()
+	}
+
+	function syncUrl() {
+		const u = new URL(location.href)
+		u.searchParams.set('item', itemSel.value)
+		u.searchParams.set('qty', qtyIn.value)
+		history.replaceState(null, '', u)
+	}
+
+	itemSel.addEventListener('change', () => {
+		selectItem(itemSel.value, true)
+		syncUrl()
+	})
+	;[qtyIn, feeIn, ...costIns].forEach((el) =>
+		el.addEventListener('input', () => {
+			render()
+			syncUrl()
+		})
+	)
+	document.querySelectorAll<HTMLButtonElement>('[data-pick]').forEach((b) =>
+		b.addEventListener('click', () => {
+			selectItem(b.dataset.pick!, true)
+			syncUrl()
+			document
+				.getElementById('im-market-form')!
+				.scrollIntoView({ behavior: 'smooth', block: 'start' })
+		})
+	)
+
+	const params = new URLSearchParams(location.search)
+	const fromUrl = params.get('item')
+	if (fromUrl && byId.has(fromUrl)) {
+		selectItem(fromUrl, true)
+		const q = Number(params.get('qty'))
+		if (q > 0) qtyIn.value = String(q)
+	}
+	render()
+</script>

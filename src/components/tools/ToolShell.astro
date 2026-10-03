@@ -1,0 +1,133 @@
+---
+/**
+ * 계산기 페이지 공통 틀: 제목·기준일·본문(slot)·자주 묻는 질문·관련 글·구조화 데이터.
+ * 검색엔진이 계산기 내용을 읽을 수 있도록 기본 결과와 설명은 모두 서버에서 그린다.
+ */
+import BaseLayout from '@/layouts/BaseLayout'
+import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+import '../../styles/tools.css'
+
+type Link = { href: string; title: string; sub?: string }
+type Props = {
+	locale?: string
+	/** <title> 과 검색 결과 제목 */
+	title: string
+	description: string
+	h1: string
+	lede: string
+	basis: string
+	related?: Link[]
+	faq?: { q: string; a: string }[]
+	path: string
+}
+
+const {
+	locale = DEFAULT_LOCALE,
+	title,
+	description,
+	h1,
+	lede,
+	basis,
+	related = [],
+	faq = [],
+	path
+} = Astro.props
+const isEn = locale === 'en'
+const prefix = getLocalePrefix(locale)
+const url = new URL(`${prefix}${path}`, Astro.site).href
+
+const jsonLd = [
+	{
+		'@context': 'https://schema.org',
+		'@type': 'WebApplication',
+		name: h1,
+		url,
+		description,
+		applicationCategory: 'BusinessApplication',
+		operatingSystem: 'Any',
+		inLanguage: isEn ? 'en' : 'ko',
+		isAccessibleForFree: true,
+		offers: { '@type': 'Offer', price: '0', priceCurrency: 'KRW' },
+		publisher: { '@type': 'Organization', name: 'IMUN.FARM', url: 'https://imun.farm/' }
+	},
+	{
+		'@context': 'https://schema.org',
+		'@type': 'BreadcrumbList',
+		itemListElement: [
+			{
+				'@type': 'ListItem',
+				position: 1,
+				name: 'IMUN.FARM',
+				item: new URL(`${prefix}/`, Astro.site).href
+			},
+			{
+				'@type': 'ListItem',
+				position: 2,
+				name: isEn ? 'Tools' : '계산기',
+				item: new URL(`${prefix}/tools/`, Astro.site).href
+			},
+			{ '@type': 'ListItem', position: 3, name: h1, item: url }
+		]
+	},
+	...(faq.length
+		? [
+				{
+					'@context': 'https://schema.org',
+					'@type': 'FAQPage',
+					mainEntity: faq.map((f) => ({
+						'@type': 'Question',
+						name: f.q,
+						acceptedAnswer: { '@type': 'Answer', text: f.a }
+					}))
+				}
+			]
+		: [])
+]
+---
+
+<BaseLayout title={title} description={description} locale={locale} active='tools'>
+	<article class='im-tool'>
+		<nav class='im-tool-crumb im-label' aria-label={isEn ? 'Breadcrumb' : '경로'}>
+			<a href={`${prefix}/tools/`}>{isEn ? 'Tools' : '계산기'}</a>
+			<span>·</span>
+			<span>{basis}</span>
+		</nav>
+		<h1>{h1}</h1>
+		<p class='im-tool-lede'>{lede}</p>
+
+		<slot />
+
+		{
+			faq.length > 0 && (
+				<section class='im-tool-faq'>
+					<h2 class='im-label'>{isEn ? 'Questions' : '자주 묻는 질문'}</h2>
+					{faq.map((f) => (
+						<details>
+							<summary>{f.q}</summary>
+							<p>{f.a}</p>
+						</details>
+					))}
+				</section>
+			)
+		}
+
+		{
+			related.length > 0 && (
+				<section class='im-tool-related'>
+					<h2 class='im-label'>{isEn ? 'Related reading' : '함께 보면 좋은 글'}</h2>
+					{related.map((r) => (
+						<a href={r.href}>
+							{r.title}
+							{r.sub && <span>{r.sub}</span>}
+						</a>
+					))}
+				</section>
+			)
+		}
+
+		<p class='im-tool-more'>
+			<a href={`${prefix}/tools/`}>{isEn ? 'All tools →' : '다른 계산기 보기 →'}</a>
+		</p>
+	</article>
+	<script type='application/ld+json' set:html={JSON.stringify(jsonLd)} />
+</BaseLayout>
