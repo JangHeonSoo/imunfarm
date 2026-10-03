@@ -307,36 +307,50 @@ const t = {
 					</div>
 				</div>
 			</div>
-			<div class='im-movers-row' id='im-movers'>
-				{
-					initialMovers.map((m) => (
-						<a class='im-mover' href={`${prefix}/prices/${m.id}/`} draggable='false'>
-							<span class='im-mover-photo'>
-								{m.photo && (
-									<img
-										src={m.photo}
-										alt=''
-										width='64'
-										height='64'
-										decoding='async'
-										draggable='false'
-									/>
-								)}
-							</span>
-							<span class='im-mover-name'>{m.label}</span>
-							<span class='im-mover-price'>{fmtServer(m.price)}</span>
-							<span class={`im-mover-change ${dir(m.delta)}`}>
-								{mark(m.delta)}
-								{Math.abs(m.delta).toFixed(1)}%
-							</span>
-							<span class='im-mover-why'>
-								{m.reasons.map((text) => (
-									<span>{text}</span>
-								))}
-							</span>
-						</a>
-					))
-				}
+			<div class='im-movers-stage'>
+				<button
+					type='button'
+					class='im-movers-side is-prev'
+					data-movers-dir='-1'
+					aria-label={isEn ? 'Previous' : '이전'}>‹</button
+				>
+				<button
+					type='button'
+					class='im-movers-side is-next'
+					data-movers-dir='1'
+					aria-label={isEn ? 'Next' : '다음'}>›</button
+				>
+				<div class='im-movers-row' id='im-movers'>
+					{
+						initialMovers.map((m) => (
+							<a class='im-mover' href={`${prefix}/prices/${m.id}/`} draggable='false'>
+								<span class='im-mover-photo'>
+									{m.photo && (
+										<img
+											src={m.photo}
+											alt=''
+											width='64'
+											height='64'
+											decoding='async'
+											draggable='false'
+										/>
+									)}
+								</span>
+								<span class='im-mover-name'>{m.label}</span>
+								<span class='im-mover-price'>{fmtServer(m.price)}</span>
+								<span class={`im-mover-change ${dir(m.delta)}`}>
+									{mark(m.delta)}
+									{Math.abs(m.delta).toFixed(1)}%
+								</span>
+								<span class='im-mover-why'>
+									{m.reasons.map((text) => (
+										<span>{text}</span>
+									))}
+								</span>
+							</a>
+						))
+					}
+				</div>
 			</div>
 		</section>
 
@@ -1963,6 +1977,50 @@ const t = {
 	@media (hover: none) {
 		.im-movers-nav {
 			display: none;
+		}
+	}
+
+	/* 모바일: 광고가 스와이프를 가로채도 넘길 수 있게 카드 사진 양옆에 화살표 */
+	.im-movers-stage {
+		position: relative;
+	}
+
+	.im-movers-side {
+		display: none;
+	}
+
+	@media (hover: none) {
+		.im-movers-side {
+			position: absolute;
+			z-index: 2;
+			/* 줄 위 여백 14px + 사진(116px) 가운데 - 버튼 반지름 */
+			top: calc(14px + 58px - 22px);
+			display: grid;
+			place-items: center;
+			width: 44px;
+			height: 44px;
+			padding: 0 0 3px;
+			border: 1px solid var(--ink);
+			border-radius: 50%;
+			background: var(--bg);
+			color: var(--ink);
+			font-size: 26px;
+			line-height: 1;
+			cursor: pointer;
+			transition: opacity 0.15s;
+		}
+
+		.im-movers-side.is-prev {
+			left: -6px;
+		}
+
+		.im-movers-side.is-next {
+			right: -6px;
+		}
+
+		.im-movers-side:disabled {
+			opacity: 0;
+			pointer-events: none;
 		}
 	}
 
