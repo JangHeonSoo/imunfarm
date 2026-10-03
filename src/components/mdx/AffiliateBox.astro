@@ -62,7 +62,12 @@ const {
 					</li>
 				))}
 			</ul>
-			<p class='im-aff-note'>{note}</p>
+			<p class='im-aff-note'>
+				{note}
+				<a class='im-aff-more' href='/picks/'>
+					추천 장비 전체 보기 <span aria-hidden='true'>→</span>
+				</a>
+			</p>
 		</aside>
 	)
 }
@@ -200,6 +205,15 @@ const {
 		font-size: 12px;
 		line-height: 1.6;
 		text-align: center;
+	}
+
+	.im-aff-more {
+		display: block;
+		margin-top: 6px;
+		color: var(--ink);
+		font-weight: 600;
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 
 	@media (max-width: 560px) {

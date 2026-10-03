@@ -14,13 +14,26 @@ const prefix = getLocalePrefix(locale)
 		계산기 <span>Tools</span>
 	</a>
 	<a class='im-wordmark' href={`${prefix}/`} aria-label='IMUN.FARM'>IMUN.FARM</a>
-	<a
-		class='im-header-link im-header-prices'
-		href={`${prefix}/prices/`}
-		aria-current={active === 'prices' ? 'page' : undefined}
-	>
-		시세 <span>Prices</span>
-	</a>
+	<nav class='im-header-right'>
+		{
+			locale === DEFAULT_LOCALE && (
+				<a
+					class='im-header-link'
+					href='/picks/'
+					aria-current={active === 'picks' ? 'page' : undefined}
+				>
+					장비 <span>Picks</span>
+				</a>
+			)
+		}
+		<a
+			class='im-header-link'
+			href={`${prefix}/prices/`}
+			aria-current={active === 'prices' ? 'page' : undefined}
+		>
+			시세 <span>Prices</span>
+		</a>
+	</nav>
 </header>
 
 <style>
@@ -48,8 +61,11 @@ const prefix = getLocalePrefix(locale)
 		justify-self: start;
 	}
 
-	.im-header-prices {
+	.im-header-right {
+		display: flex;
 		justify-self: end;
+		align-self: end;
+		gap: clamp(12px, 1.6vw, 22px);
 	}
 
 	.im-header-link {
@@ -73,7 +89,7 @@ const prefix = getLocalePrefix(locale)
 		color: var(--muted);
 	}
 
-	@media (max-width: 380px) {
+	@media (max-width: 600px) {
 		.im-header-link span {
 			display: none;
 		}

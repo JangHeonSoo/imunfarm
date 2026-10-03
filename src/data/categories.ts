@@ -39,5 +39,15 @@ export const CATEGORIES = [
 		title: '에너지',
 		enTitle: 'Energy',
 		slug: 'energy'
+	},
+	{
+		title: '텃밭·가드닝',
+		enTitle: 'Gardening',
+		slug: 'gardening'
+	},
+	{
+		title: '전원생활',
+		enTitle: 'Country Living',
+		slug: 'country-life'
 	}
 ] as const

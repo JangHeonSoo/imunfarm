@@ -1,0 +1,307 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+import { getPostUrl, getPosts } from '@/utils'
+import { groupOf, groupsForMonth, parseAffiliateItems, toPolite, type Pick } from '@/data/picks'
+import '../styles/tools.css'
+
+const posts = await getPosts(undefined, 'ko')
+const byUrl = new Map<string, Pick & { votes: Record<string, number> }>()
+for (const post of posts) {
+	const slug = post.slug.replace(/^ko\//, '')
+	const group = groupOf(slug)
+	const ref = {
+		title: post.data.title,
+		url: getPostUrl(post.slug, 'ko', post.data.category),
+		date: post.data.pubDate?.valueOf() ?? 0
+	}
+	for (const item of parseAffiliateItems(post.body)) {
+		const hit = byUrl.get(item.url)
+		if (hit) {
+			if (!hit.posts.some((p) => p.url === ref.url)) hit.posts.push(ref)
+			hit.votes[group] = (hit.votes[group] ?? 0) + 1
+			continue
+		}
+		byUrl.set(item.url, { ...item, group, posts: [ref], votes: { [group]: 1 } })
+	}
+}
+const picks = [...byUrl.values()].map((p) => ({
+	...p,
+	group: Object.entries(p.votes).sort((a, b) => b[1] - a[1])[0][0],
+	posts: p.posts.sort((a, b) => b.date - a.date)
+}))
+
+const month = Number(new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(5, 7))
+const groups = groupsForMonth(month)
+	.map((g) => ({
+		...g,
+		inSeason: (g.months as readonly number[]).includes(month),
+		items: picks.filter((p) => p.group === g.id).sort((a, b) => b.posts.length - a.posts.length)
+	}))
+	.filter((g) => g.items.length > 0)
+
+const title = '농가 추천 장비: 수확·건조·저온저장고·텃밭 도구 모음'
+const description = `IMUN.FARM 글에서 직접 골라 소개한 농사 도구 ${picks.length}가지를 용도별로 모았습니다. 땅콩·들깨·팥 수확과 건조, 저온저장고 운영, 텃밭 월동, 농막 태양광, 아쿠아포닉스 장비.`
+const jsonLd = {
+	'@context': 'https://schema.org',
+	'@type': 'CollectionPage',
+	name: '농가 추천 장비',
+	description,
+	url: new URL('/picks/', Astro.site).href,
+	hasPart: groups.map((g) => ({
+		'@type': 'ItemList',
+		name: g.title,
+		numberOfItems: g.items.length,
+		itemListElement: g.items.map((p, k) => ({ '@type': 'ListItem', position: k + 1, name: p.name }))
+	}))
+}
+---
+
+<BaseLayout title={title} description={description} locale='ko' active='picks' altPath={null}>
+	<div class='im-tool im-picks'>
+		<h1>농가 추천 장비</h1>
+		<p class='im-tool-lede'>
+			IMUN.FARM 글에서 필요한 작업에 맞춰 직접 골라 소개한 도구를 용도별로 모았습니다. 장비마다 왜
+			필요한지와 어떤 글에서 다뤘는지 함께 보여 드립니다.
+		</p>
+		<p class='im-picks-note'>
+			이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
+		</p>
+
+		<nav class='im-chips im-picks-nav' aria-label='용도별 바로가기'>
+			{
+				groups.map((g) => (
+					<a class='im-chip' href={`#${g.id}`}>
+						{g.title} <span>{g.items.length}</span>
+					</a>
+				))
+			}
+		</nav>
+
+		{
+			groups.map((g) => (
+				<section class='im-picks-group' id={g.id}>
+					<header>
+						<h2>
+							{g.title}
+							{g.inSeason && <span class='im-picks-season'>지금 철 · {month}월</span>}
+						</h2>
+						<p>{g.lede}</p>
+					</header>
+					<ul class='im-picks-list'>
+						{g.items.map((p) => (
+							<li class='im-pick'>
+								<a
+									class='im-pick-media'
+									href={p.url}
+									target='_blank'
+									rel='nofollow sponsored noopener'
+									referrerpolicy='unsafe-url'
+									tabindex='-1'
+								>
+									<img
+										src={p.image}
+										alt={p.imageAlt || p.name}
+										width='120'
+										height='240'
+										loading='lazy'
+									/>
+								</a>
+								<div class='im-pick-body'>
+									<a
+										class='im-pick-name'
+										href={p.url}
+										target='_blank'
+										rel='nofollow sponsored noopener'
+										referrerpolicy='unsafe-url'
+									>
+										{p.name}
+									</a>
+									<p class='im-pick-reason'>{toPolite(p.reason)}</p>
+									<p class='im-pick-posts'>
+										<span>다룬 글</span>
+										{p.posts.slice(0, 2).map((post) => (
+											<a href={post.url}>{post.title}</a>
+										))}
+									</p>
+									<a
+										class='im-pick-cta'
+										href={p.url}
+										target='_blank'
+										rel='nofollow sponsored noopener'
+										referrerpolicy='unsafe-url'
+									>
+										쿠팡에서 보기 <span aria-hidden='true'>→</span>
+									</a>
+								</div>
+							</li>
+						))}
+					</ul>
+				</section>
+			))
+		}
+
+		<p class='im-picks-note' style='margin-top:36px'>
+			가격과 재고는 쿠팡 상품 페이지에서 수시로 바뀝니다. 구매 전 옵션과 규격을 한 번 더 확인해
+			주세요.
+		</p>
+	</div>
+	<script type='application/ld+json' set:html={JSON.stringify(jsonLd)} />
+</BaseLayout>
+
+<style>
+	.im-picks {
+		width: min(calc(1080px + 2 * var(--gutter)), 100%);
+	}
+
+	.im-picks .im-tool-lede {
+		max-width: 760px;
+	}
+
+	.im-picks-note {
+		margin: 0 0 18px;
+		color: var(--muted);
+		font-size: 12px;
+		line-height: 1.6;
+	}
+
+	.im-picks-nav {
+		padding-bottom: 6px;
+	}
+
+	.im-picks-nav .im-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.im-picks-nav .im-chip span {
+		color: var(--muted);
+		font-weight: 500;
+	}
+
+	.im-picks-group {
+		margin-top: 40px;
+		padding-top: 14px;
+		border-top: 1px solid var(--ink);
+		scroll-margin-top: 20px;
+	}
+
+	.im-picks-group h2 {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 4px 12px;
+		margin: 0 0 6px;
+		font-size: 22px;
+		font-weight: 700;
+	}
+
+	.im-picks-season {
+		padding: 2px 8px;
+		border: 1px solid var(--ink);
+		border-radius: 999px;
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+
+	.im-picks-group header p {
+		margin: 0;
+		color: var(--muted);
+		font-size: 14px;
+		line-height: 1.6;
+	}
+
+	.im-picks-list {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0 28px;
+		margin: 8px 0 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.im-pick {
+		display: grid;
+		grid-template-columns: 96px minmax(0, 1fr);
+		gap: 16px;
+		padding: 18px 0;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-pick-media img {
+		display: block;
+		width: 96px;
+		height: auto;
+		border: 1px solid var(--line);
+		border-radius: 4px;
+	}
+
+	.im-pick-body {
+		display: grid;
+		align-content: start;
+		gap: 8px;
+		min-width: 0;
+	}
+
+	.im-pick-name {
+		font-size: 16px;
+		font-weight: 700;
+		line-height: 1.4;
+	}
+
+	.im-pick-name:hover {
+		opacity: 0.6;
+	}
+
+	.im-pick-reason {
+		margin: 0;
+		color: var(--muted);
+		font-size: 13px;
+		line-height: 1.65;
+	}
+
+	.im-pick-posts {
+		display: grid;
+		gap: 3px;
+		margin: 0;
+		font-size: 12px;
+		line-height: 1.5;
+	}
+
+	.im-pick-posts span {
+		color: var(--muted);
+		font-size: 10px;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+	}
+
+	.im-pick-posts a {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.im-pick-cta {
+		justify-self: start;
+		margin-top: 2px;
+		padding: 7px 14px;
+		border: 1px solid var(--ink);
+		border-radius: 999px;
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	.im-pick-cta:hover {
+		background: var(--ink);
+		color: var(--bg);
+	}
+
+	@media (max-width: 760px) {
+		.im-picks-list {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>
