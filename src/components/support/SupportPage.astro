@@ -1,0 +1,241 @@
+---
+import BaseLayout from '@/layouts/BaseLayout'
+import { SUPPORT_CATEGORIES, SUPPORT_PROGRAMS, type SupportProgram } from '@/data/support'
+import '../../styles/tools.css'
+
+const { program } = Astro.props as { program: SupportProgram }
+const dot = (iso: string) => iso.replace(/-/g, '.')
+const category = SUPPORT_CATEGORIES.find((c) => c.id === program.category)!
+const others = SUPPORT_PROGRAMS.filter((p) => p.slug !== program.slug)
+	.sort((a, b) => Number(b.category === program.category) - Number(a.category === program.category))
+	.slice(0, 4)
+const url = new URL(`/support/${program.slug}/`, Astro.site).href
+const title = `${program.title}: ${program.seoSuffix}`
+const description = `${program.summary} ${dot(program.checkedAt)} 확인 기준으로 대상, 지원 내용, 신청 시기와 신청처, 공고 원문을 정리했습니다.`
+
+const jsonLd = [
+	{
+		'@context': 'https://schema.org',
+		'@type': 'GovernmentService',
+		name: program.title,
+		description: program.summary,
+		provider: { '@type': 'GovernmentOrganization', name: program.org },
+		areaServed: { '@type': 'Country', name: '대한민국' },
+		url
+	},
+	{
+		'@context': 'https://schema.org',
+		'@type': 'BreadcrumbList',
+		itemListElement: [
+			{ '@type': 'ListItem', position: 1, name: 'IMUN.FARM', item: new URL('/', Astro.site).href },
+			{
+				'@type': 'ListItem',
+				position: 2,
+				name: '지원사업',
+				item: new URL('/support/', Astro.site).href
+			},
+			{ '@type': 'ListItem', position: 3, name: program.title, item: url }
+		]
+	},
+	{
+		'@context': 'https://schema.org',
+		'@type': 'FAQPage',
+		mainEntity: program.faq.map((f) => ({
+			'@type': 'Question',
+			name: f.q,
+			acceptedAnswer: { '@type': 'Answer', text: f.a }
+		}))
+	}
+]
+---
+
+<BaseLayout title={title} description={description} locale='ko' active='support' altPath={null}>
+	<article class='im-tool'>
+		<nav class='im-tool-crumb im-label' aria-label='경로'>
+			<a href='/support/'>지원사업</a>
+			<span>·</span>
+			<span>{category.label}</span>
+			<span>·</span>
+			<span>{dot(program.checkedAt)} 확인</span>
+		</nav>
+		<h1>{program.title}</h1>
+		<p class='im-tool-lede'>{program.summary}</p>
+		<p class={`im-sup-status is-${program.status.kind}`}>{program.status.label}</p>
+
+		<section class='im-tool-section im-sup-facts'>
+			<h2 class='im-label'>한눈에 보기</h2>
+			<dl>
+				{
+					program.facts.map((f) => (
+						<div>
+							<dt>{f.label}</dt>
+							<dd>{f.value}</dd>
+						</div>
+					))
+				}
+			</dl>
+		</section>
+
+		<section class='im-tool-section'>
+			<h2 class='im-label'>신청 순서</h2>
+			<ol class='im-sup-steps'>{program.steps.map((s) => <li>{s}</li>)}</ol>
+		</section>
+
+		<section class='im-tool-section'>
+			<h2 class='im-label'>미리 알아 둘 점</h2>
+			<ul class='im-sup-tips'>{program.tips.map((s) => <li>{s}</li>)}</ul>
+		</section>
+
+		<section class='im-tool-section im-sup-sources'>
+			<h2 class='im-label'>공고 원문·출처</h2>
+			<ul>
+				{
+					program.sources.map((s) => (
+						<li>
+							{s.url ? (
+								<a href={s.url} target='_blank' rel='noopener'>
+									{s.title}
+								</a>
+							) : (
+								<span>{s.title}</span>
+							)}
+							<span class='im-sup-date'>{s.date}</span>
+						</li>
+					))
+				}
+			</ul>
+			<p class='im-field-help'>
+				지원 금액·자격·기간은 해마다, 지역마다 바뀝니다. 신청 전에는 반드시 올해 공고 원문과 담당
+				기관에 확인해 주세요.
+			</p>
+		</section>
+
+		<section class='im-tool-faq'>
+			<h2 class='im-label'>자주 묻는 질문</h2>
+			{
+				program.faq.map((f) => (
+					<details>
+						<summary>{f.q}</summary>
+						<p>{f.a}</p>
+					</details>
+				))
+			}
+		</section>
+
+		{
+			program.related.length > 0 && (
+				<section class='im-tool-related'>
+					<h2 class='im-label'>함께 보면 좋은 계산기·글</h2>
+					{program.related.map((r) => (
+						<a href={r.href}>{r.title}</a>
+					))}
+				</section>
+			)
+		}
+
+		<section class='im-tool-related'>
+			<h2 class='im-label'>다른 지원사업</h2>
+			{
+				others.map((p) => (
+					<a href={`/support/${p.slug}/`}>
+						{p.title}
+						<span>{p.status.label}</span>
+					</a>
+				))
+			}
+		</section>
+
+		<p class='im-tool-more'><a href='/support/'>지원사업 전체 보기 →</a></p>
+	</article>
+	<script type='application/ld+json' set:html={JSON.stringify(jsonLd)} />
+</BaseLayout>
+
+<style>
+	.im-sup-status {
+		display: inline-block;
+		margin: -8px 0 6px;
+		padding: 5px 12px;
+		border: 1px solid var(--ink);
+		border-radius: 999px;
+		font-size: 12px;
+		font-weight: 700;
+	}
+
+	.im-sup-status.is-soon {
+		background: var(--ink);
+		color: var(--bg);
+	}
+
+	.im-sup-facts dl {
+		margin: 0;
+	}
+
+	.im-sup-facts dl > div {
+		display: grid;
+		grid-template-columns: 96px minmax(0, 1fr);
+		gap: 12px;
+		padding: 12px 0;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-sup-facts dt {
+		color: var(--muted);
+		font-size: 13px;
+	}
+
+	.im-sup-facts dd {
+		margin: 0;
+		font-size: 15px;
+		line-height: 1.65;
+	}
+
+	.im-sup-steps,
+	.im-sup-tips {
+		margin: 0;
+		padding-left: 22px;
+	}
+
+	.im-sup-steps {
+		list-style: decimal;
+	}
+
+	.im-sup-tips {
+		list-style: disc;
+	}
+
+	.im-sup-steps li,
+	.im-sup-tips li {
+		margin: 0 0 8px;
+	}
+
+	.im-sup-sources ul {
+		margin: 0 0 10px;
+		padding: 0;
+		list-style: none;
+	}
+
+	.im-sup-sources li {
+		padding: 10px 0;
+		border-bottom: 1px solid var(--line);
+		font-size: 14px;
+	}
+
+	.im-sup-sources a {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.im-sup-date {
+		display: block;
+		margin-top: 3px;
+		color: var(--muted);
+		font-size: 12px;
+	}
+
+	@media (max-width: 640px) {
+		.im-sup-facts dl > div {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 4px;
+		}
+	}
+</style>

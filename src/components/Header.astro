@@ -6,13 +6,26 @@ const prefix = getLocalePrefix(locale)
 ---
 
 <header class='im-header'>
-	<a
-		class='im-header-link im-header-tools'
-		href={`${prefix}/tools/`}
-		aria-current={active === 'tools' ? 'page' : undefined}
-	>
-		계산기 <span>Tools</span>
-	</a>
+	<nav class='im-header-left'>
+		<a
+			class='im-header-link'
+			href={`${prefix}/tools/`}
+			aria-current={active === 'tools' ? 'page' : undefined}
+		>
+			계산기 <span>Tools</span>
+		</a>
+		{
+			locale === DEFAULT_LOCALE && (
+				<a
+					class='im-header-link'
+					href='/support/'
+					aria-current={active === 'support' ? 'page' : undefined}
+				>
+					지원 <span>Support</span>
+				</a>
+			)
+		}
+	</nav>
 	<a class='im-wordmark' href={`${prefix}/`} aria-label='IMUN.FARM'>IMUN.FARM</a>
 	<nav class='im-header-right'>
 		{
@@ -57,8 +70,11 @@ const prefix = getLocalePrefix(locale)
 		opacity: 0.5;
 	}
 
-	.im-header-tools {
+	.im-header-left {
+		display: flex;
 		justify-self: start;
+		align-self: end;
+		gap: clamp(12px, 1.6vw, 22px);
 	}
 
 	.im-header-right {

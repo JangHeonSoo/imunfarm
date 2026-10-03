@@ -1,0 +1,12 @@
+---
+import SupportPage from '@/components/support/SupportPage'
+import { SUPPORT_PROGRAMS } from '@/data/support'
+
+export function getStaticPaths() {
+	return SUPPORT_PROGRAMS.map((program) => ({ params: { slug: program.slug }, props: { program } }))
+}
+
+const { program } = Astro.props
+---
+
+<SupportPage program={program} />
