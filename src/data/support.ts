@@ -24,7 +24,17 @@ export type SupportProgram = {
 	summary: string
 	/** 목록 카드와 상단에 보이는 신청 시기 표시 */
 	status: { label: string; kind: 'always' | 'season' | 'soon' }
+	/** 상세 상단 "얼마·누가·언제" 세 칸. v 는 크게, s 는 설명, hub 는 목록 한 줄용 짧은 설명 */
+	key: Record<'amount' | 'who' | 'when', { v: string; s: string; hub: string }>
+	/** 예년 신청 달 (1–12), 상시는 'always' */
+	months: number[] | 'always'
+	apply: { label: string; url?: string; note: string }
+	/** "나도 대상인지" 질문. tag 는 "아니요"일 때 이유로 쓰는 짧은 말 */
+	checks?: { q: string; hint?: string; tag: string }[]
+	checkPass?: string
 	facts: { label: string; value: string }[]
+	/** steps 와 같은 순서의 시기 표시 (선택) */
+	stepWhen?: string[]
 	steps: string[]
 	tips: string[]
 	related: { href: string; title: string }[]
@@ -43,6 +53,37 @@ export const SUPPORT_PROGRAMS: SupportProgram[] = [
 		summary:
 			'시·군이 도비·군비로 농가의 소형 저온저장고 설치비 일부를 보조합니다. 전국 공통 사업이 아니라 지역별 사업이라 대상 품목과 보조율이 시·군마다 다릅니다.',
 		status: { label: '연초 공고 (지역별)', kind: 'season' },
+		key: {
+			amount: {
+				v: '보조 50%',
+				s: '금산군 2026년 사업: 3평 사업비 510만 원 중 255만 원을 도비·군비로 보조',
+				hub: '3평 510만 원 중 255만 원 (금산군)'
+			},
+			who: {
+				v: '관내 등록 농가',
+				s: '시·군에 주소를 두고 농업경영체를 등록한 농가·작목반, 품목·면적 요건은 지역별',
+				hub: '관내 농업경영체 등록 농가'
+			},
+			when: {
+				v: '1–3월',
+				s: '보통 연초에 공고합니다. 금산군 2026년분 신청기한은 2026년 3월 4일이었습니다',
+				hub: '연초 공고'
+			}
+		},
+		months: [1, 2, 3],
+		apply: { label: '읍·면사무소 · 농업기술센터', note: '사업 예정지 관할에 신청합니다' },
+		checks: [
+			{ q: '저장고를 지을 곳의 시·군에 주소가 있나요?', tag: '주소' },
+			{ q: '농업경영체를 등록했나요?', tag: '경영체 등록' },
+			{
+				q: '최근 2–3년 안에 같은 지원을 받은 적이 없나요?',
+				hint: '받은 적이 있으면 제외하는 지역이 많습니다',
+				tag: '중복 지원'
+			}
+		],
+		checkPass:
+			'연초 시·군 공고가 나오면 읍·면사무소에 신청해 주세요. 대상 품목과 면적 요건은 공고마다 다릅니다.',
+		stepWhen: ['1–2월', '공고 확인 후', '신청 기한 안', '선정 후'],
 		facts: [
 			{ label: '주관', value: '시·군 (지역별 자체·도비 사업)' },
 			{
@@ -113,6 +154,26 @@ export const SUPPORT_PROGRAMS: SupportProgram[] = [
 		summary:
 			'시설원예·축산 농가에 지열·공기열 히트펌프 같은 신재생에너지 냉난방 시설과 에너지 절감 시설 설치비를 지원해 난방비를 줄이는 사업입니다.',
 		status: { label: '다음 해 사업 신청 (지역별 가을)', kind: 'soon' },
+		key: {
+			amount: {
+				v: '국고 30–60%',
+				s: '사업 지침상 국고 30–60%, 지방비 20–30%, 융자 10–20%, 자부담 10–20% (시설별로 다름)',
+				hub: '국고 지원 · 지방비 20–30% 별도'
+			},
+			who: {
+				v: '시설원예·축산',
+				s: '재배 경력·시설 요건은 시·군 공고를 따릅니다 (예산군은 3년 이상 재배)',
+				hub: '시설원예·축산 농가의 히트펌프·보온 시설'
+			},
+			when: {
+				v: '가을 접수',
+				s: '다음 해 사업을 전년도 가을에 받는 지역이 있습니다. 예산군은 2025년 10월 31일까지 받았습니다',
+				hub: '지역별 가을 접수'
+			}
+		},
+		months: [9, 10],
+		apply: { label: '읍·면사무소 · 농업기술센터', note: '사업 대상지 관할에 신청합니다' },
+		stepWhen: ['9–10월', '신청 전', '신청 전', '접수 기한 안'],
 		facts: [
 			{ label: '주관', value: '농림축산식품부, 시·군 (읍·면사무소 접수)' },
 			{
@@ -177,6 +238,29 @@ export const SUPPORT_PROGRAMS: SupportProgram[] = [
 		summary:
 			'지자체가 설치기업과 컨소시엄을 이뤄 한 지역의 주택·건물 등에 태양광 같은 신재생에너지 설비를 묶어 보급하고, 설치비 일부를 지원하는 사업입니다.',
 		status: { label: '다음 해 사업 수요조사 (상반기)', kind: 'season' },
+		key: {
+			amount: {
+				v: '설치비 지원',
+				s: '지원 비율과 대상 설비는 해마다 공고에서 정합니다',
+				hub: '비율은 해마다 공고'
+			},
+			who: {
+				v: '지자체 컨소시엄',
+				s: '지자체가 설치기업과 함께 신청하고, 주민은 거주지 시·군 모집에 참여합니다',
+				hub: '지자체 컨소시엄으로 주택·건물'
+			},
+			when: {
+				v: '2–6월',
+				s: '2026년 사업 수요조사는 2025년 2월 28일에 공고해 6월 5일에 마감했습니다',
+				hub: '상반기 수요조사'
+			}
+		},
+		months: [2, 3, 4, 5, 6],
+		apply: {
+			label: '거주지 시·군 모집',
+			url: 'https://www.knrec.or.kr/biz/pds/notice/list.do',
+			note: '공단 공고는 한국에너지공단 신재생에너지센터에서 봅니다'
+		},
 		facts: [
 			{ label: '주관', value: '산업통상자원부, 한국에너지공단 신재생에너지센터' },
 			{ label: '근거', value: '신·재생에너지 설비의 지원 등에 관한 규정 (산업통상자원부 고시)' },
@@ -229,6 +313,25 @@ export const SUPPORT_PROGRAMS: SupportProgram[] = [
 		summary:
 			'비싼 농기계를 사지 않고 시·군 농기계임대사업소에서 하루 단위로 빌려 쓰는 사업입니다. 트랙터 작업기, 관리기, 굴삭기 같은 장비를 예약해 씁니다.',
 		status: { label: '상시 (사전 예약)', kind: 'always' },
+		key: {
+			amount: {
+				v: '임대료 50% 감면',
+				s: '2026년 말까지 감면을 연장한 지자체가 많습니다 (구례·청송·괴산·보성 등)',
+				hub: '2026년 말까지 연장한 지자체 다수'
+			},
+			who: {
+				v: '관내 농업인',
+				s: '전국 147개 시·군 455개 임대사업소, 농기계 약 9만 7천 대',
+				hub: '관내 농업인 · 455개 사업소'
+			},
+			when: {
+				v: '상시',
+				s: '작업 날짜에 맞춰 미리 예약합니다. 농번기에는 일찍 마감됩니다',
+				hub: '상시 · 사전 예약'
+			}
+		},
+		months: 'always',
+		apply: { label: '시·군 농기계임대사업소', note: '전화·방문·온라인으로 예약합니다' },
 		facts: [
 			{ label: '주관', value: '농림축산식품부, 시·군 농기계임대사업소' },
 			{
@@ -289,6 +392,25 @@ export const SUPPORT_PROGRAMS: SupportProgram[] = [
 		summary:
 			'농기계와 시설원예 난방에 쓰는 석유류의 부가가치세·개별소비세·교통·에너지·환경세 등을 면제해 주는 제도입니다. 농협에 농기계를 등록하고 배정받아 씁니다.',
 		status: { label: '상시 (농협 등록)', kind: 'always' },
+		key: {
+			amount: {
+				v: '간접세 면제',
+				s: '부가가치세, 개별소비세, 교통·에너지·환경세 등을 면제합니다',
+				hub: '2029년까지 연장안, 12월 국회 의결'
+			},
+			who: {
+				v: '등록 농업인',
+				s: '농업용 기계와 원예시설 난방에 쓰는 유류가 대상입니다',
+				hub: '면세유 대상 농기계를 등록한 농업인'
+			},
+			when: {
+				v: '상시',
+				s: '현행 특례는 2026년 말까지이고, 2029년까지 연장안은 12월 국회 의결로 확정됩니다',
+				hub: '상시 · 농협 등록'
+			}
+		},
+		months: 'always',
+		apply: { label: '지역 농·축협', note: '농기계를 등록한 뒤 배정량 안에서 구입합니다' },
 		facts: [
 			{ label: '근거', value: '조세특례제한법 (농업용 석유류 간접세 감면)' },
 			{ label: '면제 세목', value: '부가가치세, 개별소비세, 교통·에너지·환경세 등' },
@@ -339,6 +461,32 @@ export const SUPPORT_PROGRAMS: SupportProgram[] = [
 		summary:
 			'농작업 중 다치거나 농작업 관련 질병에 걸렸을 때 보상받는 정책보험입니다. 보험료의 절반 이상을 정부가 지원합니다.',
 		status: { label: '상시 가입', kind: 'always' },
+		key: {
+			amount: {
+				v: '보험료 50–70%',
+				s: '일반농 50%, 기초생활수급·차상위 영세농 70%를 국고로 지원합니다',
+				hub: '국고 지원 · 영세농 70%'
+			},
+			who: {
+				v: '만 15–87세',
+				s: '영농에 종사하고 농업경영체를 등록한 농업인 (일부 상품 84세)',
+				hub: '만 15–87세 농업경영체 등록 농업인'
+			},
+			when: {
+				v: '상시',
+				s: '농작업이 많은 철 전에 가입해 두는 편이 좋습니다',
+				hub: '상시 가입'
+			}
+		},
+		months: 'always',
+		apply: { label: '지역 농·축협', note: '문의 NH농협생명 1544-4000' },
+		checks: [
+			{ q: '만 15세 이상 87세 이하인가요?', hint: '일부 상품은 84세까지입니다', tag: '나이' },
+			{ q: '농업경영체를 등록했나요?', tag: '경영체 등록' },
+			{ q: '지금 영농에 종사하고 있나요?', tag: '영농 종사' }
+		],
+		checkPass:
+			'지역 농·축협에서 바로 가입하실 수 있습니다. 지자체가 보험료를 더 보태는지도 함께 물어보세요.',
 		facts: [
 			{ label: '근거', value: '농어업인의 안전보험 및 안전재해예방에 관한 법률' },
 			{
@@ -398,6 +546,41 @@ export const SUPPORT_PROGRAMS: SupportProgram[] = [
 		summary:
 			'독립 영농을 시작한 청년농에게 최장 3년 동안 매달 영농정착지원금을 주고, 창업자금·농지 임대 등을 연계해 주는 사업입니다.',
 		status: { label: '다음 해 1차 모집 (예년 11월)', kind: 'soon' },
+		key: {
+			amount: {
+				v: '월 110만 원',
+				s: '1년차 110만 · 2년차 100만 · 3년차 90만 원, 최장 3년',
+				hub: '최장 3년 · 2·3년차 100·90만 원'
+			},
+			who: {
+				v: '만 18–39세',
+				s: '독립 영농 3년 이하(예정자 포함), 기준중위소득 140% 이하',
+				hub: '만 18–39세, 독립 영농 3년 이하'
+			},
+			when: {
+				v: '11월 초',
+				s: '2026년 사업은 2025년 11월 5일–12월 11일에 1차 모집했습니다',
+				hub: '예년 11월 초 모집'
+			}
+		},
+		months: [11, 12],
+		apply: {
+			label: '농림사업정보시스템',
+			url: 'https://uni.agrix.go.kr',
+			note: '온라인으로 신청합니다'
+		},
+		checks: [
+			{ q: '만 18세 이상 40세 미만인가요?', hint: '2026년 사업 기준 1985–2008년생', tag: '나이' },
+			{ q: '독립 영농 경력이 3년 이하이거나 곧 시작하나요?', tag: '영농 경력' },
+			{
+				q: '세대 소득이 기준중위소득 140% 이하인가요?',
+				hint: '세대 건강보험료로 판단합니다',
+				tag: '소득'
+			}
+		],
+		checkPass:
+			'11월 초 공고가 나오면 농림사업정보시스템에서 신청해 주세요. 최종 자격은 시·군 심사로 정해집니다.',
+		stepWhen: ['11월 초', '12월 중순까지', '다음 해 초', '선발 후'],
 		facts: [
 			{ label: '주관', value: '농림축산식품부 (시·군 접수)' },
 			{ label: '지원금', value: '독립경영 1년차 월 110만 원, 2년차 월 100만 원, 3년차 월 90만 원' },
@@ -450,3 +633,21 @@ export const SUPPORT_PROGRAMS: SupportProgram[] = [
 		checkedAt: '2026-10-04'
 	}
 ]
+
+/** 빌드 시점의 한국 달 (1–12). 시세 데이터가 하루 두 번 빌드되므로 달 표시는 늘 최신이다. */
+export function currentMonthKST(now = new Date()): number {
+	return Number(
+		new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', month: 'numeric' }).format(now)
+	)
+}
+
+/** 다음 신청 달까지 남은 달 수 (이번 달이면 0). 상시는 Infinity */
+export function monthsUntil(p: SupportProgram, cur: number): number {
+	if (p.months === 'always') return Infinity
+	return Math.min(...p.months.map((m) => (m - cur + 12) % 12))
+}
+
+/** 다가오는 순, 상시는 맨 뒤 */
+export function sortByNext(programs: SupportProgram[], cur: number): SupportProgram[] {
+	return [...programs].sort((a, b) => monthsUntil(a, cur) - monthsUntil(b, cur))
+}

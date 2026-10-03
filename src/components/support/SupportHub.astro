@@ -1,19 +1,29 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout'
-import { SUPPORT_CATEGORIES, SUPPORT_PROGRAMS } from '@/data/support'
+import {
+	SUPPORT_CATEGORIES,
+	SUPPORT_PROGRAMS,
+	currentMonthKST,
+	monthsUntil,
+	sortByNext
+} from '@/data/support'
 import '../../styles/tools.css'
+import '../../styles/support.css'
 
-const order = { soon: 0, season: 1, always: 2 } as const
-const programs = [...SUPPORT_PROGRAMS].sort((a, b) => order[a.status.kind] - order[b.status.kind])
+const cur = currentMonthKST()
+const programs = sortByNext(SUPPORT_PROGRAMS, cur)
+const upcoming = programs.filter((p) => monthsUntil(p, cur) <= 1)
 const categories = SUPPORT_CATEGORIES.filter((c) => programs.some((p) => p.category === c.id))
 const latest = programs
 	.map((p) => p.checkedAt)
 	.sort()
 	.at(-1)!
 const dot = (iso: string) => iso.replace(/-/g, '.')
+const [ly, lm, ld] = latest.split('-').map(Number)
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
 
 const title = '농업 지원사업 모음: 저온저장고·농기계·면세유·안전보험·청년농 지원'
-const description = `저온저장고 보조, 농업에너지 이용효율화, 신재생 융복합, 농기계 임대, 농업용 면세유, 농업인안전보험, 청년농 영농정착지원까지 농가가 자주 찾는 지원사업의 대상·지원 내용·신청 시기를 공고 원문과 함께 정리했습니다. ${dot(latest)} 확인 기준.`
+const description = `저온저장고 보조, 농업에너지 이용효율화, 신재생 융복합, 농기계 임대, 농업용 면세유, 농업인안전보험, 청년농 영농정착지원까지 받는 금액·대상·신청 시기를 공고 원문과 함께 정리했습니다. ${dot(latest)} 확인 기준.`
 const jsonLd = {
 	'@context': 'https://schema.org',
 	'@type': 'ItemList',
@@ -28,16 +38,36 @@ const jsonLd = {
 ---
 
 <BaseLayout title={title} description={description} locale='ko' active='support' altPath={null}>
-	<div class='im-tool im-sup-hub'>
-		<p class='im-label' style='margin:0'>지원사업 · {dot(latest)} 확인 기준</p>
-		<h1>농업 지원사업 모음</h1>
-		<p class='im-tool-lede'>
-			저온저장고, 에너지, 농기계, 연료, 보험, 청년농처럼 농가가 자주 찾는 지원사업을 모았습니다.
-			사업마다 대상과 지원 내용, 신청 시기와 신청처, 공고 원문을 함께 보여 드립니다.
-		</p>
+	<div class='im-sup'>
+		<div class='im-sup-top'>
+			<div>
+				<h1>농업 지원사업,<br />얼마를 언제 받는지부터</h1>
+				<div class='im-sup-lede'>
+					농가가 자주 찾는 지원사업 {programs.length}개를 받는 금액, 대상, 신청 시기 순으로
+					정리했습니다. 모든 숫자는 공고 원문을 {ly}년 {lm}월 {ld}일에 확인했습니다.
+				</div>
+			</div>
+			{
+				upcoming.length > 0 && (
+					<aside class='im-sup-next' aria-label='곧 신청하는 사업'>
+						<strong>지금 준비할 사업은 {upcoming.length}개입니다.</strong>
+						<ul>
+							{upcoming.map((p) => (
+								<li>
+									<a href={`/support/${p.slug}/`}>{p.title}</a>
+									<span>{p.key.when.hub}</span>
+								</li>
+							))}
+						</ul>
+					</aside>
+				)
+			}
+		</div>
 
-		<nav class='im-chips' aria-label='분야'>
-			<button type='button' class='im-chip' data-cat='' aria-pressed='true'>전체</button>
+		<nav class='im-chips im-sup-chips' aria-label='분야'>
+			<button type='button' class='im-chip' data-cat='' aria-pressed='true'>
+				전체 {programs.length}
+			</button>
 			{
 				categories.map((c) => (
 					<button type='button' class='im-chip' data-cat={c.id} aria-pressed='false'>
@@ -47,170 +77,75 @@ const jsonLd = {
 			}
 		</nav>
 
-		<ul class='im-sup-list'>
-			{
-				programs.map((p) => (
-					<li data-cat={p.category}>
-						<a href={`/support/${p.slug}/`}>
-							<div>
-								<span class='im-sup-org'>{p.org}</span>
-								<h2>{p.title}</h2>
-								<p>{p.summary}</p>
-								<dl>
-									{p.facts.slice(0, 3).map((f) => (
-										<div>
-											<dt>{f.label}</dt>
-											<dd>{f.value}</dd>
-										</div>
-									))}
-								</dl>
-							</div>
-							<div class='im-sup-side'>
-								<span class={`im-sup-badge is-${p.status.kind}`}>{p.status.label}</span>
-								<span class='im-sup-more'>자세히 보기 →</span>
-							</div>
-						</a>
-					</li>
-				))
-			}
-		</ul>
-		<p class='im-field-help' style='margin-top:14px'>
-			지원 금액·자격·기간은 해마다, 지역마다 바뀝니다. 신청 전에는 반드시 올해 공고 원문과 담당
-			기관에 확인해 주세요.
+		<div class='im-sup-ledger'>
+			<div class='im-sup-row is-head' aria-hidden='true'>
+				<span>사업</span>
+				<span>받는 금액</span>
+				<span>대상</span>
+				<span class='im-sup-mhead'>
+					{MONTHS.map((m) => <span class={m === cur ? 'is-now' : ''}>{m}</span>)}
+				</span>
+				<span></span>
+			</div>
+			<ul>
+				{
+					programs.map((p) => (
+						<li data-row={p.category}>
+							<a class='im-sup-row' href={`/support/${p.slug}/`}>
+								<div>
+									<h2 class='im-sup-name'>{p.title}</h2>
+									<span class='im-sup-org'>{p.org}</span>
+								</div>
+								<div class='im-sup-amt'>
+									{p.key.amount.v}
+									<small>{p.key.amount.hub}</small>
+								</div>
+								<div class='im-sup-who'>{p.key.who.hub}</div>
+								<div class='im-sup-when'>
+									<span class='im-sup-when-t'>{p.key.when.hub}</span>
+									<span
+										class={`im-sup-months${p.months === 'always' ? ' is-always' : ''}`}
+										aria-label={
+											p.months === 'always' ? '1년 내내 신청' : `예년 ${p.months.join('·')}월 신청`
+										}
+									>
+										{MONTHS.map((m) => (
+											<i
+												class={[
+													p.months !== 'always' && p.months.includes(m) && 'is-on',
+													m === cur && 'is-now'
+												]
+													.filter(Boolean)
+													.join(' ')}
+											/>
+										))}
+									</span>
+								</div>
+								<span class='im-sup-go' aria-hidden='true'>
+									→
+								</span>
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</div>
+		<p class='im-sup-note'>
+			진한 칸은 예년 신청 시기, 옅은 줄은 1년 내내 신청, 테두리 칸은 이번 달입니다. 금액·자격·기간은
+			해마다, 지역마다 바뀌니 신청 전 올해 공고를 꼭 확인해 주세요.
 		</p>
 	</div>
 	<script type='application/ld+json' set:html={JSON.stringify(jsonLd)} />
 </BaseLayout>
 
 <script>
-	const chips = Array.from(
-		document.querySelectorAll<HTMLButtonElement>('.im-sup-hub [data-cat]:not(li)')
-	)
-	const items = Array.from(document.querySelectorAll<HTMLLIElement>('.im-sup-list li'))
+	const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('.im-sup-chips [data-cat]'))
+	const rows = Array.from(document.querySelectorAll<HTMLLIElement>('.im-sup-ledger li[data-row]'))
 	chips.forEach((chip) =>
 		chip.addEventListener('click', () => {
 			const cat = chip.dataset.cat
 			chips.forEach((c) => c.setAttribute('aria-pressed', String(c === chip)))
-			items.forEach((li) => (li.hidden = !!cat && li.dataset.cat !== cat))
+			rows.forEach((li) => (li.hidden = !!cat && li.dataset.row !== cat))
 		})
 	)
 </script>
-
-<style>
-	.im-sup-hub {
-		width: min(calc(1080px + 2 * var(--gutter)), 100%);
-	}
-
-	.im-sup-hub .im-tool-lede {
-		max-width: 760px;
-	}
-
-	.im-sup-list {
-		margin: 18px 0 0;
-		padding: 0;
-		list-style: none;
-		border-top: 1px solid var(--ink);
-	}
-
-	.im-sup-list li[hidden] {
-		display: none;
-	}
-
-	.im-sup-list a {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) 170px;
-		gap: 8px 28px;
-		padding: 22px 0;
-		border-bottom: 1px solid var(--line);
-	}
-
-	.im-sup-list a:hover h2 {
-		opacity: 0.6;
-	}
-
-	.im-sup-org {
-		color: var(--muted);
-		font-size: 12px;
-		font-weight: 600;
-	}
-
-	.im-sup-list h2 {
-		margin: 4px 0 6px;
-		font-size: 20px;
-		font-weight: 700;
-	}
-
-	.im-sup-list p {
-		margin: 0;
-		color: var(--muted);
-		font-size: 14px;
-		line-height: 1.65;
-	}
-
-	.im-sup-list dl {
-		margin: 10px 0 0;
-	}
-
-	.im-sup-list dl > div {
-		display: grid;
-		grid-template-columns: 72px minmax(0, 1fr);
-		gap: 12px;
-		padding: 3px 0;
-		font-size: 13px;
-		line-height: 1.55;
-	}
-
-	.im-sup-list dt {
-		color: var(--muted);
-	}
-
-	.im-sup-list dd {
-		margin: 0;
-	}
-
-	.im-sup-side {
-		display: grid;
-		align-content: start;
-		justify-items: end;
-		gap: 10px;
-	}
-
-	.im-sup-badge {
-		padding: 4px 10px;
-		border: 1px solid var(--ink);
-		border-radius: 999px;
-		font-size: 12px;
-		font-weight: 700;
-		text-align: center;
-	}
-
-	.im-sup-badge.is-soon {
-		background: var(--ink);
-		color: var(--bg);
-	}
-
-	.im-sup-more {
-		font-size: 12px;
-		font-weight: 600;
-		text-decoration: underline;
-		text-underline-offset: 3px;
-	}
-
-	@media (max-width: 700px) {
-		.im-sup-list a {
-			grid-template-columns: minmax(0, 1fr);
-		}
-
-		.im-sup-side {
-			justify-items: start;
-			grid-auto-flow: column;
-			justify-content: start;
-			align-items: center;
-		}
-
-		.im-sup-list dl > div {
-			grid-template-columns: minmax(0, 1fr);
-			gap: 0;
-		}
-	}
-</style>

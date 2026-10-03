@@ -1,17 +1,30 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout'
-import { SUPPORT_CATEGORIES, SUPPORT_PROGRAMS, type SupportProgram } from '@/data/support'
+import {
+	SUPPORT_CATEGORIES,
+	SUPPORT_PROGRAMS,
+	currentMonthKST,
+	sortByNext,
+	type SupportProgram
+} from '@/data/support'
 import '../../styles/tools.css'
+import '../../styles/support.css'
 
 const { program } = Astro.props as { program: SupportProgram }
 const dot = (iso: string) => iso.replace(/-/g, '.')
 const category = SUPPORT_CATEGORIES.find((c) => c.id === program.category)!
-const others = SUPPORT_PROGRAMS.filter((p) => p.slug !== program.slug)
-	.sort((a, b) => Number(b.category === program.category) - Number(a.category === program.category))
-	.slice(0, 4)
+const others = sortByNext(
+	SUPPORT_PROGRAMS.filter((p) => p.slug !== program.slug),
+	currentMonthKST()
+).slice(0, 4)
 const url = new URL(`/support/${program.slug}/`, Astro.site).href
 const title = `${program.title}: ${program.seoSuffix}`
 const description = `${program.summary} ${dot(program.checkedAt)} 확인 기준으로 대상, 지원 내용, 신청 시기와 신청처, 공고 원문을 정리했습니다.`
+const KEY = [
+	['amount', '얼마'],
+	['who', '누가'],
+	['when', '언제']
+] as const
 
 const jsonLd = [
 	{
@@ -50,192 +63,223 @@ const jsonLd = [
 ---
 
 <BaseLayout title={title} description={description} locale='ko' active='support' altPath={null}>
-	<article class='im-tool'>
-		<nav class='im-tool-crumb im-label' aria-label='경로'>
+	<article class='im-sup im-sup-page'>
+		<nav class='im-sup-crumb im-label' aria-label='경로'>
 			<a href='/support/'>지원사업</a>
-			<span>·</span>
 			<span>{category.label}</span>
-			<span>·</span>
 			<span>{dot(program.checkedAt)} 확인</span>
 		</nav>
 		<h1>{program.title}</h1>
-		<p class='im-tool-lede'>{program.summary}</p>
-		<p class={`im-sup-status is-${program.status.kind}`}>{program.status.label}</p>
+		<div class='im-sup-lede'>{program.summary}</div>
 
-		<section class='im-tool-section im-sup-facts'>
-			<h2 class='im-label'>한눈에 보기</h2>
-			<dl>
-				{
-					program.facts.map((f) => (
+		<dl class='im-sup-key'>
+			{
+				KEY.map(([k, label]) => (
+					<div>
+						<dt>{label}</dt>
+						<dd>
+							<span class='im-sup-key-v'>{program.key[k].v}</span>
+							<span class='im-sup-key-s'>{program.key[k].s}</span>
+						</dd>
+					</div>
+				))
+			}
+		</dl>
+
+		<div class='im-sup-body'>
+			<aside class='im-sup-rail is-apply'>
+				<section>
+					<h2>신청하는 곳</h2>
+					{
+						program.apply.url ? (
+							<a class='im-sup-apply' href={program.apply.url} target='_blank' rel='noopener'>
+								{program.apply.label} →<small>{program.apply.note}</small>
+							</a>
+						) : (
+							<div class='im-sup-apply'>
+								{program.apply.label}
+								<small>{program.apply.note}</small>
+							</div>
+						)
+					}
+					<dl>
 						<div>
-							<dt>{f.label}</dt>
-							<dd>{f.value}</dd>
+							<dt>주관</dt>
+							<dd>{program.org}</dd>
 						</div>
-					))
-				}
-			</dl>
-		</section>
-
-		<section class='im-tool-section'>
-			<h2 class='im-label'>신청 순서</h2>
-			<ol class='im-sup-steps'>{program.steps.map((s) => <li>{s}</li>)}</ol>
-		</section>
-
-		<section class='im-tool-section'>
-			<h2 class='im-label'>미리 알아 둘 점</h2>
-			<ul class='im-sup-tips'>{program.tips.map((s) => <li>{s}</li>)}</ul>
-		</section>
-
-		<section class='im-tool-section im-sup-sources'>
-			<h2 class='im-label'>공고 원문·출처</h2>
-			<ul>
-				{
-					program.sources.map((s) => (
-						<li>
-							{s.url ? (
-								<a href={s.url} target='_blank' rel='noopener'>
-									{s.title}
-								</a>
-							) : (
-								<span>{s.title}</span>
-							)}
-							<span class='im-sup-date'>{s.date}</span>
-						</li>
-					))
-				}
-			</ul>
-			<p class='im-field-help'>
-				지원 금액·자격·기간은 해마다, 지역마다 바뀝니다. 신청 전에는 반드시 올해 공고 원문과 담당
-				기관에 확인해 주세요.
-			</p>
-		</section>
-
-		<section class='im-tool-faq'>
-			<h2 class='im-label'>자주 묻는 질문</h2>
-			{
-				program.faq.map((f) => (
-					<details>
-						<summary>{f.q}</summary>
-						<p>{f.a}</p>
-					</details>
-				))
-			}
-		</section>
-
-		{
-			program.related.length > 0 && (
-				<section class='im-tool-related'>
-					<h2 class='im-label'>함께 보면 좋은 계산기·글</h2>
-					{program.related.map((r) => (
-						<a href={r.href}>{r.title}</a>
-					))}
+						<div>
+							<dt>확인일</dt>
+							<dd>{dot(program.checkedAt)}</dd>
+						</div>
+					</dl>
 				</section>
-			)
-		}
+			</aside>
 
-		<section class='im-tool-related'>
-			<h2 class='im-label'>다른 지원사업</h2>
-			{
-				others.map((p) => (
-					<a href={`/support/${p.slug}/`}>
-						{p.title}
-						<span>{p.status.label}</span>
-					</a>
-				))
-			}
-		</section>
+			<div class='im-sup-main'>
+				{
+					program.checks && program.checks.length > 0 && (
+						<section class='im-sup-sec im-sup-check' data-pass={program.checkPass}>
+							<h2>나도 대상인지 확인해 보세요</h2>
+							<p class='im-sup-sub'>
+								{program.checks.length}가지에 답하시면 신청 가능성을 바로 알려 드립니다.
+							</p>
+							{program.checks.map((c, i) => (
+								<fieldset data-tag={c.tag}>
+									<legend>
+										{c.q}
+										{c.hint && <small>{c.hint}</small>}
+									</legend>
+									<span class='im-sup-seg'>
+										<label>
+											<input type='radio' name={`q${i}`} value='y' />예
+										</label>
+										<label>
+											<input type='radio' name={`q${i}`} value='n' />
+											아니요
+										</label>
+									</span>
+								</fieldset>
+							))}
+							<p class='im-sup-verdict' aria-live='polite'>
+								{program.checks.length}가지에 모두 답해 주세요.
+							</p>
+						</section>
+					)
+				}
 
-		<p class='im-tool-more'><a href='/support/'>지원사업 전체 보기 →</a></p>
+				<section class='im-sup-sec'>
+					<h2>신청 순서</h2>
+					<ol class='im-sup-steps'>
+						{
+							program.steps.map((s, i) => (
+								<li>
+									<span class='im-sup-step-t'>{program.stepWhen?.[i] ?? `${i + 1}단계`}</span>
+									<span>{s}</span>
+								</li>
+							))
+						}
+					</ol>
+				</section>
+
+				<section class='im-sup-sec'>
+					<h2>자세한 내용</h2>
+					<dl class='im-sup-facts'>
+						{
+							program.facts.map((f) => (
+								<div>
+									<dt>{f.label}</dt>
+									<dd>{f.value}</dd>
+								</div>
+							))
+						}
+					</dl>
+				</section>
+
+				<section class='im-sup-sec'>
+					<h2>미리 알아 둘 점</h2>
+					<ul class='im-sup-lines'>{program.tips.map((s) => <li>{s}</li>)}</ul>
+				</section>
+
+				<section class='im-sup-sec im-sup-faq'>
+					<h2>자주 묻는 질문</h2>
+					{
+						program.faq.map((f, i) => (
+							<details open={i === 0}>
+								<summary>{f.q}</summary>
+								<p>{f.a}</p>
+							</details>
+						))
+					}
+				</section>
+
+				<section class='im-sup-sec'>
+					<h2>공고 원문·출처</h2>
+					<ul class='im-sup-src'>
+						{
+							program.sources.map((s) => (
+								<li>
+									{s.url ? (
+										<a href={s.url} target='_blank' rel='noopener'>
+											{s.title}
+										</a>
+									) : (
+										<span>{s.title}</span>
+									)}
+									<span class='im-sup-date'>{s.date}</span>
+								</li>
+							))
+						}
+					</ul>
+					<p class='im-sup-sub'>
+						지원 금액·자격·기간은 해마다, 지역마다 바뀝니다. 신청 전에는 반드시 올해 공고 원문과
+						담당 기관에 확인해 주세요.
+					</p>
+				</section>
+			</div>
+
+			<aside class='im-sup-rail is-more'>
+				{
+					program.related.length > 0 && (
+						<section>
+							<h2>함께 보면 좋은 계산기·글</h2>
+							<ul>
+								{program.related.map((r) => (
+									<li>
+										<a href={r.href}>{r.title}</a>
+									</li>
+								))}
+							</ul>
+						</section>
+					)
+				}
+				<section>
+					<h2>다른 지원사업</h2>
+					<ul>
+						{
+							others.map((p) => (
+								<li>
+									<a href={`/support/${p.slug}/`}>
+										{p.title}
+										<span>{p.key.when.hub}</span>
+									</a>
+								</li>
+							))
+						}
+						<li>
+							<a href='/support/'>지원사업 전체 보기 →</a>
+						</li>
+					</ul>
+				</section>
+			</aside>
+		</div>
 	</article>
 	<script type='application/ld+json' set:html={JSON.stringify(jsonLd)} />
 </BaseLayout>
 
-<style>
-	.im-sup-status {
-		display: inline-block;
-		margin: -8px 0 6px;
-		padding: 5px 12px;
-		border: 1px solid var(--ink);
-		border-radius: 999px;
-		font-size: 12px;
-		font-weight: 700;
-	}
-
-	.im-sup-status.is-soon {
-		background: var(--ink);
-		color: var(--bg);
-	}
-
-	.im-sup-facts dl {
-		margin: 0;
-	}
-
-	.im-sup-facts dl > div {
-		display: grid;
-		grid-template-columns: 96px minmax(0, 1fr);
-		gap: 12px;
-		padding: 12px 0;
-		border-bottom: 1px solid var(--line);
-	}
-
-	.im-sup-facts dt {
-		color: var(--muted);
-		font-size: 13px;
-	}
-
-	.im-sup-facts dd {
-		margin: 0;
-		font-size: 15px;
-		line-height: 1.65;
-	}
-
-	.im-sup-steps,
-	.im-sup-tips {
-		margin: 0;
-		padding-left: 22px;
-	}
-
-	.im-sup-steps {
-		list-style: decimal;
-	}
-
-	.im-sup-tips {
-		list-style: disc;
-	}
-
-	.im-sup-steps li,
-	.im-sup-tips li {
-		margin: 0 0 8px;
-	}
-
-	.im-sup-sources ul {
-		margin: 0 0 10px;
-		padding: 0;
-		list-style: none;
-	}
-
-	.im-sup-sources li {
-		padding: 10px 0;
-		border-bottom: 1px solid var(--line);
-		font-size: 14px;
-	}
-
-	.im-sup-sources a {
-		text-decoration: underline;
-		text-underline-offset: 3px;
-	}
-
-	.im-sup-date {
-		display: block;
-		margin-top: 3px;
-		color: var(--muted);
-		font-size: 12px;
-	}
-
-	@media (max-width: 640px) {
-		.im-sup-facts dl > div {
-			grid-template-columns: minmax(0, 1fr);
-			gap: 4px;
-		}
-	}
-</style>
+<script>
+	document.querySelectorAll<HTMLElement>('.im-sup-check').forEach((box) => {
+		const sets = Array.from(box.querySelectorAll<HTMLFieldSetElement>('fieldset'))
+		const out = box.querySelector<HTMLElement>('.im-sup-verdict')!
+		box.addEventListener('change', () => {
+			const answers = sets.map(
+				(f) => f.querySelector<HTMLInputElement>('input:checked')?.value as 'y' | 'n' | undefined
+			)
+			const done = answers.filter(Boolean).length
+			out.replaceChildren()
+			if (done < sets.length) {
+				out.textContent = `${done}개 답했습니다. 남은 질문에 답해 주세요.`
+				return
+			}
+			const no = sets.filter((_, i) => answers[i] === 'n').map((f) => f.dataset.tag)
+			const sub = document.createElement('span')
+			if (no.length === 0) {
+				out.append('신청 대상에 해당할 가능성이 높습니다.')
+				sub.textContent = box.dataset.pass ?? ''
+			} else {
+				out.append(`${no.join(', ')} 조건 때문에 이 사업은 어렵습니다.`)
+				sub.textContent = '조건이 다른 사업이 있는지 시·군 농업기술센터에 문의해 주세요.'
+			}
+			out.append(sub)
+		})
+	})
+</script>
