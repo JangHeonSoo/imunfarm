@@ -10,11 +10,10 @@ import {
 const { locale = DEFAULT_LOCALE, active = '' } = Astro.props
 const prefix = getLocalePrefix(locale)
 const categories = await getCategories(locale)
-const items = categories
-	.map((category: string) => ({
-		slug: getCategorySlug(category),
-		label: getCategoryTitleFromSlug(getCategorySlug(category), locale)
-	}))
+// 글마다 분류를 한글 이름('태양광')이나 주소 이름('solar')으로 적어 같은 분류가 둘로 잡힌다. 주소 기준으로 하나만 남긴다.
+const slugs = [...new Set(categories.map((category: string) => getCategorySlug(category)))]
+const items = slugs
+	.map((slug) => ({ slug, label: getCategoryTitleFromSlug(slug, locale) }))
 	.sort((a, b) => a.label.localeCompare(b.label))
 ---
 

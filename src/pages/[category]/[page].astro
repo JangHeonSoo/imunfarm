@@ -22,8 +22,8 @@ export async function getStaticPaths({ paginate }: any) {
 	)
 	const allPosts = await getPosts(undefined, DEFAULT_LOCALE)
 
-	return Array.from(set).flatMap((category: string) => {
-		const slug = getCategorySlug(category)
+	const slugs = [...new Set(Array.from(set).map((category: string) => getCategorySlug(category)))]
+	return slugs.flatMap((slug) => {
 		const filtered = allPosts.filter((post) => getCategorySlug(post.data.category) === slug)
 		return paginate(filtered, { params: { category: slug }, pageSize: 24 })
 	})
