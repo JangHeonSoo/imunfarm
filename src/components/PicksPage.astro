@@ -67,10 +67,37 @@ const jsonLd = {
 			이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
 		</p>
 
+		<section class='im-picks-search' aria-label='장비 검색'>
+			<label class='im-field'>
+				<span class='im-label'>추천 장비에서 찾기</span>
+				<span class='im-input'>
+					<input
+						id='im-picks-q'
+						type='search'
+						autocomplete='off'
+						placeholder='예: 열선, 김치통, 수질, 화분'
+						aria-describedby='im-picks-count'
+					/>
+				</span>
+			</label>
+			<p class='im-picks-count' id='im-picks-count' aria-live='polite'></p>
+			<div class='im-picks-coupang'>
+				<p class='im-label'>쿠팡에서 바로 검색</p>
+				<iframe
+					src='https://coupa.ng/cpUhIX'
+					width='100%'
+					height='75'
+					frameborder='0'
+					scrolling='no'
+					referrerpolicy='unsafe-url'
+					title='쿠팡 상품 검색'></iframe>
+			</div>
+		</section>
+
 		<nav class='im-chips im-picks-nav' aria-label='용도별 바로가기'>
 			{
 				groups.map((g) => (
-					<a class='im-chip' href={`#${g.id}`}>
+					<a class='im-chip' href={`#${g.id}`} data-group={g.id}>
 						{g.title} <span>{g.items.length}</span>
 					</a>
 				))
@@ -89,7 +116,12 @@ const jsonLd = {
 					</header>
 					<ul class='im-picks-list'>
 						{g.items.map((p) => (
-							<li class='im-pick'>
+							<li
+								class='im-pick'
+								data-search={[p.name, p.reason, g.title, g.lede, ...p.posts.map((x) => x.title)]
+									.join(' ')
+									.toLowerCase()}
+							>
 								<a
 									class='im-pick-media'
 									href={p.url}
@@ -148,6 +180,45 @@ const jsonLd = {
 	<script type='application/ld+json' set:html={JSON.stringify(jsonLd)} />
 </BaseLayout>
 
+<script>
+	const input = document.getElementById('im-picks-q') as HTMLInputElement
+	const count = document.getElementById('im-picks-count')!
+	const items = Array.from(document.querySelectorAll<HTMLElement>('.im-pick'))
+	const groups = Array.from(document.querySelectorAll<HTMLElement>('.im-picks-group'))
+	const chips = Array.from(document.querySelectorAll<HTMLElement>('.im-picks-nav [data-group]'))
+
+	function apply() {
+		const terms = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean)
+		let shown = 0
+		items.forEach((li) => {
+			const hit = terms.every((t) => (li.dataset.search || '').includes(t))
+			li.hidden = !hit
+			if (hit) shown++
+		})
+		groups.forEach((g) => {
+			const any = g.querySelector('.im-pick:not([hidden])')
+			g.hidden = !any
+			chips.find((c) => c.dataset.group === g.id)?.toggleAttribute('hidden', !any)
+		})
+		count.textContent = !terms.length
+			? ''
+			: shown
+				? `추천 장비 ${shown}개를 찾았습니다.`
+				: '추천 장비에는 없는 상품입니다. 아래 쿠팡 검색에서 찾을 수 있습니다.'
+		const u = new URL(location.href)
+		if (terms.length) u.searchParams.set('q', input.value.trim())
+		else u.searchParams.delete('q')
+		history.replaceState(null, '', u)
+	}
+
+	input.addEventListener('input', apply)
+	const q = new URLSearchParams(location.search).get('q')
+	if (q) {
+		input.value = q
+		apply()
+	}
+</script>
+
 <style>
 	.im-picks {
 		width: min(calc(1080px + 2 * var(--gutter)), 100%);
@@ -162,6 +233,45 @@ const jsonLd = {
 		color: var(--muted);
 		font-size: 12px;
 		line-height: 1.6;
+	}
+
+	.im-picks-search {
+		display: grid;
+		gap: 10px;
+		max-width: 760px;
+		margin: 6px 0 22px;
+	}
+
+	.im-picks-search .im-field {
+		grid-column: auto;
+	}
+
+	.im-picks-count {
+		min-height: 1em;
+		margin: 0;
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	.im-picks-coupang {
+		display: grid;
+		gap: 6px;
+		margin-top: 4px;
+	}
+
+	.im-picks-coupang .im-label {
+		margin: 0;
+	}
+
+	.im-picks-coupang iframe {
+		display: block;
+		border: 0;
+	}
+
+	.im-picks-nav .im-chip[hidden],
+	.im-picks-group[hidden],
+	.im-pick[hidden] {
+		display: none;
 	}
 
 	.im-picks-nav {

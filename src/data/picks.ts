@@ -25,7 +25,7 @@ export const PICK_GROUPS = [
 	{
 		id: 'kimchi',
 		title: '김장·제철',
-		lede: '김장과 제철 먹거리 손질·보관에 쓰는 도구입니다.',
+		lede: '김장 김치를 담그고 보관하는 데 쓰는 도구와 제철 먹거리 손질 도구입니다.',
 		months: [10, 11, 12],
 		match: /kimchi|gimjang/
 	},
