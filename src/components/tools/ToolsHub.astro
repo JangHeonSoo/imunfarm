@@ -56,10 +56,17 @@ const tools = [
 			: '품목과 수량, 운송비를 넣으면 서울·부산·대구·광주·대전 중 어디에 내는 게 유리한지 오늘 시세로 비교합니다.',
 		ex:
 			best && seoul
-				? isEn
-					? `e.g. cherry tomatoes, 100 × 3 kg → ${best.label} ${won(best.net)}, ${won(best.net - seoul.net)} more than Seoul (${asOf})`
-					: `예) 방울토마토 3kg 100상자 → ${best.label} ${won(best.net)}, 서울보다 ${won(best.net - seoul.net)} 많음 (${asOf.replace(/-/g, '.')} 기준)`
-				: null
+				? {
+						case: isEn ? 'e.g. cherry tomatoes, 100 × 3 kg' : '예) 방울토마토 3kg 100상자',
+						big: isEn
+							? `${best.label} +${man(best.net - seoul.net)}`
+							: `${best.label} +${man(best.net - seoul.net)}`,
+						sub: isEn
+							? `more than Seoul · ${man(best.net)} in hand`
+							: `서울보다 더 받습니다 · ${man(best.net)}`
+					}
+				: null,
+		also: null
 	},
 	{
 		href: `${prefix}/tools/solar-income-calculator/`,
@@ -67,9 +74,14 @@ const tools = [
 		text: isEn
 			? 'Estimate revenue, monthly profit and payback from capacity, SMP, REC, construction cost and loans.'
 			: '설비 용량과 SMP·REC 단가, 시공비, 대출로 매출과 월 순수익, 투자금 회수기간을 계산합니다.',
-		ex: isEn
-			? `e.g. 100 kW → about ${man(solar.monthlyNet)} a month after O&M, payback ${solar.payback?.toFixed(1)} years`
-			: `예) 100kW → 운영비 뺀 월 약 ${man(solar.monthlyNet)}, 단순 회수 ${solar.payback?.toFixed(1)}년`
+		ex: {
+			case: isEn ? 'e.g. 100 kW, no loan' : '예) 100kW, 대출 없음',
+			big: isEn ? `${man(solar.monthlyNet)} / month` : `월 ${man(solar.monthlyNet)}`,
+			sub: isEn
+				? `after O&M · payback ${solar.payback?.toFixed(1)} years`
+				: `운영비 뺀 순수익 · 회수 ${solar.payback?.toFixed(1)}년`
+		},
+		also: null
 	},
 	{
 		href: `${prefix}/tools/cold-storage-cost-calculator/`,
@@ -77,11 +89,21 @@ const tools = [
 		text: isEn
 			? 'Pick a size and crop to see build cost, your share after subsidy, monthly electricity and storage conditions.'
 			: '평수와 보관 품목을 고르면 설치비 범위와 자부담, 월 전기료, 품목별 적정 온도·습도를 알려 드립니다.',
-		ex: isEn
-			? `e.g. 5 pyeong → ${man(cold.min)}–${man(cold.max)}, about ${won(cold.monthly)} a month in power`
-			: `예) 5평 → 설치비 ${Math.round(cold.min / 10000).toLocaleString('ko-KR')}만–${man(cold.max)}, 월 전기료 약 ${won(cold.monthly)}`
+		ex: {
+			case: isEn ? 'e.g. 5 pyeong' : '예) 5평',
+			big: isEn
+				? `${man(cold.min)}–${man(cold.max)}`
+				: `${Math.round(cold.min / 10000).toLocaleString('ko-KR')}만–${man(cold.max)}`,
+			sub: isEn
+				? `about ${won(cold.monthly)} a month in power`
+				: `월 전기료 약 ${won(cold.monthly)}`
+		},
+		also: isEn
+			? null
+			: { href: '/support/small-cold-storage-subsidy/', text: '보조 50%를 받는 지원사업 보기 →' }
 	}
 ]
+const smpMonth = Number(SOLAR.basis.slice(5, 7))
 
 const title = isEn
 	? 'Farm Calculators: Market Sales, Solar Income, Cold Storage'
@@ -103,30 +125,52 @@ const jsonLd = {
 ---
 
 <BaseLayout title={title} description={description} locale={locale} active='tools'>
-	<div class='im-tool'>
+	<div class='im-tool im-tools-page'>
 		<h1>{isEn ? 'Farm calculators' : '농업 계산기'}</h1>
 		<p class='im-tool-lede'>
 			{
 				isEn
-					? 'Calculated from today’s KAMIS prices and public data. Change the numbers to fit your own farm.'
-					: '오늘 KAMIS 시세와 공개 자료로 바로 계산합니다. 숫자를 바꿔 가며 내 농장 조건에 맞춰 보세요.'
+					? 'Built on prices refreshed daily from public data. Change your own farm numbers and the result updates at once.'
+					: '공공데이터로 매일 갱신하는 단가를 그대로 넣었습니다. 내 농장 조건만 바꾸면 결과가 바로 바뀝니다.'
 			}
 		</p>
-		<div class='im-tools-hub'>
+		<p class='im-tools-basis'>
+			<span>{isEn ? 'Wholesale prices' : '도매 시세'} <b>{asOf.replace(/-/g, '.')}</b></span>
+			<span
+				>SMP {isEn ? `${SOLAR.basis} avg` : `${smpMonth}월 평균`}
+				<b>{SOLAR.smp}{isEn ? ' KRW' : '원'}</b></span
+			>
+			<span>REC {isEn ? `${SOLAR.basis} avg` : `${smpMonth}월 평균`} <b>{won(SOLAR.rec)}</b></span>
+		</p>
+		<ul class='im-tools-hub'>
 			{
-				tools.map((t, k) => (
-					<a href={t.href}>
-						<span class='im-tools-no'>{String(k + 1).padStart(2, '0')}</span>
-						<div>
-							<h2>{t.title}</h2>
-							<p>{t.text}</p>
-							{t.ex && <p class='im-tools-ex'>{t.ex}</p>}
-						</div>
-						<span class='im-tools-go'>{isEn ? 'Calculate →' : '계산하기 →'}</span>
-					</a>
+				tools.map((t) => (
+					<li>
+						<a href={t.href}>
+							<div>
+								<h2>{t.title}</h2>
+								<p>{t.text}</p>
+							</div>
+							{t.ex && (
+								<div class='im-tools-ex'>
+									<span>{t.ex.case}</span>
+									<strong>{t.ex.big}</strong>
+									<small>{t.ex.sub}</small>
+								</div>
+							)}
+							<span class='im-tools-go' aria-hidden='true'>
+								→
+							</span>
+						</a>
+						{t.also && (
+							<a class='im-tools-also' href={t.also.href}>
+								{t.also.text}
+							</a>
+						)}
+					</li>
 				))
 			}
-		</div>
+		</ul>
 	</div>
 	<script type='application/ld+json' set:html={JSON.stringify(jsonLd)} />
 </BaseLayout>

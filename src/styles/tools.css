@@ -1,4 +1,4 @@
-/* 농업 계산기 (/tools/) 공통 스타일. 사이트 본문과 같은 760px 한 줄 폭, 흑백 에디토리얼. */
+/* 농업 계산기 (/tools/) 공통 스타일. 흑백 에디토리얼. 계산기는 1080px 폭에 입력(왼쪽)·결과(오른쪽) */
 
 .im-tool {
 	width: min(calc(var(--measure) + 2 * var(--gutter)), 100%);
@@ -17,26 +17,121 @@
 	color: var(--ink);
 }
 
+.im-tool.is-calc,
+.im-tool.im-tools-page {
+	width: min(calc(1080px + 2 * var(--gutter)), 100%);
+	font-variant-numeric: tabular-nums;
+}
+
+.im-tool.is-calc > :not(.im-tool-calc):not(.im-tool-mbar) {
+	max-width: var(--measure);
+}
+
 .im-tool h1 {
-	margin: 10px 0 10px;
-	font-size: clamp(26px, 3.4vw, 40px);
+	margin: 14px 0 0;
+	font-size: clamp(30px, 4.2vw, 52px);
 	font-weight: 700;
-	line-height: 1.2;
-	letter-spacing: -0.01em;
+	line-height: 1.12;
+	letter-spacing: -0.02em;
+	text-wrap: balance;
 }
 
 .im-tool-lede {
-	margin: 0 0 26px;
+	max-width: 62ch;
+	margin: 14px 0 34px;
 	color: var(--muted);
-	font-size: 15px;
-	line-height: 1.7;
+	font-size: clamp(15px, 1.4vw, 17px);
+	line-height: 1.75;
+	text-wrap: pretty;
+}
+
+/* 입력·결과 나란히 */
+.im-tool-calc {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1000px) {
+	.im-tool-calc {
+		grid-template-columns: minmax(0, 1fr) 360px;
+		gap: 0 56px;
+		align-items: start;
+	}
+
+	.im-tool-calc .im-tool-result {
+		margin-top: 0;
+	}
+
+	.im-tool-calc .im-tool-stats {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.im-tool-calc .im-tool-stats > div {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 12px;
+		padding: 10px 0;
+	}
+
+	.im-tool-calc .im-tool-stats dt {
+		font-size: 13px;
+	}
+
+	.im-tool-calc .im-tool-stats dd {
+		font-size: 15px;
+		text-align: right;
+	}
+
+	.im-tool-calc .im-tool-table .is-hide-sm {
+		display: none;
+	}
+}
+
+@media (min-width: 1000px) and (min-height: 820px) {
+	.im-tool-calc .im-tool-result {
+		position: sticky;
+		top: 24px;
+	}
+}
+
+.im-tool-mbar {
+	display: none;
+}
+
+@media (max-width: 999px) {
+	.im-tool-mbar:not([hidden]) {
+		position: fixed;
+		z-index: 20;
+		top: 0;
+		right: 0;
+		left: 0;
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 12px;
+		padding: 10px var(--gutter);
+		border-bottom: 1px solid var(--ink);
+		background: var(--bg);
+	}
+
+	.im-tool-mbar span {
+		color: var(--muted);
+		font-size: 12px;
+	}
+
+	.im-tool-mbar b {
+		font-size: 19px;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+	}
 }
 
 /* 입력 */
 .im-tool-form {
 	display: grid;
 	grid-template-columns: repeat(6, minmax(0, 1fr));
-	gap: 16px 18px;
+	gap: 22px 20px;
 	padding-top: 18px;
 	border-top: 1px solid var(--ink);
 }
@@ -68,6 +163,10 @@
 
 .im-field > .im-label {
 	margin: 0;
+	color: var(--ink);
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0;
 }
 
 .im-input {
@@ -76,16 +175,16 @@
 	min-width: 0;
 	align-items: center;
 	gap: 8px;
-	height: 46px;
-	padding: 0 12px;
-	border: 1px solid var(--line);
-	border-radius: 6px;
+	height: 48px;
+	padding: 0 2px;
+	border: 0;
+	border-bottom: 1px solid var(--ink);
 	background: transparent;
-	transition: border-color 0.15s;
+	transition: box-shadow 0.15s;
 }
 
 .im-input:focus-within {
-	border-color: var(--ink);
+	box-shadow: inset 0 -2px 0 var(--ink);
 }
 
 .im-input input,
@@ -98,8 +197,8 @@
 	background: transparent;
 	color: var(--ink);
 	font: inherit;
-	font-size: 15px;
-	font-weight: 600;
+	font-size: 20px;
+	font-weight: 700;
 	font-variant-numeric: tabular-nums;
 	outline: none;
 	appearance: none;
@@ -116,10 +215,14 @@
 	color: var(--ink);
 }
 
+.im-input select {
+	font-size: 16px;
+}
+
 .im-input.is-select::after {
 	content: '▾';
 	position: absolute;
-	right: 12px;
+	right: 2px;
 	color: var(--ink);
 	font-size: 13px;
 	pointer-events: none;
@@ -171,12 +274,11 @@ html.dark .im-input img {
 }
 
 .im-costs .im-input {
-	height: 40px;
-	padding: 0 10px;
+	height: 42px;
 }
 
 .im-costs .im-input input {
-	font-size: 13px;
+	font-size: 15px;
 	text-align: right;
 }
 
@@ -195,6 +297,7 @@ html.dark .im-input img {
 
 .im-chip {
 	min-height: 40px;
+	transition: border-color 0.15s;
 	padding: 0 14px;
 	border: 1px solid var(--line);
 	border-radius: 999px;
@@ -204,6 +307,10 @@ html.dark .im-input img {
 	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
+}
+
+.im-chip:hover {
+	border-color: var(--ink);
 }
 
 .im-chip[aria-pressed='true'] {
@@ -478,8 +585,7 @@ tr.is-top .im-bar {
 	font-weight: 500;
 }
 
-.im-tool-related a:hover,
-.im-tools-hub a:hover h2 {
+.im-tool-related a:hover {
 	opacity: 0.6;
 }
 
@@ -490,53 +596,109 @@ tr.is-top .im-bar {
 }
 
 /* /tools/ 목록 */
-.im-tools-hub {
-	border-top: 1px solid var(--ink);
-}
-
-.im-tools-hub a {
-	display: grid;
-	grid-template-columns: 44px minmax(0, 1fr) auto;
-	gap: 18px;
-	align-items: start;
-	padding: 22px 0;
-	border-bottom: 1px solid var(--line);
-}
-
-.im-tools-no {
-	padding-top: 4px;
+.im-tools-basis {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 22px;
+	margin: -14px 0 0;
 	color: var(--muted);
 	font-size: 13px;
-	font-weight: 600;
 }
 
-.im-tools-hub h2 {
-	margin: 0 0 6px;
-	font-size: 20px;
+.im-tools-basis b {
+	color: var(--ink);
 	font-weight: 700;
 }
 
-.im-tools-hub p {
-	margin: 0;
-	color: var(--muted);
-	font-size: 14px;
-	line-height: 1.6;
+.im-tools-hub {
+	margin: 36px 0 0;
+	padding: 0;
+	border-top: 1px solid var(--ink);
+	list-style: none;
 }
 
-.im-tools-hub p.im-tools-ex {
-	margin-top: 10px;
-	color: var(--ink);
+.im-tools-hub li {
+	padding: 28px 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.im-tools-hub li > a:first-child {
+	display: grid;
+	grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 20px;
+	gap: 14px 48px;
+	align-items: center;
+}
+
+.im-tools-hub h2 {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.im-tools-hub a:hover h2 {
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 4px;
+}
+
+.im-tools-hub p {
+	max-width: 52ch;
+	margin: 6px 0 0;
+	color: var(--muted);
+	font-size: 14px;
+	line-height: 1.65;
+}
+
+.im-tools-ex span,
+.im-tools-ex small {
+	display: block;
+	color: var(--muted);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.im-tools-ex small {
+	margin-top: 6px;
 	font-size: 13px;
+	font-weight: 500;
+}
+
+.im-tools-ex strong {
+	display: block;
+	margin-top: 6px;
+	font-size: clamp(24px, 2.6vw, 34px);
+	font-weight: 800;
+	line-height: 1.1;
+	letter-spacing: -0.02em;
 }
 
 .im-tools-go {
-	margin-top: 2px;
-	padding: 7px 14px;
-	border: 1px solid var(--ink);
-	border-radius: 999px;
+	font-size: 18px;
+	transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.im-tools-hub a:hover .im-tools-go {
+	transform: translateX(3px);
+}
+
+.im-tools-also {
+	display: inline-block;
+	margin-top: 12px;
 	font-size: 13px;
 	font-weight: 600;
-	white-space: nowrap;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+	.im-tools-hub li > a:first-child {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.im-tools-go {
+		display: none;
+	}
 }
 
 @media (max-width: 640px) {
@@ -565,19 +727,6 @@ tr.is-top .im-bar {
 
 	.im-tool-table .is-hide-sm {
 		display: none;
-	}
-
-	.im-tools-hub a {
-		grid-template-columns: minmax(0, 1fr);
-		gap: 12px;
-	}
-
-	.im-tools-no {
-		display: none;
-	}
-
-	.im-tools-go {
-		justify-self: start;
 	}
 }
 

@@ -58,14 +58,18 @@ const jsonLd = {
 
 <BaseLayout title={title} description={description} locale='ko' active='picks' altPath={null}>
 	<div class='im-tool im-picks'>
-		<h1>농가 추천 장비</h1>
-		<p class='im-tool-lede'>
-			IMUN.FARM 글에서 필요한 작업에 맞춰 직접 골라 소개한 도구를 용도별로 모았습니다. 장비마다 왜
-			필요한지와 어떤 글에서 다뤘는지 함께 보여 드립니다.
-		</p>
-		<p class='im-picks-note'>
-			이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
-		</p>
+		<div class='im-picks-top'>
+			<div>
+				<h1>농가 추천 장비</h1>
+				<p class='im-tool-lede'>
+					글에서 작업에 맞춰 직접 골라 소개한 도구 {picks.length}가지입니다. 왜 필요한지와 어떤
+					글에서 다뤘는지 함께 보여 드립니다.
+				</p>
+			</div>
+			<p class='im-picks-disc'>
+				이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
+			</p>
+		</div>
 
 		<section class='im-picks-search' aria-label='장비 검색'>
 			<div class='im-search' role='search'>
@@ -92,11 +96,12 @@ const jsonLd = {
 			</div>
 		</section>
 
-		<nav class='im-chips im-picks-nav' aria-label='용도별 바로가기'>
+		<nav class='im-picks-nav' aria-label='용도별 바로가기'>
 			{
 				groups.map((g) => (
-					<a class='im-chip' href={`#${g.id}`} data-group={g.id}>
-						{g.title} <span>{g.items.length}</span>
+					<a href={`#${g.id}`} data-group={g.id} class={g.inSeason ? 'is-season' : ''}>
+						{g.title}
+						<span>{g.items.length}</span>
 					</a>
 				))
 			}
@@ -106,10 +111,8 @@ const jsonLd = {
 			groups.map((g) => (
 				<section class='im-picks-group' id={g.id}>
 					<header>
-						<h2>
-							{g.title}
-							{g.inSeason && <span class='im-picks-season'>지금 철 · {month}월</span>}
-						</h2>
+						<h2>{g.title}</h2>
+						{g.inSeason && <span class='im-picks-season'>{month}월에 많이 씁니다</span>}
 						<p>{g.lede}</p>
 					</header>
 					<ul class='im-picks-list'>
@@ -148,7 +151,6 @@ const jsonLd = {
 									</a>
 									<p class='im-pick-reason'>{toPolite(p.reason)}</p>
 									<p class='im-pick-posts'>
-										<span>다룬 글</span>
 										{p.posts.slice(0, 2).map((post) => (
 											<a href={post.url}>{post.title}</a>
 										))}
@@ -160,7 +162,7 @@ const jsonLd = {
 										rel='nofollow sponsored noopener'
 										referrerpolicy='unsafe-url'
 									>
-										쿠팡에서 보기 <span aria-hidden='true'>→</span>
+										쿠팡에서 보기 →
 									</a>
 								</div>
 							</li>
@@ -289,54 +291,85 @@ const jsonLd = {
 		border: 0;
 	}
 
-	.im-picks-nav .im-chip[hidden],
+	.im-picks-nav a[hidden],
 	.im-picks-group[hidden],
 	.im-pick[hidden] {
 		display: none;
 	}
 
+	.im-picks-top {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+		gap: 0 56px;
+		align-items: end;
+	}
+
+	.im-picks-disc {
+		margin: 0 0 34px;
+		padding-top: 12px;
+		border-top: 1px solid var(--ink);
+		color: var(--muted);
+		font-size: 12px;
+		line-height: 1.6;
+	}
+
 	.im-picks-nav {
-		padding-bottom: 6px;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px 22px;
+		padding-top: 18px;
+		border-top: 1px solid var(--line);
+		font-size: 14px;
+		font-weight: 600;
 	}
 
-	.im-picks-nav .im-chip {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
+	.im-picks-nav a {
+		padding-bottom: 2px;
+		border-bottom: 1px solid transparent;
 	}
 
-	.im-picks-nav .im-chip span {
+	.im-picks-nav a.is-season {
+		border-bottom-color: var(--ink);
+	}
+
+	.im-picks-nav a:hover {
+		border-bottom-color: var(--muted);
+	}
+
+	.im-picks-nav span {
+		margin-left: 5px;
 		color: var(--muted);
 		font-weight: 500;
 	}
 
 	.im-picks-group {
-		margin-top: 40px;
+		margin-top: 52px;
 		padding-top: 14px;
 		border-top: 1px solid var(--ink);
 		scroll-margin-top: 20px;
 	}
 
-	.im-picks-group h2 {
-		display: flex;
-		flex-wrap: wrap;
+	.im-picks-group header {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 6px 16px;
 		align-items: baseline;
-		gap: 4px 12px;
-		margin: 0 0 6px;
-		font-size: 22px;
+	}
+
+	.im-picks-group h2 {
+		margin: 0;
+		font-size: 24px;
 		font-weight: 700;
+		letter-spacing: -0.01em;
 	}
 
 	.im-picks-season {
-		padding: 2px 8px;
-		border: 1px solid var(--ink);
-		border-radius: 999px;
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.02em;
+		font-size: 13px;
+		font-weight: 700;
 	}
 
 	.im-picks-group header p {
+		grid-column: 1 / -1;
 		margin: 0;
 		color: var(--muted);
 		font-size: 14px;
@@ -345,94 +378,115 @@ const jsonLd = {
 
 	.im-picks-list {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 0 28px;
-		margin: 8px 0 0;
+		margin: 18px 0 0;
 		padding: 0;
 		list-style: none;
 	}
 
 	.im-pick {
 		display: grid;
-		grid-template-columns: 96px minmax(0, 1fr);
-		gap: 16px;
-		padding: 18px 0;
+		grid-template-rows: auto 1fr;
+		padding: 0 0 26px;
 		border-bottom: 1px solid var(--line);
+	}
+
+	.im-pick-media {
+		display: flex;
+		justify-content: center;
+		padding: 4px 0 2px;
 	}
 
 	.im-pick-media img {
 		display: block;
-		width: 96px;
+		width: 120px;
 		height: auto;
-		border: 1px solid var(--line);
-		border-radius: 4px;
 	}
 
 	.im-pick-body {
 		display: grid;
-		align-content: start;
-		gap: 8px;
+		grid-template-rows: auto auto 1fr auto;
+		gap: 6px;
 		min-width: 0;
+		margin-top: 12px;
 	}
 
 	.im-pick-name {
-		font-size: 16px;
+		font-size: 15px;
 		font-weight: 700;
 		line-height: 1.4;
 	}
 
 	.im-pick-name:hover {
-		opacity: 0.6;
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 
 	.im-pick-reason {
+		display: -webkit-box;
+		overflow: hidden;
 		margin: 0;
 		color: var(--muted);
 		font-size: 13px;
-		line-height: 1.65;
+		line-height: 1.6;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
 	}
 
 	.im-pick-posts {
 		display: grid;
-		gap: 3px;
-		margin: 0;
+		align-content: end;
+		gap: 2px;
+		margin: 6px 0 0;
 		font-size: 12px;
 		line-height: 1.5;
 	}
 
-	.im-pick-posts span {
-		color: var(--muted);
-		font-size: 10px;
-		font-weight: 500;
-		letter-spacing: 0.1em;
-	}
-
 	.im-pick-posts a {
 		overflow: hidden;
+		color: var(--muted);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		text-decoration: underline;
 		text-underline-offset: 3px;
 	}
 
+	.im-pick-posts a:hover {
+		color: var(--ink);
+	}
+
 	.im-pick-cta {
 		justify-self: start;
-		margin-top: 2px;
-		padding: 7px 14px;
-		border: 1px solid var(--ink);
-		border-radius: 999px;
+		margin-top: 8px;
 		font-size: 13px;
-		font-weight: 600;
+		font-weight: 700;
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 
 	.im-pick-cta:hover {
-		background: var(--ink);
-		color: var(--bg);
+		text-decoration-thickness: 2px;
 	}
 
-	@media (max-width: 760px) {
-		.im-picks-list {
+	@media (max-width: 900px) {
+		.im-picks-top {
 			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.im-picks-disc {
+			margin-top: -14px;
+		}
+
+		.im-picks-list {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 0 16px;
+		}
+	}
+
+	@media (max-width: 420px) {
+		.im-pick-media img {
+			width: 100px;
 		}
 	}
 </style>

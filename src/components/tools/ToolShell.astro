@@ -86,7 +86,11 @@ const jsonLd = [
 ---
 
 <BaseLayout title={title} description={description} locale={locale} active='tools'>
-	<article class='im-tool'>
+	<article class='im-tool is-calc'>
+		<div class='im-tool-mbar' aria-hidden='true' hidden>
+			<span></span>
+			<b></b>
+		</div>
 		<nav class='im-tool-crumb im-label' aria-label={isEn ? 'Breadcrumb' : '경로'}>
 			<a href={`${prefix}/tools/`}>{isEn ? 'Tools' : '계산기'}</a>
 			<span>·</span>
@@ -131,3 +135,27 @@ const jsonLd = [
 	</article>
 	<script type='application/ld+json' set:html={JSON.stringify(jsonLd)} />
 </BaseLayout>
+
+<script>
+	// 모바일: 입력을 고치는 동안 결과가 화면 밖이면 위에 결과 숫자를 붙여 보여 준다.
+	const bar = document.querySelector<HTMLElement>('.im-tool-mbar')
+	const big = document.querySelector<HTMLElement>('.im-tool-big')
+	const label = document.querySelector<HTMLElement>('.im-tool-result > .im-label')
+	const form = document.querySelector<HTMLElement>('.im-tool-form')
+	if (bar && big && form) {
+		const [name, value] = [bar.querySelector('span')!, bar.querySelector('b')!]
+		const sync = () => {
+			name.textContent = label?.textContent?.trim() ?? ''
+			value.textContent = big.textContent?.trim() ?? ''
+		}
+		sync()
+		new MutationObserver(sync).observe(big, { childList: true, characterData: true, subtree: true })
+		const seen = { big: true, form: false }
+		const io = new IntersectionObserver((entries) => {
+			for (const e of entries) seen[e.target === big ? 'big' : 'form'] = e.isIntersecting
+			bar.hidden = seen.big || !seen.form
+		})
+		io.observe(big)
+		io.observe(form)
+	}
+</script>

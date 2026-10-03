@@ -213,110 +213,116 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 	related={related}
 	path='/tools/solar-income-calculator/'
 >
-	<form class='im-tool-form' id='im-solar-form' onsubmit='return false'>
-		<div class='im-field is-wide'>
-			<span class='im-label'>{isEn ? 'Price scenario' : '단가 시나리오'}</span>
-			<div class='im-chips'>
-				{
-					scenarios.map((s) => (
-						<button
-							type='button'
-							class='im-chip'
-							data-scenario={s.key}
-							aria-pressed={s.key === 'now' ? 'true' : 'false'}
-						>
-							{scenarioName(s.key)} · SMP {s.smp} · REC {num(s.rec)}
-						</button>
-					))
-				}
+	<div class='im-tool-calc'>
+		<form class='im-tool-form' id='im-solar-form' onsubmit='return false'>
+			<div class='im-field is-wide'>
+				<span class='im-label'>{isEn ? 'Price scenario' : '단가 시나리오'}</span>
+				<div class='im-chips'>
+					{
+						scenarios.map((s) => (
+							<button
+								type='button'
+								class='im-chip'
+								data-scenario={s.key}
+								aria-pressed={s.key === 'now' ? 'true' : 'false'}
+							>
+								{scenarioName(s.key)} · SMP {s.smp} · REC {num(s.rec)}
+							</button>
+						))
+					}
+				</div>
 			</div>
-		</div>
-		{
-			fields.map((f) => (
-				<label class='im-field'>
-					<span class='im-label'>{isEn ? f.en : f.ko}</span>
-					<span class='im-input'>
-						<input
-							data-field={f.id}
-							type='number'
-							inputmode='decimal'
-							min='0'
-							step={f.step}
-							value={(defaults as Record<string, number>)[f.id]}
-						/>
-						{f.unit && <span class='im-unit'>{f.unit}</span>}
-					</span>
-					{f.help && <span class='im-field-help'>{f.help}</span>}
-				</label>
-			))
-		}
-	</form>
+			{
+				fields.map((f) => (
+					<label class='im-field'>
+						<span class='im-label'>{isEn ? f.en : f.ko}</span>
+						<span class='im-input'>
+							<input
+								data-field={f.id}
+								type='number'
+								inputmode='decimal'
+								min='0'
+								step={f.step}
+								value={(defaults as Record<string, number>)[f.id]}
+							/>
+							{f.unit && <span class='im-unit'>{f.unit}</span>}
+						</span>
+						{f.help && <span class='im-field-help'>{f.help}</span>}
+					</label>
+				))
+			}
+		</form>
 
-	<section class='im-tool-result' aria-live='polite'>
-		<p class='im-label'>{isEn ? 'Monthly profit after O&M' : '운영비를 뺀 월 순수익'}</p>
-		<div class='im-tool-best'>
-			<span class='im-tool-big' id='im-solar-big'>{won(r.monthlyNet)}</span>
-			<span class='im-tool-best-side'>
-				<strong>{isEn ? 'Payback' : '단순 회수'}</strong>
-				<span id='im-solar-payback'
-					>{
-						r.payback ? (isEn ? `${r.payback.toFixed(1)} yrs` : `${r.payback.toFixed(1)}년`) : '–'
-					}</span
-				>
-			</span>
-		</div>
-		<dl class='im-tool-stats' id='im-solar-stats'>
-			<div>
-				<dt>{isEn ? 'Annual generation' : '연 발전량'}</dt><dd data-out='kwh'>{num(r.kwh)} kWh</dd>
+		<section class='im-tool-result' aria-live='polite'>
+			<p class='im-label'>{isEn ? 'Monthly profit after O&M' : '운영비를 뺀 월 순수익'}</p>
+			<div class='im-tool-best'>
+				<span class='im-tool-big' id='im-solar-big'>{won(r.monthlyNet)}</span>
+				<span class='im-tool-best-side'>
+					<strong>{isEn ? 'Payback' : '단순 회수'}</strong>
+					<span id='im-solar-payback'
+						>{
+							r.payback ? (isEn ? `${r.payback.toFixed(1)} yrs` : `${r.payback.toFixed(1)}년`) : '–'
+						}</span
+					>
+				</span>
 			</div>
-			<div>
-				<dt>{isEn ? 'SMP revenue' : 'SMP 수익'}</dt><dd data-out='smpRevenue'>
-					{man(r.smpRevenue)}
-				</dd>
-			</div>
-			<div>
-				<dt>{isEn ? 'REC revenue' : 'REC 수익'}</dt><dd data-out='recRevenue'>
-					{man(r.recRevenue)}
-				</dd>
-			</div>
-			<div>
-				<dt>{isEn ? 'Annual revenue' : '연 매출'}</dt><dd data-out='revenue'>{man(r.revenue)}</dd>
-			</div>
-			<div><dt>{isEn ? 'Annual O&M' : '연 운영비'}</dt><dd data-out='opex'>{man(r.opex)}</dd></div>
-			<div>
-				<dt>{isEn ? 'Annual net profit' : '연 순수익'}</dt><dd data-out='net'>{man(r.net)}</dd>
-			</div>
-			<div>
-				<dt>{isEn ? 'Total investment' : '총 투자비'}</dt><dd data-out='cost'>{man(r.cost)}</dd>
-			</div>
-			<div>
-				<dt>{isEn ? 'Annual loan payment' : '연 대출 원리금'}</dt><dd data-out='debt'>
-					{man(r.debt)}
-				</dd>
-			</div>
-			<div>
-				<dt>{isEn ? 'Monthly cash after loan' : '대출 후 월 현금'}</dt><dd data-out='monthlyCash'>
-					{won(r.monthlyCash)}
-				</dd>
-			</div>
-		</dl>
-		<div class='im-tool-notes'>
-			<p>
-				<strong
-					>{
+			<dl class='im-tool-stats' id='im-solar-stats'>
+				<div>
+					<dt>{isEn ? 'Annual generation' : '연 발전량'}</dt><dd data-out='kwh'>
+						{num(r.kwh)} kWh
+					</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'SMP revenue' : 'SMP 수익'}</dt><dd data-out='smpRevenue'>
+						{man(r.smpRevenue)}
+					</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'REC revenue' : 'REC 수익'}</dt><dd data-out='recRevenue'>
+						{man(r.recRevenue)}
+					</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Annual revenue' : '연 매출'}</dt><dd data-out='revenue'>{man(r.revenue)}</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Annual O&M' : '연 운영비'}</dt><dd data-out='opex'>{man(r.opex)}</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Annual net profit' : '연 순수익'}</dt><dd data-out='net'>{man(r.net)}</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Total investment' : '총 투자비'}</dt><dd data-out='cost'>{man(r.cost)}</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Annual loan payment' : '연 대출 원리금'}</dt><dd data-out='debt'>
+						{man(r.debt)}
+					</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Monthly cash after loan' : '대출 후 월 현금'}</dt><dd data-out='monthlyCash'>
+						{won(r.monthlyCash)}
+					</dd>
+				</div>
+			</dl>
+			<div class='im-tool-notes'>
+				<p>
+					<strong
+						>{
+							isEn
+								? 'Before tax, land rent and permit delays.'
+								: '세금, 토지 임대료, 인허가 지연 비용은 빠진 금액입니다.'
+						}</strong
+					>
+					{
 						isEn
-							? 'Before tax, land rent and permit delays.'
-							: '세금, 토지 임대료, 인허가 지연 비용은 빠진 금액입니다.'
-					}</strong
-				>
-				{
-					isEn
-						? ' SMP and REC change monthly and output varies with shading, soiling and inverter efficiency, so compare the conservative scenario as well. REC weights differ by site and capacity.'
-						: ' SMP와 REC는 매달 바뀌고, 발전량은 음영·오염·인버터 효율에 따라 달라집니다. 보수 시나리오로도 함께 계산해 보세요. REC 가중치는 입지와 용량에 따라 다릅니다.'
-				}
-			</p>
-		</div>
-	</section>
+							? ' SMP and REC change monthly and output varies with shading, soiling and inverter efficiency, so compare the conservative scenario as well. REC weights differ by site and capacity.'
+							: ' SMP와 REC는 매달 바뀌고, 발전량은 음영·오염·인버터 효율에 따라 달라집니다. 보수 시나리오로도 함께 계산해 보세요. REC 가중치는 입지와 용량에 따라 다릅니다.'
+					}
+				</p>
+			</div>
+		</section>
+	</div>
 
 	<section class='im-tool-section'>
 		<h2 class='im-label'>

@@ -117,138 +117,140 @@ const data = { defaults, crops: CROPS, isEn }
 	related={related}
 	path='/tools/cold-storage-cost-calculator/'
 >
-	<form class='im-tool-form' id='im-cold-form' onsubmit='return false'>
-		<div class='im-field is-wide'>
-			<span class='im-label'>{isEn ? 'Size (pyeong, 1 pyeong ≈ 3.3 ㎡)' : '평수'}</span>
-			<div class='im-chips'>
-				{
-					[3, 5, 10].map((p) => (
-						<button
-							type='button'
-							class='im-chip'
-							data-pyeong={p}
-							aria-pressed={p === defaults.pyeong ? 'true' : 'false'}
-						>
-							{p}
-							{isEn ? ' pyeong' : '평'}
-						</button>
-					))
-				}
-				<label class='im-input' style='height:40px;width:130px'>
-					<input
-						id='im-cold-pyeong'
-						type='number'
-						inputmode='decimal'
-						min='1'
-						max='30'
-						step='0.5'
-						value={defaults.pyeong}
-						aria-label={isEn ? 'Size in pyeong' : '평수 직접 입력'}
-					/>
-					<span class='im-unit'>{isEn ? 'pyeong' : '평'}</span>
-				</label>
-			</div>
-		</div>
-		<div class='im-field is-wide'>
-			<span class='im-label'
-				>{isEn ? 'How often the compressor runs' : '사용 정도 (냉동기 가동률)'}</span
-			>
-			<div class='im-chips'>
-				{
-					COLD_USAGE.map((u) => (
-						<button
-							type='button'
-							class='im-chip'
-							data-usage={u.pct}
-							aria-pressed={u.pct === defaults.usage ? 'true' : 'false'}
-						>
-							{usageName(u.id)} {u.pct}%
-						</button>
-					))
-				}
-			</div>
-		</div>
-		<label class='im-field'>
-			<span class='im-label'>{isEn ? 'Subsidy rate' : '보조금 비율'}</span>
-			<span class='im-input'>
-				<input
-					id='im-cold-subsidy'
-					type='number'
-					inputmode='numeric'
-					min='0'
-					max='90'
-					step='5'
-					value={defaults.subsidy}
-				/>
-				<span class='im-unit'>%</span>
-			</span>
-		</label>
-		<label class='im-field is-4 is-full-sm'>
-			<span class='im-label'>{isEn ? 'Main crop to store' : '주로 보관할 품목'}</span>
-			<span class='im-input is-select'>
-				<select id='im-cold-crop'>
+	<div class='im-tool-calc'>
+		<form class='im-tool-form' id='im-cold-form' onsubmit='return false'>
+			<div class='im-field is-wide'>
+				<span class='im-label'>{isEn ? 'Size (pyeong, 1 pyeong ≈ 3.3 ㎡)' : '평수'}</span>
+				<div class='im-chips'>
 					{
-						CROPS.map((c) => (
-							<option value={c.id} selected={c.id === defaults.crop}>
-								{isEn ? c.en : c.ko}
-							</option>
+						[3, 5, 10].map((p) => (
+							<button
+								type='button'
+								class='im-chip'
+								data-pyeong={p}
+								aria-pressed={p === defaults.pyeong ? 'true' : 'false'}
+							>
+								{p}
+								{isEn ? ' pyeong' : '평'}
+							</button>
 						))
 					}
-				</select>
-			</span>
-		</label>
-	</form>
-
-	<section class='im-tool-result' aria-live='polite'>
-		<p class='im-label'>{isEn ? 'Estimated build cost' : '예상 설치비'}</p>
-		<div class='im-tool-best'>
-			<span class='im-tool-big' id='im-cold-big'>{range(r.min, r.max)}</span>
-			<span class='im-tool-best-side'>
-				<strong>{isEn ? 'Your share' : '자부담'}</strong>
-				<span id='im-cold-self'>{range(r.selfMin, r.selfMax)}</span>
-			</span>
-		</div>
-		<dl class='im-tool-stats' id='im-cold-stats'>
-			<div>
-				<dt>{isEn ? 'Compressor (assumed)' : '냉동기 소비전력 가정'}</dt><dd data-out='kw'>
-					{r.kw.toFixed(1)} kW
-				</dd>
+					<label class='im-input' style='height:40px;width:130px'>
+						<input
+							id='im-cold-pyeong'
+							type='number'
+							inputmode='decimal'
+							min='1'
+							max='30'
+							step='0.5'
+							value={defaults.pyeong}
+							aria-label={isEn ? 'Size in pyeong' : '평수 직접 입력'}
+						/>
+						<span class='im-unit'>{isEn ? 'pyeong' : '평'}</span>
+					</label>
+				</div>
 			</div>
-			<div>
-				<dt>{isEn ? 'Monthly use' : '월 사용량'}</dt><dd data-out='kwh'>{num(r.kwh)} kWh</dd>
-			</div>
-			<div>
-				<dt>{isEn ? 'Monthly electricity' : '월 전기료'}</dt><dd data-out='monthly'>
-					{won(r.monthly)}
-				</dd>
-			</div>
-			<div>
-				<dt>{isEn ? 'Yearly electricity' : '연 전기료'}</dt><dd data-out='yearly'>
-					{won(r.yearly)}
-				</dd>
-			</div>
-			<div>
-				<dt>{isEn ? 'Storage temperature' : '저장 온도'}</dt><dd data-crop='temp'>{crop.temp}</dd>
-			</div>
-			<div><dt>{isEn ? 'Humidity' : '상대습도'}</dt><dd data-crop='rh'>{crop.rh}</dd></div>
-		</dl>
-		<div class='im-tool-notes'>
-			<p id='im-cold-crop-note'>
-				<strong>{isEn ? crop.en : crop.ko}</strong>
-				{isEn ? ` · ${crop.lifeEn} · ${crop.noteEn}` : ` · ${crop.life} · ${crop.note}`}
-			</p>
-			<p>
-				<strong
-					>{isEn ? 'A planning range, not a quote.' : '견적이 아니라 비교용 범위입니다.'}</strong
+			<div class='im-field is-wide'>
+				<span class='im-label'
+					>{isEn ? 'How often the compressor runs' : '사용 정도 (냉동기 가동률)'}</span
 				>
-				{
-					isEn
-						? ' Electrical service, foundations, doors and contracted power change the price. Electricity excludes VAT, the power industry fund and fuel adjustments. Above 10 pyeong the range is extrapolated, so get a site quote.'
-						: ' 전기 인입, 기초 공사, 출입문 사양, 계약전력에 따라 금액이 달라집니다. 전기료는 부가세, 전력산업기반기금, 연료비조정액이 빠진 금액입니다. 10평이 넘는 규모는 비율로 늘린 값이라 반드시 현장 견적을 받아 보세요.'
-				}
-			</p>
-		</div>
-	</section>
+				<div class='im-chips'>
+					{
+						COLD_USAGE.map((u) => (
+							<button
+								type='button'
+								class='im-chip'
+								data-usage={u.pct}
+								aria-pressed={u.pct === defaults.usage ? 'true' : 'false'}
+							>
+								{usageName(u.id)} {u.pct}%
+							</button>
+						))
+					}
+				</div>
+			</div>
+			<label class='im-field'>
+				<span class='im-label'>{isEn ? 'Subsidy rate' : '보조금 비율'}</span>
+				<span class='im-input'>
+					<input
+						id='im-cold-subsidy'
+						type='number'
+						inputmode='numeric'
+						min='0'
+						max='90'
+						step='5'
+						value={defaults.subsidy}
+					/>
+					<span class='im-unit'>%</span>
+				</span>
+			</label>
+			<label class='im-field is-4 is-full-sm'>
+				<span class='im-label'>{isEn ? 'Main crop to store' : '주로 보관할 품목'}</span>
+				<span class='im-input is-select'>
+					<select id='im-cold-crop'>
+						{
+							CROPS.map((c) => (
+								<option value={c.id} selected={c.id === defaults.crop}>
+									{isEn ? c.en : c.ko}
+								</option>
+							))
+						}
+					</select>
+				</span>
+			</label>
+		</form>
+
+		<section class='im-tool-result' aria-live='polite'>
+			<p class='im-label'>{isEn ? 'Estimated build cost' : '예상 설치비'}</p>
+			<div class='im-tool-best'>
+				<span class='im-tool-big' id='im-cold-big'>{range(r.min, r.max)}</span>
+				<span class='im-tool-best-side'>
+					<strong>{isEn ? 'Your share' : '자부담'}</strong>
+					<span id='im-cold-self'>{range(r.selfMin, r.selfMax)}</span>
+				</span>
+			</div>
+			<dl class='im-tool-stats' id='im-cold-stats'>
+				<div>
+					<dt>{isEn ? 'Compressor (assumed)' : '냉동기 소비전력 가정'}</dt><dd data-out='kw'>
+						{r.kw.toFixed(1)} kW
+					</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Monthly use' : '월 사용량'}</dt><dd data-out='kwh'>{num(r.kwh)} kWh</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Monthly electricity' : '월 전기료'}</dt><dd data-out='monthly'>
+						{won(r.monthly)}
+					</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Yearly electricity' : '연 전기료'}</dt><dd data-out='yearly'>
+						{won(r.yearly)}
+					</dd>
+				</div>
+				<div>
+					<dt>{isEn ? 'Storage temperature' : '저장 온도'}</dt><dd data-crop='temp'>{crop.temp}</dd>
+				</div>
+				<div><dt>{isEn ? 'Humidity' : '상대습도'}</dt><dd data-crop='rh'>{crop.rh}</dd></div>
+			</dl>
+			<div class='im-tool-notes'>
+				<p id='im-cold-crop-note'>
+					<strong>{isEn ? crop.en : crop.ko}</strong>
+					{isEn ? ` · ${crop.lifeEn} · ${crop.noteEn}` : ` · ${crop.life} · ${crop.note}`}
+				</p>
+				<p>
+					<strong
+						>{isEn ? 'A planning range, not a quote.' : '견적이 아니라 비교용 범위입니다.'}</strong
+					>
+					{
+						isEn
+							? ' Electrical service, foundations, doors and contracted power change the price. Electricity excludes VAT, the power industry fund and fuel adjustments. Above 10 pyeong the range is extrapolated, so get a site quote.'
+							: ' 전기 인입, 기초 공사, 출입문 사양, 계약전력에 따라 금액이 달라집니다. 전기료는 부가세, 전력산업기반기금, 연료비조정액이 빠진 금액입니다. 10평이 넘는 규모는 비율로 늘린 값이라 반드시 현장 견적을 받아 보세요.'
+					}
+				</p>
+			</div>
+		</section>
+	</div>
 
 	<section class='im-tool-section'>
 		<h2 class='im-label'>{isEn ? 'Reference sizes' : '평형별 기준값 (보통 사용, 보조금 50%)'}</h2>

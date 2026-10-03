@@ -199,168 +199,173 @@ const data = { asOf, regions, items, flatWarnDays: FLAT_WARN_DAYS, isEn, prefix 
 	related={related}
 	path='/tools/produce-market-calculator/'
 >
-	<form class='im-tool-form' id='im-market-form' onsubmit='return false'>
-		<label class='im-field is-4 is-full-sm'>
-			<span class='im-label'>{isEn ? 'Crop' : '품목'}</span>
-			<span class='im-input is-select'>
-				<img
-					id='im-market-photo'
-					src={initial.photo ?? ''}
-					alt=''
-					width='30'
-					height='30'
-					hidden={!initial.photo}
-				/>
-				<select id='im-market-item' name='item'>
+	<div class='im-tool-calc'>
+		<form class='im-tool-form' id='im-market-form' onsubmit='return false'>
+			<label class='im-field is-4 is-full-sm'>
+				<span class='im-label'>{isEn ? 'Crop' : '품목'}</span>
+				<span class='im-input is-select'>
+					<img
+						id='im-market-photo'
+						src={initial.photo ?? ''}
+						alt=''
+						width='30'
+						height='30'
+						hidden={!initial.photo}
+					/>
+					<select id='im-market-item' name='item'>
+						{
+							CATS.map((c) => (
+								<optgroup label={isEn ? c.en : c.ko}>
+									{items
+										.filter((i) => i.cat === c.code)
+										.map((i) => (
+											<option value={i.id} selected={i.id === initial.id}>
+												{i.label} · {i.grade} {i.unit}
+											</option>
+										))}
+								</optgroup>
+							))
+						}
+					</select>
+				</span>
+			</label>
+			<label class='im-field is-narrow'>
+				<span class='im-label' id='im-market-qty-label'>
+					{isEn ? `Quantity (${initial.unit})` : `수량 (${initial.unit} 단위)`}
+				</span>
+				<span class='im-input'>
+					<input
+						id='im-market-qty'
+						name='qty'
+						type='number'
+						inputmode='numeric'
+						min='1'
+						value={initial.qty}
+					/>
+					<span class='im-unit'>{isEn ? 'units' : '개'}</span>
+				</span>
+			</label>
+			<label class='im-field is-narrow'>
+				<span class='im-label'>{isEn ? 'Commission' : '위탁수수료'}</span>
+				<span class='im-input'>
+					<input
+						id='im-market-fee'
+						name='fee'
+						type='number'
+						inputmode='decimal'
+						min='0'
+						max='20'
+						step='0.1'
+						value={initial.fee}
+					/>
+					<span class='im-unit'>%</span>
+				</span>
+			</label>
+			<div class='im-field is-wide'>
+				<span class='im-label'
+					>{
+						isEn ? 'Transport cost to each market (optional, KRW)' : '시장까지 운송비 (선택, 원)'
+					}</span
+				>
+				<div class='im-costs'>
 					{
-						CATS.map((c) => (
-							<optgroup label={isEn ? c.en : c.ko}>
-								{items
-									.filter((i) => i.cat === c.code)
-									.map((i) => (
-										<option value={i.id} selected={i.id === initial.id}>
-											{i.label} · {i.grade} {i.unit}
-										</option>
-									))}
-							</optgroup>
+						regions.map((r) => (
+							<label class='im-input'>
+								<span>{r.label}</span>
+								<input
+									data-region={r.id}
+									type='number'
+									inputmode='numeric'
+									min='0'
+									step='10000'
+									placeholder='0'
+									aria-label={`${r.label} ${isEn ? 'transport cost' : '운송비'}`}
+								/>
+							</label>
 						))
 					}
-				</select>
-			</span>
-		</label>
-		<label class='im-field is-narrow'>
-			<span class='im-label' id='im-market-qty-label'>
-				{isEn ? `Quantity (${initial.unit})` : `수량 (${initial.unit} 단위)`}
-			</span>
-			<span class='im-input'>
-				<input
-					id='im-market-qty'
-					name='qty'
-					type='number'
-					inputmode='numeric'
-					min='1'
-					value={initial.qty}
-				/>
-				<span class='im-unit'>{isEn ? 'units' : '개'}</span>
-			</span>
-		</label>
-		<label class='im-field is-narrow'>
-			<span class='im-label'>{isEn ? 'Commission' : '위탁수수료'}</span>
-			<span class='im-input'>
-				<input
-					id='im-market-fee'
-					name='fee'
-					type='number'
-					inputmode='decimal'
-					min='0'
-					max='20'
-					step='0.1'
-					value={initial.fee}
-				/>
-				<span class='im-unit'>%</span>
-			</span>
-		</label>
-		<div class='im-field is-wide'>
-			<span class='im-label'
-				>{
-					isEn ? 'Transport cost to each market (optional, KRW)' : '시장까지 운송비 (선택, 원)'
-				}</span
-			>
-			<div class='im-costs'>
-				{
-					regions.map((r) => (
-						<label class='im-input'>
-							<span>{r.label}</span>
-							<input
-								data-region={r.id}
-								type='number'
-								inputmode='numeric'
-								min='0'
-								step='10000'
-								placeholder='0'
-								aria-label={`${r.label} ${isEn ? 'transport cost' : '운송비'}`}
-							/>
-						</label>
-					))
-				}
+				</div>
 			</div>
-		</div>
-	</form>
+		</form>
 
-	<section class='im-tool-result' aria-live='polite'>
-		<p class='im-label'>
-			{isEn ? 'Market that leaves you the most' : '손에 남는 돈이 가장 많은 곳'}
-		</p>
-		<div class='im-tool-best'>
-			<span class='im-tool-big' id='im-market-big'>{won(best.net)}</span>
-			<span class='im-tool-best-side'>
-				<strong id='im-market-city'>{best.label}</strong>
-				<span class='im-up-text' id='im-market-diff'>
-					{
-						versus &&
-							(isEn
-								? `+${won(best.net - versus.net)} vs ${versus.label}`
-								: `${versus.label}보다 +${won(best.net - versus.net)}`)
-					}
+		<section class='im-tool-result' aria-live='polite'>
+			<p class='im-label'>
+				{isEn ? 'Market that leaves you the most' : '손에 남는 돈이 가장 많은 곳'}
+			</p>
+			<div class='im-tool-best'>
+				<span class='im-tool-big' id='im-market-big'>{won(best.net)}</span>
+				<span class='im-tool-best-side'>
+					<strong id='im-market-city'>{best.label}</strong>
+					<span class='im-up-text' id='im-market-diff'>
+						{
+							versus &&
+								(isEn
+									? `+${won(best.net - versus.net)} vs ${versus.label}`
+									: `${versus.label}보다 +${won(best.net - versus.net)}`)
+						}
+					</span>
 				</span>
-			</span>
-		</div>
-		<table class='im-tool-table'>
-			<thead>
-				<tr>
-					<th>{isEn ? 'Market' : '시장'}</th>
-					<th>{isEn ? 'Price' : '오늘 시세'}</th>
-					<th class='is-hide-sm'>{isEn ? 'Sales' : '판매 금액'}</th>
-					<th class='is-hide-sm'>{isEn ? 'Fee + transport' : '수수료·운송비'}</th>
-					<th>{isEn ? 'You keep' : '손에 남는 돈'}</th>
-				</tr>
-			</thead>
-			<tbody id='im-market-rows'>
-				{
-					rows.map((r, k) => {
-						const note = flatNote(r)
-						return (
-							<tr class={k === 0 ? 'is-top' : ''}>
-								<td>
-									<span class='im-tool-rank'>{k + 1}</span>
-									{r.label}
-									{note && <span class='im-tool-warn'>{note}</span>}
-								</td>
-								<td>{num(r.price)}</td>
-								<td class='is-hide-sm'>{num(r.gross)}</td>
-								<td class='is-hide-sm'>−{num(r.cost)}</td>
-								<td>
-									{num(r.net)}
-									<span class='im-bar' style={`width:${Math.max(4, (r.net / best.net) * 100)}%`} />
-								</td>
-							</tr>
-						)
-					})
-				}
-			</tbody>
-		</table>
-		<div class='im-tool-notes'>
-			<p>
-				<strong>{isEn ? 'For comparison only.' : '이 금액은 참고용입니다.'}</strong>
-				{
-					isEn
-						? ' KAMIS prices are what wholesale intermediaries sell at, so the auction price paid to growers is usually lower. The commission defaults to the legal ceiling for the crop group (7% for fruit and vegetables, 2% for grains); each market sets its own rate within it.'
-						: ' KAMIS 가격은 도매시장 중도매인이 파는 값이라, 농가가 경매로 받는 값은 보통 이보다 낮습니다. 위탁수수료는 품목 부류별 법정 상한(청과 7%, 양곡 2%)을 기본값으로 넣었고, 시장마다 실제 요율은 다를 수 있습니다.'
-				}
-			</p>
-			<p>
-				{
-					isEn
-						? 'Markets marked in red have not changed their price for several surveys or were not surveyed today; their gap may close late.'
-						: '빨간 글씨로 표시된 시장은 며칠째 같은 값이거나 오늘 조사되지 않은 곳입니다. 다른 시장과의 차이가 늦게 좁혀질 수 있습니다.'
-				}
-				{' '}
-				<a id='im-market-chart' href={`${prefix}/prices/${initial.id}/`}>
-					{isEn ? 'See the price chart →' : '이 품목 시세 차트 보기 →'}
-				</a>
-			</p>
-		</div>
-	</section>
+			</div>
+			<table class='im-tool-table'>
+				<thead>
+					<tr>
+						<th>{isEn ? 'Market' : '시장'}</th>
+						<th>{isEn ? 'Price' : '오늘 시세'}</th>
+						<th class='is-hide-sm'>{isEn ? 'Sales' : '판매 금액'}</th>
+						<th class='is-hide-sm'>{isEn ? 'Fee + transport' : '수수료·운송비'}</th>
+						<th>{isEn ? 'You keep' : '손에 남는 돈'}</th>
+					</tr>
+				</thead>
+				<tbody id='im-market-rows'>
+					{
+						rows.map((r, k) => {
+							const note = flatNote(r)
+							return (
+								<tr class={k === 0 ? 'is-top' : ''}>
+									<td>
+										<span class='im-tool-rank'>{k + 1}</span>
+										{r.label}
+										{note && <span class='im-tool-warn'>{note}</span>}
+									</td>
+									<td>{num(r.price)}</td>
+									<td class='is-hide-sm'>{num(r.gross)}</td>
+									<td class='is-hide-sm'>−{num(r.cost)}</td>
+									<td>
+										{num(r.net)}
+										<span
+											class='im-bar'
+											style={`width:${Math.max(4, (r.net / best.net) * 100)}%`}
+										/>
+									</td>
+								</tr>
+							)
+						})
+					}
+				</tbody>
+			</table>
+			<div class='im-tool-notes'>
+				<p>
+					<strong>{isEn ? 'For comparison only.' : '이 금액은 참고용입니다.'}</strong>
+					{
+						isEn
+							? ' KAMIS prices are what wholesale intermediaries sell at, so the auction price paid to growers is usually lower. The commission defaults to the legal ceiling for the crop group (7% for fruit and vegetables, 2% for grains); each market sets its own rate within it.'
+							: ' KAMIS 가격은 도매시장 중도매인이 파는 값이라, 농가가 경매로 받는 값은 보통 이보다 낮습니다. 위탁수수료는 품목 부류별 법정 상한(청과 7%, 양곡 2%)을 기본값으로 넣었고, 시장마다 실제 요율은 다를 수 있습니다.'
+					}
+				</p>
+				<p>
+					{
+						isEn
+							? 'Markets marked in red have not changed their price for several surveys or were not surveyed today; their gap may close late.'
+							: '빨간 글씨로 표시된 시장은 며칠째 같은 값이거나 오늘 조사되지 않은 곳입니다. 다른 시장과의 차이가 늦게 좁혀질 수 있습니다.'
+					}
+					{' '}
+					<a id='im-market-chart' href={`${prefix}/prices/${initial.id}/`}>
+						{isEn ? 'See the price chart →' : '이 품목 시세 차트 보기 →'}
+					</a>
+				</p>
+			</div>
+		</section>
+	</div>
 
 	{
 		spreads.length > 0 && (
