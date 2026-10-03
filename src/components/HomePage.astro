@@ -21,10 +21,17 @@ allPosts.forEach((post) => {
 	const slug = getCategorySlug(post.data.category)
 	counts.set(slug, (counts.get(slug) ?? 0) + 1)
 })
-const categories = Array.from(counts.entries())
+// 글이 많은 분류 4개 + 새로 넓힌 생활 분야는 글이 있으면 항상 보인다
+const PINNED = ['seasonal-notes', 'gardening', 'country-life']
+const top = Array.from(counts.entries())
 	.sort((a, b) => b[1] - a[1])
+	.map(([slug]) => slug)
+	.filter((slug) => !PINNED.includes(slug))
 	.slice(0, 4)
-	.map(([slug]) => ({ slug, label: getCategoryTitleFromSlug(slug, locale) }))
+const categories = [...top, ...PINNED.filter((slug) => counts.has(slug))].map((slug) => ({
+	slug,
+	label: getCategoryTitleFromSlug(slug, locale)
+}))
 
 const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2', '4 / 3']
 ---
