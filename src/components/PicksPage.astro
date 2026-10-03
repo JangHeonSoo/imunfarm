@@ -68,18 +68,16 @@ const jsonLd = {
 		</p>
 
 		<section class='im-picks-search' aria-label='장비 검색'>
-			<label class='im-field'>
-				<span class='im-label'>추천 장비에서 찾기</span>
-				<span class='im-input'>
-					<input
-						id='im-picks-q'
-						type='search'
-						autocomplete='off'
-						placeholder='예: 열선, 김치통, 수질, 화분'
-						aria-describedby='im-picks-count'
-					/>
-				</span>
-			</label>
+			<div class='im-search' role='search'>
+				<input
+					id='im-picks-q'
+					type='search'
+					autocomplete='off'
+					placeholder='SEARCH'
+					aria-label='추천 장비 검색'
+					aria-describedby='im-picks-count'
+				/>
+			</div>
 			<p class='im-picks-count' id='im-picks-count' aria-live='polite'></p>
 			<div class='im-picks-coupang'>
 				<p class='im-label'>쿠팡에서 바로 검색</p>
@@ -238,25 +236,48 @@ const jsonLd = {
 	.im-picks-search {
 		display: grid;
 		gap: 10px;
-		max-width: 760px;
-		margin: 6px 0 22px;
+		margin: 0 0 22px;
 	}
 
-	.im-picks-search .im-field {
-		grid-column: auto;
+	/* 메인·시세와 같은 검색 디자인 */
+	.im-search {
+		display: grid;
+		place-items: center;
+		height: clamp(120px, 20vh, 220px);
+	}
+
+	.im-search input {
+		width: min(760px, 90vw);
+		border: 0;
+		background: none;
+		padding: 0;
+		outline: none;
+		color: var(--ink);
+		font-family: inherit;
+		font-weight: 800;
+		font-size: clamp(26px, 4.2vw, 54px);
+		letter-spacing: 0.16em;
+		text-align: center;
+		text-transform: uppercase;
+	}
+
+	.im-search input::-webkit-search-cancel-button {
+		display: none;
 	}
 
 	.im-picks-count {
 		min-height: 1em;
-		margin: 0;
+		margin: -12px 0 8px;
+		color: var(--muted);
 		font-size: 13px;
-		font-weight: 600;
+		text-align: center;
 	}
 
 	.im-picks-coupang {
 		display: grid;
 		gap: 6px;
-		margin-top: 4px;
+		width: min(760px, 100%);
+		margin: 4px auto 0;
 	}
 
 	.im-picks-coupang .im-label {
