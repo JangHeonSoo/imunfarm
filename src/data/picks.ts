@@ -60,9 +60,9 @@ export const PICK_GROUPS = [
 	{
 		id: 'energy',
 		title: '농막·태양광',
-		lede: '전기가 들어오지 않는 농막에 작은 태양광을 꾸리는 부품입니다.',
+		lede: '농막에 작은 태양광을 꾸리는 부품과 영농형 태양광 현장을 직접 재 보는 측정 도구입니다.',
 		months: [3, 4, 5, 11, 12],
-		match: /farm-shed|solar|off-grid/
+		match: /farm-shed|solar|off-grid|agrivoltaic/
 	},
 	{
 		id: 'aqua',
