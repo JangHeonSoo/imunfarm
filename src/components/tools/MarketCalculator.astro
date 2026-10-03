@@ -240,6 +240,7 @@ const data = { asOf, regions, items, flatWarnDays: FLAT_WARN_DAYS, isEn, prefix 
 						type='number'
 						inputmode='numeric'
 						min='1'
+						max='100000'
 						value={initial.qty}
 					/>
 					<span class='im-unit'>{isEn ? 'units' : '개'}</span>
@@ -277,6 +278,7 @@ const data = { asOf, regions, items, flatWarnDays: FLAT_WARN_DAYS, isEn, prefix 
 									type='number'
 									inputmode='numeric'
 									min='0'
+									max='100000000'
 									step='10000'
 									placeholder='0'
 									aria-label={`${r.label} ${isEn ? 'transport cost' : '운송비'}`}
@@ -493,7 +495,9 @@ const data = { asOf, regions, items, flatWarnDays: FLAT_WARN_DAYS, isEn, prefix 
 		const item = byId.get(itemSel.value)
 		if (!item) return
 		const transport: Record<string, number> = {}
-		costIns.forEach((el) => (transport[el.dataset.region!] = Math.max(0, Number(el.value) || 0)))
+		costIns.forEach(
+			(el) => (transport[el.dataset.region!] = Math.min(1e8, Math.max(0, Number(el.value) || 0)))
+		)
 		try {
 			localStorage.setItem(COST_KEY, JSON.stringify(transport))
 		} catch {}
@@ -502,8 +506,8 @@ const data = { asOf, regions, items, flatWarnDays: FLAT_WARN_DAYS, isEn, prefix 
 				const v = item.q[r.id]
 				return { ...r, price: v?.[0] ?? null, date: v?.[1] ?? null, since: v?.[2] ?? null }
 			}),
-			qty: Math.max(0, Number(qtyIn.value) || 0),
-			feePct: Math.max(0, Number(feeIn.value) || 0),
+			qty: Math.min(100000, Math.max(0, Number(qtyIn.value) || 0)),
+			feePct: Math.min(20, Math.max(0, Number(feeIn.value) || 0)),
 			transport
 		})
 		const tbody = $('im-market-rows')

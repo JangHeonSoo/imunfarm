@@ -428,3 +428,14 @@ export const CROPS = [
 		ethylene: ''
 	}
 ]
+
+/** 만 원 단위 금액 글자. 1억 이상은 "1억 8,000만 원"처럼 억을 붙인다. */
+export function manKo(v: number): string {
+	const sign = v < 0 ? '−' : ''
+	const man = Math.round(Math.abs(v) / 10000)
+	const eok = Math.floor(man / 10000)
+	const rest = man % 10000
+	if (!man) return '0원'
+	if (!eok) return `${sign}${man.toLocaleString('ko-KR')}만 원`
+	return `${sign}${eok.toLocaleString('ko-KR')}억${rest ? ` ${rest.toLocaleString('ko-KR')}만` : ''} 원`
+}

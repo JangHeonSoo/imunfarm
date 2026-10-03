@@ -1,7 +1,7 @@
 ---
 import ToolShell from '@/components/tools/ToolShell'
 import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
-import { SOLAR, SOLAR_SCENARIOS, computeSolar } from '@/data/tools'
+import { SOLAR, SOLAR_SCENARIOS, computeSolar, manKo } from '@/data/tools'
 import energy from '@/data/generated/energy/summary.json'
 
 const ENERGY_MONTHLY = {
@@ -16,8 +16,7 @@ const prefix = getLocalePrefix(locale)
 const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
 const won = (v: number) => (isEn ? '₩' + num(v) : num(v) + '원')
 /** 만 원 단위 (한국어) */
-const man = (v: number) =>
-	isEn ? '₩' + (v / 1e6).toFixed(1) + 'M' : Math.round(v / 10000).toLocaleString('ko-KR') + '만 원'
+const man = (v: number) => (isEn ? '₩' + (v / 1e6).toFixed(1) + 'M' : manKo(v))
 const basisLabel = isEn
 	? `SMP·REC ${SOLAR.basis.replace('-', '.')}`
 	: `SMP·REC ${SOLAR.basis.slice(0, 4)}년 ${+SOLAR.basis.slice(5)}월 기준`
@@ -197,6 +196,20 @@ const related = [
 	}
 ].map((l) => ({ ...l, sub: l.sub ?? undefined }))
 
+// 입력 한도: 넘으면 한도 값으로 계산한다 (100MW, kW당 시공비 1천만 원 등)
+const MAX: Record<string, number> = {
+	kw: 100000,
+	yieldPerKw: 2000,
+	smp: 1000,
+	rec: 300000,
+	weight: 5,
+	costPerKw: 10000000,
+	opexPerKw: 1000000,
+	loanPct: 100,
+	ratePct: 30,
+	years: 30
+}
+
 const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 ---
 
@@ -242,6 +255,7 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 								type='number'
 								inputmode='decimal'
 								min='0'
+								max={MAX[f.id]}
 								step={f.step}
 								value={(defaults as Record<string, number>)[f.id]}
 							/>
@@ -411,7 +425,7 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 </ToolShell>
 
 <script>
-	import { computeSolar, type SolarInput } from '@/data/tools'
+	import { computeSolar, type SolarInput, manKo } from '@/data/tools'
 
 	const data = JSON.parse(document.getElementById('im-solar-data')!.textContent || '{}') as {
 		defaults: SolarInput
@@ -427,15 +441,18 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 	)
 	const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
 	const won = (v: number) => (isEn ? '₩' + num(v) : num(v) + '원')
-	const man = (v: number) =>
-		isEn
-			? '₩' + (v / 1e6).toFixed(1) + 'M'
-			: Math.round(v / 10000).toLocaleString('ko-KR') + '만 원'
+	const man = (v: number) => (isEn ? '₩' + (v / 1e6).toFixed(1) + 'M' : manKo(v))
 	const field = (id: string) => inputs.find((el) => el.dataset.field === id)!
 
 	function read(): SolarInput {
 		const v = {} as Record<string, number>
-		inputs.forEach((el) => (v[el.dataset.field!] = Math.max(0, Number(el.value) || 0)))
+		inputs.forEach(
+			(el) =>
+				(v[el.dataset.field!] = Math.min(
+					Number(el.max) || Infinity,
+					Math.max(0, Number(el.value) || 0)
+				))
+		)
 		return v as unknown as SolarInput
 	}
 

@@ -1,7 +1,7 @@
 ---
 import ToolShell from '@/components/tools/ToolShell'
 import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
-import { COLD_ANCHORS, COLD_TARIFF, COLD_USAGE, CROPS, computeCold } from '@/data/tools'
+import { COLD_ANCHORS, COLD_TARIFF, COLD_USAGE, CROPS, computeCold, manKo } from '@/data/tools'
 
 const { locale = DEFAULT_LOCALE } = Astro.props
 const isEn = locale === 'en'
@@ -9,8 +9,7 @@ const prefix = getLocalePrefix(locale)
 
 const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
 const won = (v: number) => (isEn ? '₩' + num(v) : num(v) + '원')
-const man = (v: number) =>
-	isEn ? '₩' + (v / 1e6).toFixed(1) + 'M' : Math.round(v / 10000).toLocaleString('ko-KR') + '만 원'
+const man = (v: number) => (isEn ? '₩' + (v / 1e6).toFixed(1) + 'M' : manKo(v))
 const range = (a: number, b: number) =>
 	isEn ? `${man(a)}–${man(b)}` : `${Math.round(a / 10000).toLocaleString('ko-KR')}만–${man(b)}`
 const usageName = (id: string) =>
@@ -300,7 +299,7 @@ const data = { defaults, crops: CROPS, isEn }
 </ToolShell>
 
 <script>
-	import { CROPS, computeCold } from '@/data/tools'
+	import { CROPS, computeCold, manKo } from '@/data/tools'
 
 	const isEn = JSON.parse(document.getElementById('im-cold-data')!.textContent || '{}')
 		.isEn as boolean
@@ -315,16 +314,13 @@ const data = { defaults, crops: CROPS, isEn }
 
 	const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
 	const won = (v: number) => (isEn ? '₩' + num(v) : num(v) + '원')
-	const man = (v: number) =>
-		isEn
-			? '₩' + (v / 1e6).toFixed(1) + 'M'
-			: Math.round(v / 10000).toLocaleString('ko-KR') + '만 원'
+	const man = (v: number) => (isEn ? '₩' + (v / 1e6).toFixed(1) + 'M' : manKo(v))
 	const range = (a: number, b: number) =>
 		isEn ? `${man(a)}–${man(b)}` : `${Math.round(a / 10000).toLocaleString('ko-KR')}만–${man(b)}`
 
 	function render() {
-		const pyeong = Math.max(0.5, Number(pyeongIn.value) || 0)
-		const subsidy = Math.min(100, Math.max(0, Number(subsidyIn.value) || 0))
+		const pyeong = Math.min(30, Math.max(0.5, Number(pyeongIn.value) || 0))
+		const subsidy = Math.min(90, Math.max(0, Number(subsidyIn.value) || 0))
 		const r = computeCold(pyeong, usage, subsidy)
 		document.getElementById('im-cold-big')!.textContent = range(r.min, r.max)
 		document.getElementById('im-cold-self')!.textContent = range(r.selfMin, r.selfMax)

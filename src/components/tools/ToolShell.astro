@@ -86,11 +86,7 @@ const jsonLd = [
 ---
 
 <BaseLayout title={title} description={description} locale={locale} active='tools'>
-	<article class='im-tool is-calc'>
-		<div class='im-tool-mbar' aria-hidden='true' hidden>
-			<span></span>
-			<b></b>
-		</div>
+	<article class='im-tool'>
 		<nav class='im-tool-crumb im-label' aria-label={isEn ? 'Breadcrumb' : '경로'}>
 			<a href={`${prefix}/tools/`}>{isEn ? 'Tools' : '계산기'}</a>
 			<span>·</span>
@@ -137,25 +133,31 @@ const jsonLd = [
 </BaseLayout>
 
 <script>
-	// 모바일: 입력을 고치는 동안 결과가 화면 밖이면 위에 결과 숫자를 붙여 보여 준다.
-	const bar = document.querySelector<HTMLElement>('.im-tool-mbar')
-	const big = document.querySelector<HTMLElement>('.im-tool-big')
-	const label = document.querySelector<HTMLElement>('.im-tool-result > .im-label')
-	const form = document.querySelector<HTMLElement>('.im-tool-form')
-	if (bar && big && form) {
-		const [name, value] = [bar.querySelector('span')!, bar.querySelector('b')!]
-		const sync = () => {
-			name.textContent = label?.textContent?.trim() ?? ''
-			value.textContent = big.textContent?.trim() ?? ''
-		}
-		sync()
-		new MutationObserver(sync).observe(big, { childList: true, characterData: true, subtree: true })
-		const seen = { big: true, form: false }
-		const io = new IntersectionObserver((entries) => {
-			for (const e of entries) seen[e.target === big ? 'big' : 'form'] = e.isIntersecting
-			bar.hidden = seen.big || !seen.form
-		})
-		io.observe(big)
-		io.observe(form)
-	}
+	// 입력 한도: max 를 넘게 치면 한도 값으로 바꾸고 칸 아래에 알려 준다.
+	// 계산기 스크립트보다 먼저 값을 고치도록 문서 단계(capture)에서 듣는다.
+	const isEn = document.documentElement.lang.startsWith('en')
+	document.addEventListener(
+		'input',
+		(e) => {
+			const el = e.target as HTMLInputElement
+			if (!(el instanceof HTMLInputElement) || el.type !== 'number' || !el.closest('.im-tool'))
+				return
+			const max = Number(el.max)
+			const field = el.closest('.im-field') as HTMLElement | null
+			let note = field?.querySelector<HTMLElement>('.im-field-limit')
+			if (max && Number(el.value) > max) {
+				el.value = String(max)
+				if (field && !note) {
+					note = document.createElement('span')
+					note.className = 'im-field-limit'
+					field.appendChild(note)
+				}
+				if (note)
+					note.textContent = isEn
+						? `Up to ${max.toLocaleString('en-US')}.`
+						: `최대 ${max.toLocaleString('ko-KR')}까지 계산합니다.`
+			} else note?.remove()
+		},
+		true
+	)
 </script>
