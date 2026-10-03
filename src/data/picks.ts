@@ -46,9 +46,9 @@ export const PICK_GROUPS = [
 	{
 		id: 'tools',
 		title: '농기계·공구',
-		lede: '전정 가위, 농기계 점검 도구처럼 장비 고르는 글에서 소개한 공구입니다.',
+		lede: '전정 가위, 분무기·예초기, 난방기, 농기계 점검 도구처럼 장비 고르는 글에서 소개한 장비입니다.',
 		months: [1, 2, 3, 11, 12],
-		match: /machinery|pruning|pruner|equipment|power-tool/
+		match: /machinery|pruning|pruner|equipment|power-tool|heater|sprayer|trimmer/
 	},
 	{
 		id: 'garden',
