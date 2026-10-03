@@ -44,6 +44,13 @@ export const PICK_GROUPS = [
 		match: /freeze|frozen-pipe|winter-prep|winterize/
 	},
 	{
+		id: 'tools',
+		title: '농기계·공구',
+		lede: '전정 가위, 농기계 점검 도구처럼 장비 고르는 글에서 소개한 공구입니다.',
+		months: [1, 2, 3, 11, 12],
+		match: /machinery|pruning|pruner|equipment|power-tool/
+	},
+	{
 		id: 'garden',
 		title: '텃밭·채소 재배',
 		lede: '과채류 유인·수확과 월동 채소 보온에 쓰는 도구입니다.',
