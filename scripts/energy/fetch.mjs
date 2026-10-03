@@ -81,7 +81,14 @@ let calls = 0
 for (const d of wanted) {
 	if (calls >= MAX_SMP_CALLS) break
 	calls++
-	const { items } = await call('SmpWithForecastDemand/getSmpWithForecastDemand', { numOfRows: '60', date: d })
+	let items
+	try {
+		;({ items } = await call('SmpWithForecastDemand/getSmpWithForecastDemand', { numOfRows: '60', date: d }))
+	} catch (err) {
+		// 일일 호출 한도 초과 등: 받은 날까지만 저장하고 다음 실행에서 이어 받는다
+		console.warn(`SMP ${d} 중단: ${String(err.message).slice(0, 120)}`)
+		break
+	}
 	const land = items.filter((x) => x.areaName === '육지').map((x) => Number(x.smp))
 	// 아직 공개 전인 날(오늘·내일)은 비워 두고 다음 실행에서 다시 받는다
 	if (land.length >= 24) smp.daily[d] = round(land.reduce((a, b) => a + b, 0) / land.length)
