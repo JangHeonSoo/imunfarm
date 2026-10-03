@@ -2,6 +2,12 @@
 import ToolShell from '@/components/tools/ToolShell'
 import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
 import { SOLAR, SOLAR_SCENARIOS, computeSolar } from '@/data/tools'
+import energy from '@/data/generated/energy/summary.json'
+
+const ENERGY_MONTHLY = {
+	smp: energy.smpMonthly as Record<string, number>,
+	rec: energy.recMonthly as Record<string, number>
+}
 
 const { locale = DEFAULT_LOCALE } = Astro.props
 const isEn = locale === 'en'
@@ -29,6 +35,17 @@ const defaults = {
 	years: 10
 }
 const r = computeSolar(defaults)
+const monthKeys = [
+	...new Set([...Object.keys(ENERGY_MONTHLY.smp), ...Object.keys(ENERGY_MONTHLY.rec)])
+]
+	.sort()
+	.slice(-12)
+	.reverse()
+const months = monthKeys.map((k) => ({
+	label: isEn ? k.replace('-', '.') : `${k.slice(0, 4)}년 ${+k.slice(5)}월`,
+	smp: ENERGY_MONTHLY.smp[k] ?? null,
+	rec: ENERGY_MONTHLY.rec[k] ?? null
+}))
 const scenarios = (['low', 'now', 'high'] as const).map((key) => {
 	const s = SOLAR_SCENARIOS[key]
 	return { key, ...s, out: computeSolar({ ...defaults, ...s }) }
@@ -157,7 +174,7 @@ const related = [
 		title: isEn
 			? 'Solar profitability, September 2026'
 			: '2026년 9월 기준 태양광 수익성, SMP·REC·시공비까지 현실 계산',
-		sub: isEn ? 'Scenario tables behind this calculator' : '이 계산기 기준값의 근거'
+		sub: isEn ? 'Construction cost and payback scenarios' : '시공비와 회수기간 시나리오 해설'
 	},
 	{
 		href: `${prefix}/blog/farmland-solar-100kw-monthly-profit/`,
@@ -302,13 +319,18 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 	</section>
 
 	<section class='im-tool-section'>
-		<h2 class='im-label'>{isEn ? 'Three scenarios for 100 kW' : '100kW 시나리오 비교'}</h2>
+		<h2 class='im-label'>
+			{
+				isEn
+					? 'Three price scenarios for 100 kW (₩1.8M per kW)'
+					: '100kW 단가 시나리오 비교 (kW당 시공비 180만 원)'
+			}
+		</h2>
 		<table class='im-tool-table'>
 			<thead>
 				<tr>
 					<th>{isEn ? 'Scenario' : '시나리오'}</th>
 					<th class='is-hide-sm'>SMP · REC</th>
-					<th class='is-hide-sm'>{isEn ? 'Cost' : '시공비'}</th>
 					<th>{isEn ? 'Monthly net' : '월 순수익'}</th>
 					<th>{isEn ? 'Payback' : '회수'}</th>
 				</tr>
@@ -321,7 +343,6 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 							<td class='is-hide-sm'>
 								{s.smp} · {num(s.rec)}
 							</td>
-							<td class='is-hide-sm'>{man(s.out.cost)}</td>
 							<td>{man(s.out.monthlyNet)}</td>
 							<td>
 								{s.out.payback?.toFixed(1)}
@@ -335,6 +356,37 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 	</section>
 
 	<section class='im-tool-section'>
+		<h2 class='im-label'>{isEn ? 'Monthly SMP and REC (land)' : '월별 육지 SMP·REC 평균'}</h2>
+		<table class='im-tool-table'>
+			<thead>
+				<tr>
+					<th>{isEn ? 'Month' : '월'}</th>
+					<th>{isEn ? 'SMP (KRW/kWh)' : 'SMP (원/kWh)'}</th>
+					<th>{isEn ? 'REC (KRW)' : 'REC (원)'}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{
+					months.map((m) => (
+						<tr>
+							<td>{m.label}</td>
+							<td>{m.smp != null ? m.smp.toFixed(2) : '–'}</td>
+							<td>{m.rec != null ? num(m.rec) : '–'}</td>
+						</tr>
+					))
+				}
+			</tbody>
+		</table>
+		<p class='im-field-help' style='margin-top:10px'>
+			{
+				isEn
+					? 'SMP is the average of hourly land SMP; REC is the volume-weighted land spot average. Updated daily from Korea Power Exchange open data.'
+					: 'SMP는 육지 시간별 SMP의 평균, REC는 육지 현물시장 거래량 가중 평균입니다. 한국전력거래소 공공데이터로 매일 갱신합니다.'
+			}
+		</p>
+	</section>
+
+	<section class='im-tool-section'>
 		<h2 class='im-label'>{isEn ? 'How it is calculated' : '계산 방법'}</h2>
 		<pre>{
 			isEn
@@ -343,8 +395,8 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 		<p>
 			{
 				isEn
-					? `Defaults: land SMP average shown on the one-stop business portal and the land REC spot average for ${SOLAR.basis}, 1,300 kWh per kW a year, ₩35,000 O&M per kW a year, ₩1.8M construction per kW.`
-					: `기본값은 원스톱 사업정보 통합포털의 ${SOLAR.basis.slice(0, 4)}년 ${+SOLAR.basis.slice(5)}월 육지 SMP 평균과 REC 현물 육지 평균, kW당 연 1,300kWh, kW당 연 운영비 3만 5천 원, kW당 시공비 180만 원입니다.`
+					? `Defaults: Korea Power Exchange open data for ${SOLAR.basis} (average hourly land SMP, volume-weighted land REC spot price), 1,300 kWh per kW a year, ₩35,000 O&M per kW a year, ₩1.8M construction per kW. Conservative and optimistic use the lowest and highest month of the last 12 months (±15% of last month until six months of data exist).`
+					: `기본값은 한국전력거래소 공공데이터로 계산한 ${SOLAR.basis.slice(0, 4)}년 ${+SOLAR.basis.slice(5)}월 육지 SMP 평균(시간별 값 평균)과 REC 현물시장 육지 평균가(거래량 가중), kW당 연 1,300kWh, kW당 연 운영비 3만 5천 원, kW당 시공비 180만 원입니다. 보수·낙관 시나리오는 최근 12개월 중 가장 낮은 달과 높은 달 값입니다(6개월치가 쌓이기 전에는 지난달 값의 ±15%).`
 			}
 		</p>
 	</section>
@@ -357,7 +409,7 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 
 	const data = JSON.parse(document.getElementById('im-solar-data')!.textContent || '{}') as {
 		defaults: SolarInput
-		scenarios: Record<string, { smp: number; rec: number; costPerKw: number }>
+		scenarios: Record<string, { smp: number; rec: number }>
 		isEn: boolean
 	}
 	const { isEn } = data
@@ -406,10 +458,7 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 		const s = read()
 		chips.forEach((c) => {
 			const sc = data.scenarios[c.dataset.scenario!]
-			c.setAttribute(
-				'aria-pressed',
-				String(sc.smp === s.smp && sc.rec === s.rec && sc.costPerKw === s.costPerKw)
-			)
+			c.setAttribute('aria-pressed', String(sc.smp === s.smp && sc.rec === s.rec))
 		})
 	}
 
@@ -418,7 +467,6 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 			const sc = data.scenarios[c.dataset.scenario!]
 			field('smp').value = String(sc.smp)
 			field('rec').value = String(sc.rec)
-			field('costPerKw').value = String(sc.costPerKw)
 			render()
 		})
 	)

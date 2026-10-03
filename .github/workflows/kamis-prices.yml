@@ -40,14 +40,21 @@ jobs:
           if [ "$(TZ=Asia/Seoul date +%d)" = "02" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then ARGS="$ARGS --monthly"; fi
           node scripts/kamis/fetch.mjs $ARGS
 
+      # 태양광 계산기용 SMP·REC (한국전력거래소). 실패해도 시세 갱신은 계속한다.
+      - name: Fetch SMP and REC
+        continue-on-error: true
+        env:
+          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+        run: node scripts/energy/fetch.mjs
+
       - name: Commit if changed
         run: |
-          if git diff --quiet -- src/data/generated/kamis/daily.json src/data/generated/kamis/monthly.json src/data/generated/kamis/volume.json; then
+          if git diff --quiet -- src/data/generated/kamis/daily.json src/data/generated/kamis/monthly.json src/data/generated/kamis/volume.json src/data/generated/energy/; then
             echo "no new data"
             exit 0
           fi
           git config user.name "imunfarm-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add src/data/generated/kamis/
+          git add src/data/generated/kamis/ src/data/generated/energy/
           git commit -m "chore: KAMIS prices $(TZ=Asia/Seoul date +%F)"
           git push

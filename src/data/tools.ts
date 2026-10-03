@@ -3,6 +3,7 @@
  * 서버(검색엔진이 읽는 기본 결과)와 브라우저(입력 변경)가 같은 식을 쓴다.
  * 큰 시세 JSON을 끌어오지 않도록 prices.ts 를 import 하지 않는다.
  */
+import energy from './generated/energy/summary.json'
 
 /* ---------------- 시장별 판매 금액 ---------------- */
 
@@ -84,14 +85,21 @@ export const computeMarket = ({ regions, qty, feePct, transport }: MarketInput):
 /* ---------------- 태양광 발전 수익 ---------------- */
 
 /**
- * 2026-09 기준값. 출처: 원스톱 사업정보 통합포털 육지 SMP 평균(9월 3일 표시),
- * REC 현물시장 9월 육지 평균. IMUN.FARM 글 solar-profitability-september-2026-smp-rec-construction-cost.
- * 매달 초 갱신한다.
+ * SMP·REC 기준값은 scripts/energy/fetch.mjs 가 한국전력거래소 공공데이터에서 매일 받아 만든 요약을 쓴다.
+ * smp = 지난달 육지 시간별 SMP 평균, rec = 지난달 REC 현물시장 육지 평균가(거래량 가중).
  */
+const ENERGY = energy as {
+	month: string
+	smp: number
+	rec: number
+	smpMonthly: Record<string, number>
+	recMonthly: Record<string, number>
+}
+
 export const SOLAR = {
-	basis: '2026-09',
-	smp: 162.74,
-	rec: 70752,
+	basis: ENERGY.month,
+	smp: ENERGY.smp,
+	rec: ENERGY.rec,
 	/** kW당 연간 발전량 (kWh) */
 	yieldPerKw: 1300,
 	/** kW당 연 운영비 (점검·보험·통신·잡비) */
@@ -100,10 +108,28 @@ export const SOLAR = {
 	costPerKw: 1800000
 }
 
+/** 최근 12개월 월평균이 6개월 이상 쌓이면 최저·최고 월, 그 전에는 지난달 ±15% */
+const band = (monthly: Record<string, number>, now: number, digits: number) => {
+	const recent = Object.entries(monthly)
+		.sort(([a], [b]) => (a < b ? -1 : 1))
+		.slice(-12)
+		.map(([, v]) => v)
+	const r = (v: number) =>
+		digits >= 0
+			? Math.round(v * 10 ** digits) / 10 ** digits
+			: Math.round(v / 10 ** -digits) * 10 ** -digits
+	return recent.length >= 6
+		? { low: r(Math.min(...recent)), high: r(Math.max(...recent)) }
+		: { low: r(now * 0.85), high: r(now * 1.15) }
+}
+const smpBand = band(ENERGY.smpMonthly, ENERGY.smp, 0)
+const recBand = band(ENERGY.recMonthly, ENERGY.rec, -2)
+
+/** 단가 시나리오 (시공비는 바꾸지 않는다) */
 export const SOLAR_SCENARIOS = {
-	low: { smp: 120, rec: 65000, costPerKw: 1600000 },
-	now: { smp: SOLAR.smp, rec: SOLAR.rec, costPerKw: SOLAR.costPerKw },
-	high: { smp: 175, rec: 75000, costPerKw: 1800000 }
+	low: { smp: smpBand.low, rec: recBand.low },
+	now: { smp: SOLAR.smp, rec: SOLAR.rec },
+	high: { smp: smpBand.high, rec: recBand.high }
 } as const
 
 export type SolarInput = {

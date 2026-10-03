@@ -5,3 +5,4 @@ pnpm-lock.yaml
 .github
 .changeset
 src/data/generated/kamis
+src/data/generated/energy
