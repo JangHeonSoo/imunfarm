@@ -37,6 +37,17 @@ const lines = [
 	`최근 7일: 클릭 ${sum(w, 'click')} · 주문 ${sum(w, 'order')} · 수수료 ${won(sum(w, 'commission'))}`,
 	`${+key(yesterday).slice(4, 6)}월 누적: 클릭 ${sum(m, 'click')} · 수수료 ${won(sum(m, 'commission'))}`
 ]
+// 채널 아이디(subId)별 최근 7일. 채널을 붙인 링크가 생기면 나뉘어 나온다.
+const byChannel = {}
+for (const r of w) {
+	const ch = r.subId || '기본값'
+	byChannel[ch] ??= { click: 0, commission: 0 }
+	byChannel[ch].click += Number(r.click) || 0
+	byChannel[ch].commission += Number(r.commission) || 0
+}
+const channels = Object.entries(byChannel).sort((a, b) => b[1].commission - a[1].commission || b[1].click - a[1].click)
+if (channels.length > 1 || (channels[0] && channels[0][0] !== '기본값'))
+	lines.push('채널별 7일: ' + channels.map(([ch, v]) => `${ch} 클릭 ${v.click}·${won(v.commission)}`).join(' / '))
 if (orders.length)
 	lines.push(
 		'어제 주문: ' +
