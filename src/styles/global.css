@@ -40,7 +40,7 @@
 }
 
 :root {
-	color-scheme: light;
+	color-scheme: light only;
 	--bg: #faf8f6;
 	--ink: #1d1d1b;
 	--muted: rgba(29, 29, 27, 0.62);
