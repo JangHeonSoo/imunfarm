@@ -16,6 +16,9 @@ export const FEE_PRODUCE = 7
 const GRAIN_IDS = new Set([
 	'rice',
 	'glutinous-rice',
+	'new-crop-rice',
+	'brown-glutinous-rice',
+	'glutinous-barley',
 	'soybean',
 	'red-bean',
 	'mung-bean',

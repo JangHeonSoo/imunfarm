@@ -111,7 +111,7 @@ const related6 = [...siblings, ...sameGroup, ...sameCat].slice(0, 6)
 
 // 상단 네 칸: 가장 비싼 곳, 최근 평균, 1년 전 같은 달
 const priced = regionRows.filter((r) => r.price != null)
-const topRegion = priced.length > 1 ? priced[0] : null
+const topRegion = priced.length ? priced[0] : null
 const seoulPrice = table[latest][REGIONS[0].id][item.id]?.price ?? null
 const yearAgo = analysis.benchmarks[0]
 const vsAvg =
@@ -303,13 +303,21 @@ const t = {
 					</span>
 					<span class='im-item-key-s'>
 						{
-							topRegion && seoulPrice != null && topRegion.price !== seoulPrice
+							!topRegion
 								? isEn
-									? `${fmt(topRegion.price! - seoulPrice)} above Seoul`
-									: `서울보다 ${fmt(topRegion.price! - seoulPrice)} 높습니다`
-								: isEn
-									? 'Same as Seoul'
-									: '서울이 가장 높습니다'
+									? 'No market surveyed on the latest day'
+									: '최근 조사일에 조사된 시장이 없습니다'
+								: priced.length === 1
+									? isEn
+										? 'Only one market surveyed'
+										: '조사된 시장이 한 곳입니다'
+									: seoulPrice != null && topRegion.price !== seoulPrice
+										? isEn
+											? `${fmt(topRegion.price! - seoulPrice)} above Seoul`
+											: `서울보다 ${fmt(topRegion.price! - seoulPrice)} 높습니다`
+										: isEn
+											? 'Seoul is the highest'
+											: '서울이 가장 높습니다'
 						}
 					</span>
 				</dd>

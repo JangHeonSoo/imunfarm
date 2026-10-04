@@ -243,6 +243,79 @@ const RAW_ITEMS: Item[] = [
 		keywordsEn: ['Grape price', 'Grape wholesale korea', 'Grape (캠벨얼리)']
 	},
 	{
+		id: 'sweet-persimmon',
+		ko: '단감',
+		en: 'Sweet persimmon',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '10kg',
+		unitEn: '10kg',
+		keywordsKo: [
+			'단감 시세',
+			'단감 가격',
+			'단감 도매가',
+			'단감 10kg 가격',
+			'부유 단감',
+			'단감 경락가'
+		],
+		keywordsEn: ['Sweet persimmon price', 'Sweet persimmon wholesale korea', 'Sweet persimmon']
+	},
+	{
+		id: 'kiwi',
+		ko: '참다래 (국산 키위)',
+		en: 'Kiwi (Korean)',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '10kg',
+		unitEn: '10kg',
+		keywordsKo: [
+			'참다래 시세',
+			'키위 시세',
+			'국산 키위 시세',
+			'참다래 가격',
+			'키위 도매가',
+			'참다래'
+		],
+		keywordsEn: ['Kiwi (Korean) price', 'Kiwi (Korean) wholesale korea', 'Kiwi (Korean)']
+	},
+	{
+		id: 'kiwi-gold',
+		ko: '키위 (골드)',
+		en: 'Gold kiwi',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '6kg',
+		unitEn: '6kg',
+		keywordsKo: ['골드키위 시세', '골드키위 가격', '키위 시세', '키위 도매가', '골드키위'],
+		keywordsEn: ['Gold kiwi price', 'Gold kiwi wholesale korea', 'Gold kiwi']
+	},
+	{
+		id: 'peach',
+		ko: '복숭아 (백도)',
+		en: 'Peach (white)',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '4kg',
+		unitEn: '4kg',
+		keywordsKo: ['복숭아 시세', '복숭아 가격', '복숭아 도매가', '백도 시세', '백도 가격', '복숭아'],
+		keywordsEn: ['Peach (white) price', 'Peach (white) wholesale korea', 'Peach (white)']
+	},
+	{
+		id: 'cherry',
+		ko: '체리 (수입)',
+		en: 'Cherry (imported)',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '5kg',
+		unitEn: '5kg',
+		keywordsKo: ['체리 시세', '체리 가격', '체리 도매가', '수입 체리 가격', '체리'],
+		keywordsEn: [
+			'Cherry (imported) price',
+			'Cherry (imported) wholesale korea',
+			'Cherry (imported)'
+		]
+	},
+	{
 		id: 'potato',
 		ko: '감자 (수미)',
 		en: 'Potato (수미)',
@@ -342,6 +415,57 @@ const RAW_ITEMS: Item[] = [
 			'일반계 가격'
 		],
 		keywordsEn: ['Glutinous rice price', 'Glutinous rice wholesale korea', 'Glutinous rice']
+	},
+	{
+		id: 'new-crop-rice',
+		ko: '햅쌀',
+		en: 'New-crop rice',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '20kg',
+		unitEn: '20kg',
+		keywordsKo: [
+			'햅쌀 시세',
+			'햅쌀 가격',
+			'햅쌀 20kg 가격',
+			'햅쌀 도매가',
+			'2026 햅쌀 가격',
+			'햅쌀'
+		],
+		keywordsEn: ['New-crop rice price', 'New-crop rice wholesale korea', 'New-crop rice']
+	},
+	{
+		id: 'brown-glutinous-rice',
+		ko: '찰현미',
+		en: 'Glutinous brown rice',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '20kg',
+		unitEn: '20kg',
+		keywordsKo: ['찰현미 시세', '찰현미 가격', '현미 시세', '현미 가격', '찰현미 도매가', '찰현미'],
+		keywordsEn: [
+			'Glutinous brown rice price',
+			'Glutinous brown rice wholesale korea',
+			'Glutinous brown rice'
+		]
+	},
+	{
+		id: 'glutinous-barley',
+		ko: '찰보리쌀',
+		en: 'Waxy barley',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '20kg',
+		unitEn: '20kg',
+		keywordsKo: [
+			'찰보리 시세',
+			'보리쌀 시세',
+			'찰보리쌀 가격',
+			'보리쌀 가격',
+			'보리 시세',
+			'찰보리'
+		],
+		keywordsEn: ['Waxy barley price', 'Waxy barley wholesale korea', 'Waxy barley']
 	},
 	{
 		id: 'soybean',
@@ -1277,6 +1401,54 @@ const RAW_ITEMS: Item[] = [
 			'쥬키니 가격'
 		],
 		keywordsEn: ['Squash price', 'Squash wholesale korea', 'Squash (쥬키니)']
+	},
+	{
+		id: 'garlic-chives',
+		ko: '부추',
+		en: 'Garlic chives',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '4kg',
+		unitEn: '4kg',
+		keywordsKo: ['부추 시세', '부추 가격', '부추 도매가', '부추 4kg 가격', '부추'],
+		keywordsEn: ['Garlic chives price', 'Garlic chives wholesale korea', 'Garlic chives']
+	},
+	{
+		id: 'eggplant',
+		ko: '가지',
+		en: 'Eggplant',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '5kg',
+		unitEn: '5kg',
+		keywordsKo: ['가지 시세', '가지 가격', '가지 도매가', '가지 5kg 가격', '가지'],
+		keywordsEn: ['Eggplant price', 'Eggplant wholesale korea', 'Eggplant']
+	},
+	{
+		id: 'strawberry',
+		ko: '딸기 (설향)',
+		en: 'Strawberry (Seolhyang)',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '2kg',
+		unitEn: '2kg',
+		keywordsKo: ['딸기 시세', '딸기 가격', '딸기 도매가', '설향 딸기 시세', '설향 시세', '딸기'],
+		keywordsEn: [
+			'Strawberry (Seolhyang) price',
+			'Strawberry (Seolhyang) wholesale korea',
+			'Strawberry (Seolhyang)'
+		]
+	},
+	{
+		id: 'korean-melon',
+		ko: '참외',
+		en: 'Korean melon',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '10kg',
+		unitEn: '10kg',
+		keywordsKo: ['참외 시세', '참외 가격', '참외 도매가', '참외 10kg 가격', '참외'],
+		keywordsEn: ['Korean melon price', 'Korean melon wholesale korea', 'Korean melon']
 	}
 ]
 

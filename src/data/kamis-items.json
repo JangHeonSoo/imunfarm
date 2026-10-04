@@ -238,5 +238,41 @@
 	},
 	"squash-zucchini": {
 		"codes": ["200-224-02-04"]
+	},
+	"sweet-persimmon": {
+		"codes": ["400-416-00-04"]
+	},
+	"kiwi": {
+		"codes": ["400-419-01-04"]
+	},
+	"kiwi-gold": {
+		"codes": ["400-437-01-04"]
+	},
+	"peach": {
+		"codes": ["400-413-01-04"]
+	},
+	"cherry": {
+		"codes": ["400-425-00-04"]
+	},
+	"new-crop-rice": {
+		"codes": ["100-111-05-04"]
+	},
+	"brown-glutinous-rice": {
+		"codes": ["100-115-01-04"]
+	},
+	"glutinous-barley": {
+		"codes": ["100-121-04-04"]
+	},
+	"garlic-chives": {
+		"codes": ["200-254-00-04"]
+	},
+	"eggplant": {
+		"codes": ["200-251-00-04"]
+	},
+	"strawberry": {
+		"codes": ["200-226-00-04"]
+	},
+	"korean-melon": {
+		"codes": ["200-222-00-04"]
 	}
 }
