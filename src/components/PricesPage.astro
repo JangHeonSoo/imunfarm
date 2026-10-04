@@ -12,6 +12,7 @@ import {
 } from '@/data/prices'
 import { siteConfig } from '@/site-config'
 import PriceSwitcher from '@/components/PriceSwitcher'
+import CoupangDynamic from '@/components/CoupangDynamic'
 import kamisItems from '@/data/kamis-items.json'
 import pricePhotos from '@/data/price-photos.json'
 import { buildMoversInput } from '@/data/movers-input'
@@ -411,6 +412,8 @@ const t = {
 				</div>
 			</div>
 		</section>
+
+		{!isEn && <CoupangDynamic />}
 
 		<div class='im-price-controls'>
 			<div>

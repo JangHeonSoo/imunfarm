@@ -3,6 +3,7 @@ import BaseLayout from '@/layouts/BaseLayout'
 import PriceAnalysis from '@/components/PriceAnalysis'
 import PriceChart from '@/components/PriceChart'
 import PriceSwitcher from '@/components/PriceSwitcher'
+import CoupangDynamic from '@/components/CoupangDynamic'
 import kamisItems from '@/data/kamis-items.json'
 import { DEFAULT_LOCALE, getLocalePrefix, getPostUrl, getPosts } from '@/utils'
 import {
@@ -356,6 +357,8 @@ const t = {
 			regions={REGIONS.map((r) => ({ id: r.id, label: isEn ? r.en : r.ko }))}
 			isEn={isEn}
 		/>
+
+		{!isEn && <CoupangDynamic />}
 
 		<p class='im-item-lead'>{description}</p>
 
