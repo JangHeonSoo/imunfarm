@@ -216,7 +216,7 @@ const switchItems = ITEMS.map((entry) => {
 const canonical = new URL(Astro.url.pathname, siteConfig.siteUrl).href
 const pageTitle = isEn
 	? `Korean produce prices — wholesale market rates by region (${dateLabel})`
-	: `농산물 시세 — 지역별 도매가격 (${dateLabel} 기준)`
+	: `오늘 농산물 가격·시세표 — 지역별 도매가격 (${dateLabel} 기준)`
 const pageDescription = isEn
 	? `KAMIS wholesale prices for ${ITEMS.length} major Korean crops in ${REGIONS.length} cities (Seoul, Busan, Daegu, Gwangju, Daejeon), with a 30-survey-day trend chart and a 10-year monthly analysis for each crop. Latest survey ${dateLabel}.`
 	: `${dateLabel} KAMIS 조사 기준 배추·무·양파·마늘·대파·감자·사과·배·토마토·오이·청양고추·수박 등 주요 농산물 ${ITEMS.length}개 품목의 지역별 도매 시세표. 서울·부산·대구·광주·대전 도매시장 중도매인 판매가격과 최근 30개 조사일 추이 차트, 품목별 10년 월평균 분석을 함께 제공한다.`

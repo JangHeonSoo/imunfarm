@@ -121,6 +121,10 @@ const vsAvg =
 const nameMain = name.replace(/\s*\(.*\)\s*$/, '')
 const nameVariety = name.match(/\((.*)\)\s*$/)?.[1] ?? null
 
+// 1kg 환산 ("가격"으로 찾는 사람은 대부분 1kg 값을 궁금해한다). kg 단위가 아니면 없다.
+const unitKg = Number(item.unitKo.match(/^([\d.]+)kg/)?.[1]) || null
+const perKg = (v: number | null) => (v != null && unitKg ? Math.round(v / unitKg / 10) * 10 : null)
+
 const dateLabel = formatDate(latest)
 const surveyLabel = analysis.currentDate ? formatDate(analysis.currentDate) : null
 const seasonValues = analysis.seasonality.filter((v): v is number => v != null)
@@ -129,12 +133,15 @@ const staleNote = status.stale
 		? `Not surveyed recently${status.lastSurvey ? ` (last survey ${formatDate(status.lastSurvey)})` : ''} — likely out of season.`
 		: `최근 조사 자료가 없습니다${status.lastSurvey ? ` (마지막 조사 ${formatDate(status.lastSurvey)})` : ''}.`
 	: null
+const kgNow = perKg(analysis.current)
 const title = isEn
 	? `${name} price — wholesale market outlook (${dateLabel})`
-	: `${name} 시세 — 도매가격과 전망 (${dateLabel} 기준)`
+	: analysis.current != null && !status.stale
+		? `${nameMain} 가격·시세 오늘: ${unit} 도매 ${fmt(analysis.current)}${kgNow ? `, 1kg 약 ${fmt(kgNow)}` : ''} (${surveyLabel ?? dateLabel})`
+		: `${nameMain} 가격·시세: ${unit} 도매가 추이와 전망 (${dateLabel} 기준)`
 const description = isEn
 	? `${name} wholesale price (KAMIS, Seoul) ${surveyLabel ? `on ${surveyLabel}: ${fmt(analysis.current)} per ${unit}` : 'not surveyed recently'}. Compared with the same month 1, 3, 5 and 10 years ago, with seasonal index, 5-year monthly trend and prices in five Korean cities.`
-	: `${name} 도매 시세(KAMIS 중도매인 판매가격, 서울)는 ${surveyLabel ? `${surveyLabel} 기준 ${unit}당 ${fmt(analysis.current)}` : '최근 조사가 없다'}. 1년·3년·5년·10년 전 같은 달과 비교하고, 계절지수와 최근 5년 월평균 추이, 서울·부산·대구·광주·대전 지역별 가격을 함께 정리했다.`
+	: `${name} 가격(KAMIS 도매 중도매인 판매가격, 서울)은 ${surveyLabel ? `${surveyLabel} 기준 ${unit}당 ${fmt(analysis.current)}${kgNow ? `, 1kg으로 환산하면 약 ${fmt(kgNow)}` : ''}` : '최근 조사가 없다'}. 1년·3년·5년·10년 전 같은 달과 비교하고, 계절지수와 최근 5년 월평균 추이, 서울·부산·대구·광주·대전 지역별 가격을 함께 정리했다.`
 
 const canonical = new URL(Astro.url.pathname, siteConfig.siteUrl).href
 
@@ -167,6 +174,22 @@ const faq = isEn
 					? `${surveyLabel} KAMIS 조사 기준 ${name}(${grade}, ${unit}) 서울 도매시장 중도매인 판매가격은 ${fmt(analysis.current)}이다. 최근 30개 조사일 평균은 ${fmt(analysis.windowAvg)}이다.`
 					: `${name}는 최근 KAMIS 조사가 없어 현재 가격이 없다.`
 			},
+			...(surveyLabel
+				? [
+						{
+							q: `${nameMain} ${unit} 가격은 얼마인가?`,
+							a: `${surveyLabel} KAMIS 조사 기준 서울 도매시장 ${name} ${grade} ${unit} 도매가는 ${fmt(analysis.current)}이다. 같은 날 다섯 도시 중 가장 비싼 곳은 ${topRegion ? `${topRegion.label} ${fmt(topRegion.price)}` : '조사가 없다'}이다.`
+						}
+					]
+				: []),
+			...(surveyLabel && kgNow
+				? [
+						{
+							q: `${nameMain} 1kg 가격은 얼마인가?`,
+							a: `${surveyLabel} 서울 도매가 ${unit} ${fmt(analysis.current)}을 1kg으로 나누면 약 ${fmt(kgNow)}이다. 마트·온라인 소매가는 운송·포장·유통 마진이 더해져 보통 이보다 높다.`
+						}
+					]
+				: []),
 			{
 				q: `지금 ${name} 값은 비싼 편인가?`,
 				a:
@@ -271,7 +294,7 @@ const t = {
 			<div>
 				<h1 class='im-item-title'>
 					{nameMain}
-					{isEn ? ' price' : ' 시세'}
+					{isEn ? ' price' : ' 가격·시세'}
 					{nameVariety && <span class='im-item-variety'> {nameVariety}</span>}
 				</h1>
 				<p class='im-item-sub'>
@@ -289,6 +312,13 @@ const t = {
 				</dt>
 				<dd>
 					<span class='im-item-price' id='im-item-price'>{fmt(analysis.current)}</span>
+					{
+						!isEn && unitKg && (
+							<span class='im-item-key-s' id='im-item-perkg' data-kg={unitKg}>
+								{kgNow ? `1kg 약 ${fmt(kgNow)}` : ''}
+							</span>
+						)
+					}
 					<span class={`im-item-change ${dir(analysis.trend30)}`} id='im-item-change'>
 						{isEn ? '30 survey days' : '30개 조사일'}
 						{pct(analysis.trend30)}

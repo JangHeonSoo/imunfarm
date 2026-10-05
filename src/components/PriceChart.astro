@@ -103,6 +103,7 @@ const payload = {
 		const dateEl = document.getElementById('im-item-date')
 		const regionEl = document.getElementById('im-item-region')
 		const changeEl = document.getElementById('im-item-change')
+		const perKgEl = document.getElementById('im-item-perkg')
 		const periodTabs = Array.from(document.querySelectorAll<HTMLElement>('[data-pc-period]'))
 		const regionTabs = Array.from(document.querySelectorAll<HTMLElement>('[data-pc-region]'))
 
@@ -147,6 +148,10 @@ const payload = {
 			const base = ys[0]
 			const pct = base ? ((v - base) / base) * 100 : 0
 			priceEl.textContent = fmt(v)
+			if (perKgEl) {
+				const kg = Number(perKgEl.dataset.kg)
+				perKgEl.textContent = kg ? `1kg 약 ${fmt(Math.round(v / kg / 10) * 10)}` : ''
+			}
 			if (dateEl) dateEl.textContent = dot(labels[k])
 			if (regionEl)
 				regionEl.textContent = (data.regions.find((r) => r.id === region) || { label: '' }).label
