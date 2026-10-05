@@ -3,6 +3,7 @@ import type { CollectionEntry } from 'astro:content'
 import type { MarkdownHeading } from 'astro'
 import BaseLayout from '@/layouts/BaseLayout'
 import Tag from '@/components/Tag'
+import CoupangDynamic from '@/components/CoupangDynamic'
 import { siteConfig } from '@/site-config'
 import {
 	DEFAULT_LOCALE,
@@ -124,6 +125,8 @@ const breadcrumbSchema = {
 			<div class='im-article-main'>
 				{description && <p class='im-article-lead'>{description}</p>}
 				<slot />
+				{/* 쿠팡 다이나믹 배너(보는 사람 관심 상품 추천): 한국어 글 끝, 참고자료 다음 */}
+				{!isEn && <CoupangDynamic />}
 			</div>
 
 			<div class='im-article-rail' aria-hidden='true'></div>
