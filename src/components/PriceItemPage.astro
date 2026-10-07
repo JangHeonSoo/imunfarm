@@ -613,7 +613,7 @@ const t = {
 	}
 
 	.im-item-key dt {
-		font-size: 13px;
+		font-size: 14px;
 		font-weight: 700;
 	}
 
@@ -634,7 +634,7 @@ const t = {
 	.im-item-key-s,
 	.im-item-change {
 		color: var(--muted);
-		font-size: 13px;
+		font-size: 14px;
 		line-height: 1.5;
 	}
 
@@ -662,7 +662,7 @@ const t = {
 
 		.im-item-key-s,
 		.im-item-change {
-			font-size: 12px;
+			font-size: 13px;
 		}
 	}
 
@@ -704,7 +704,7 @@ const t = {
 	}
 
 	.im-region-table thead th {
-		font-size: 10px;
+		font-size: 12px;
 		font-weight: 600;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
@@ -773,7 +773,7 @@ const t = {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 12px clamp(14px, 2vw, 26px);
-		font-size: 13px;
+		font-size: 14px;
 		font-weight: 500;
 	}
 
@@ -875,5 +875,13 @@ const t = {
 		.im-near {
 			grid-template-columns: 1fr;
 		}
+	}
+
+	/* 시세 페이지는 숫자를 읽는 곳이라 공용 이름표·메타 글씨를 키운다 (2026-10-07: 10–11px은 휴대폰에서 작음) */
+	.im-item :global(.im-label) {
+		font-size: 12px;
+	}
+	.im-item :global(.im-meta) {
+		font-size: 13px;
 	}
 </style>
