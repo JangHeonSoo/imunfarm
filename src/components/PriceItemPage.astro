@@ -88,6 +88,13 @@ const switchItems = ITEMS.map((entry) => {
 // 같이 보는 품목: 같은 작물의 다른 품종·국산/수입 → 같은 분류 순
 const [myCat, myItem] = codeOf(item.id)
 const siblings = switchItems.filter((e) => e.id !== item.id && codeOf(e.id)[1] === myItem)
+// 출하 전·철 지난 품목(최근 조사 없음)이면 같은 작물 중 지금 값이 나오는 품종으로 안내한다 (예: 부사 → 홍로)
+const inSeason = status.stale
+	? siblings.filter((e) => {
+			const entry = ITEMS.find((i) => i.id === e.id)
+			return entry && !getItemStatus(entry, today).stale
+		})
+	: []
 // 가까운 작물끼리 묶은 무리 (KAMIS 품목 코드)
 const GROUPS = [
 	['111', '112', '115', '121'],
@@ -307,6 +314,30 @@ const t = {
 			</div>
 		</div>
 
+		{
+			inSeason.length > 0 && (
+				<aside class='im-in-season'>
+					<p>
+						{isEn
+							? 'No recent survey for this item. In season now:'
+							: '이 품종은 지금 조사 자료가 없습니다. 지금 시세가 나오는 품종을 보세요.'}
+					</p>
+					<ul>
+						{inSeason.map((e) => (
+							<li>
+								<a href={`${prefix}/prices/${e.id}/`}>
+									<span>{e.label}</span>
+									<span class='im-in-season-price'>
+										{e.price != null ? `${e.unit} ${fmt(e.price)}` : ''} →
+									</span>
+								</a>
+							</li>
+						))}
+					</ul>
+				</aside>
+			)
+		}
+
 		<dl class='im-item-key'>
 			<div>
 				<dt>
@@ -514,6 +545,43 @@ const t = {
 		font-size: clamp(15px, 1.6vw, 19px);
 		font-weight: 600;
 		letter-spacing: 0;
+	}
+
+	.im-in-season {
+		margin: 24px 0 0;
+		border-top: 2px solid var(--ink);
+		border-bottom: 1px solid var(--ink);
+		padding: 14px 0 6px;
+	}
+	.im-in-season p {
+		margin: 0 0 6px;
+		font-size: 15px;
+		font-weight: 600;
+	}
+	.im-in-season ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.im-in-season a {
+		display: flex;
+		justify-content: space-between;
+		gap: 16px;
+		padding: 10px 0;
+		color: inherit;
+		text-decoration: none;
+		font-size: 17px;
+		font-weight: 700;
+	}
+	.im-in-season li + li a {
+		border-top: 1px solid var(--line);
+	}
+	.im-in-season a:hover span:first-child {
+		text-decoration: underline;
+	}
+	.im-in-season-price {
+		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.im-item-sub {
