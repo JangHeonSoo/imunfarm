@@ -1460,6 +1460,22 @@ export const ITEMS: Item[] = RAW_ITEMS.map((item) => {
 	return o ? { ...item, ko: o.ko ?? item.ko, en: o.en ?? item.en } : item
 })
 
+/**
+ * 검색 결과 제목에 쓸 이름 (품목 페이지 title·description·FAQ). 같은 작물의 품종·국산/수입 페이지가
+ * 모두 "들깨 가격·시세"처럼 같은 제목이 되어 검색에서 서로 겹치고 클릭률이 낮았다(2026-10-07 서치어드바이저:
+ * 들깨 977노출 2.4%, 참깨 531노출 1.7%, 풋고추 가격 시세 358노출 1.1%). 화면의 h1은 그대로 둔다.
+ */
+export const SEARCH_NAME_KO: Record<string, string> = {
+	'perilla-seed': '국산 들깨',
+	'perilla-seed-imported': '수입 들깨',
+	sesame: '국산 참깨',
+	'sesame-india': '인도산 참깨',
+	'sesame-china': '중국산 참깨',
+	'green-chili-pepper-cheongyang': '청양고추',
+	'green-chili-pepper-cucumber-flavor': '오이맛고추',
+	'green-chili-pepper': '꽈리고추'
+}
+
 /** 차트·표에 보여 주는 최근 조사일 수 */
 export const HISTORY_DAYS = 30
 /** 장기 분석 기간(년) */

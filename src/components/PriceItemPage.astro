@@ -9,6 +9,7 @@ import { DEFAULT_LOCALE, getLocalePrefix, getPostUrl, getPosts } from '@/utils'
 import {
 	ITEMS,
 	REGIONS,
+	SEARCH_NAME_KO,
 	buildAnalysis,
 	buildItemSeries,
 	buildPriceData,
@@ -120,6 +121,8 @@ const vsAvg =
 		: null
 const nameMain = name.replace(/\s*\(.*\)\s*$/, '')
 const nameVariety = name.match(/\((.*)\)\s*$/)?.[1] ?? null
+// 검색 결과 제목용 이름: 같은 작물의 다른 품종·국산/수입 페이지와 제목이 겹치지 않게 (예: 국산 들깨 / 수입 들깨)
+const searchName = (!isEn && SEARCH_NAME_KO[item.id]) || nameMain
 
 // 1kg 환산 ("가격"으로 찾는 사람은 대부분 1kg 값을 궁금해한다). kg 단위가 아니면 없다.
 const unitKg = Number(item.unitKo.match(/^([\d.]+)kg/)?.[1]) || null
@@ -137,11 +140,11 @@ const kgNow = perKg(analysis.current)
 const title = isEn
 	? `${name} price — wholesale market outlook (${dateLabel})`
 	: analysis.current != null && !status.stale
-		? `${nameMain} 가격·시세 오늘: ${unit} 도매 ${fmt(analysis.current)}${kgNow ? `, 1kg 약 ${fmt(kgNow)}` : ''} (${surveyLabel ?? dateLabel})`
-		: `${nameMain} 가격·시세: ${unit} 도매가 추이와 전망 (${dateLabel} 기준)`
+		? `${searchName} 가격·시세 오늘: ${unit} 도매 ${fmt(analysis.current)}${kgNow ? `, 1kg 약 ${fmt(kgNow)}` : ''} (${surveyLabel ?? dateLabel})`
+		: `${searchName} 가격·시세: ${unit} 도매가 추이와 전망 (${dateLabel} 기준)`
 const description = isEn
 	? `${name} wholesale price (KAMIS, Seoul) ${surveyLabel ? `on ${surveyLabel}: ${fmt(analysis.current)} per ${unit}` : 'not surveyed recently'}. Compared with the same month 1, 3, 5 and 10 years ago, with seasonal index, 5-year monthly trend and prices in five Korean cities.`
-	: `${name} 가격(KAMIS 도매 중도매인 판매가격, 서울)은 ${surveyLabel ? `${surveyLabel} 기준 ${unit}당 ${fmt(analysis.current)}${kgNow ? `, 1kg으로 환산하면 약 ${fmt(kgNow)}` : ''}` : '최근 조사가 없다'}. 1년·3년·5년·10년 전 같은 달과 비교하고, 계절지수와 최근 5년 월평균 추이, 서울·부산·대구·광주·대전 지역별 가격을 함께 정리했다.`
+	: `${SEARCH_NAME_KO[item.id] ?? name} 가격(KAMIS 도매 중도매인 판매가격, 서울)은 ${surveyLabel ? `${surveyLabel} 기준 ${unit}당 ${fmt(analysis.current)}${kgNow ? `, 1kg으로 환산하면 약 ${fmt(kgNow)}` : ''}` : '최근 조사가 없다'}. 1년·3년·5년·10년 전 같은 달과 비교하고, 계절지수와 최근 5년 월평균 추이, 서울·부산·대구·광주·대전 지역별 가격을 함께 정리했다.`
 
 const canonical = new URL(Astro.url.pathname, siteConfig.siteUrl).href
 
@@ -177,7 +180,7 @@ const faq = isEn
 			...(surveyLabel
 				? [
 						{
-							q: `${nameMain} ${unit} 가격은 얼마인가?`,
+							q: `${searchName} ${unit} 가격은 얼마인가?`,
 							a: `${surveyLabel} KAMIS 조사 기준 서울 도매시장 ${name} ${grade} ${unit} 도매가는 ${fmt(analysis.current)}이다. 같은 날 다섯 도시 중 가장 비싼 곳은 ${topRegion ? `${topRegion.label} ${fmt(topRegion.price)}` : '조사가 없다'}이다.`
 						}
 					]
@@ -185,7 +188,7 @@ const faq = isEn
 			...(surveyLabel && kgNow
 				? [
 						{
-							q: `${nameMain} 1kg 가격은 얼마인가?`,
+							q: `${searchName} 1kg 가격은 얼마인가?`,
 							a: `${surveyLabel} 서울 도매가 ${unit} ${fmt(analysis.current)}을 1kg으로 나누면 약 ${fmt(kgNow)}이다. 마트·온라인 소매가는 운송·포장·유통 마진이 더해져 보통 이보다 높다.`
 						}
 					]
