@@ -20,7 +20,7 @@ export const PICK_GROUPS = [
 		title: '수확·건조·보관',
 		lede: '땅콩·들깨·팥처럼 거둬서 말리고 털어 보관하는 작물에 쓰는 도구입니다.',
 		months: [9, 10, 11],
-		match: /peanut|perilla|red-bean|sesame|threshing/
+		match: /peanut|perilla|red-bean|sesame|threshing|seoritae/
 	},
 	{
 		id: 'kimchi',
