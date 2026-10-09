@@ -82,5 +82,41 @@ const resolvedAltPath =
 			</main>
 			<Footer locale={locale} otherLocale={otherLocale} altPath={resolvedAltPath} active={active} />
 		</div>
+		<script>
+			// 큰 검색창의 SEARCH 안내를 한국어 페이지에서는 SEARCH ↔ 검색 으로 천천히 번갈아 보여 준다 (2026-10-09)
+			if (document.documentElement.lang.startsWith('ko')) {
+				const WORDS = ['SEARCH', '검색']
+				const hints: HTMLElement[] = []
+				document
+					.querySelectorAll<HTMLInputElement>('.im-search input[placeholder="SEARCH"]')
+					.forEach((input) => {
+						const box = input.parentElement
+						if (!box) return
+						const cs = getComputedStyle(input)
+						const hint = document.createElement('span')
+						hint.className = 'im-search-hint'
+						hint.setAttribute('aria-hidden', 'true')
+						for (const prop of ['fontSize', 'fontWeight', 'letterSpacing', 'width'] as const)
+							hint.style[prop] = cs[prop]
+						hint.innerHTML = WORDS.map(
+							(w, i) => `<span${i === 0 ? ' class="is-on"' : ''}>${w}</span>`
+						).join('')
+						box.classList.add('has-hint')
+						box.appendChild(hint)
+						hints.push(hint)
+					})
+				if (hints.length) {
+					let i = 0
+					setInterval(() => {
+						if (document.hidden) return
+						i = (i + 1) % WORDS.length
+						for (const hint of hints)
+							hint
+								.querySelectorAll('span')
+								.forEach((el, k) => el.classList.toggle('is-on', k === i))
+					}, 2800)
+				}
+			}
+		</script>
 	</body>
 </html>
