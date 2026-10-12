@@ -1004,11 +1004,16 @@ const data = {
 		if (b) act(b.dataset.act!)
 	})
 	// 각도: 끄는 동안은 시설만 다시 그리고, 놓으면 작물도 다시 심는다
+	// 슬라이더는 1초에 수십 번 움직이므로 화면 한 번 그릴 때 한 번만 다시 짓는다
+	let angleRaf = 0
 	angleEl.addEventListener('input', () => {
 		const p = layout.pieces.find((q) => q.id === sel)
 		if (!p) return
 		p.a = Number(angleEl.value)
-		refreshPlan(true)
+		angleRaf ||= requestAnimationFrame(() => {
+			angleRaf = 0
+			refreshPlan(true)
+		})
 	})
 	angleEl.addEventListener('change', () => refreshPlan())
 	document.addEventListener('keydown', (e) => {

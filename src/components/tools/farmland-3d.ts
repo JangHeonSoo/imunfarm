@@ -70,7 +70,11 @@ const RIDGE: Record<Form, number> = {
 	greenhouse: 0
 }
 
-const MAX_PLANTS = 3600
+// 휴대폰(손가락 화면)은 포기 수를 줄인다. 모형이라 느낌만 같으면 된다
+const COARSE = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+const MAX_PLANTS = COARSE ? 2000 : 3600
+// 처음 한 바퀴 보여 주는 시간. 계속 돌리면 휴대폰 GPU가 쉬지 못해 페이지 전체가 느려진다
+const SPIN_MS = 8000
 const MAX_RIDGES = 420
 const SLAB = 0.6
 const HEADLAND = 1.2
@@ -288,8 +292,12 @@ export function createFieldView(host: HTMLElement): FieldView {
 	const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 	let C = readColors()
 
-	const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-	renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2))
+	// 느린 원인은 모형이 아니라 화소 수다 (그리기 11번, 삼각형 6만 개뿐).
+	// 고해상도 화면은 1.5배까지만 그리고 계단 현상 보정(안티앨리어싱)은 끈다. 화소가 촘촘해 티가 거의 안 난다
+	const dpr = devicePixelRatio || 1
+	const renderer = new THREE.WebGLRenderer({ antialias: dpr < 1.5, alpha: true })
+	let quality = Math.min(dpr, 1.5)
+	renderer.setPixelRatio(quality)
 	renderer.outputColorSpace = THREE.SRGBColorSpace
 	renderer.domElement.className = 'im-farm-canvas'
 	host.append(renderer.domElement)
@@ -302,10 +310,15 @@ export function createFieldView(host: HTMLElement): FieldView {
 	controls.enablePan = false
 	controls.maxPolarAngle = (80 * Math.PI) / 180
 	controls.minPolarAngle = (12 * Math.PI) / 180
-	controls.autoRotate = !reduced
 	controls.autoRotateSpeed = 0.55
+	let spinUntil = 0
+	function spin(on: boolean) {
+		controls.autoRotate = on && !reduced
+		if (controls.autoRotate) spinUntil = performance.now() + SPIN_MS
+	}
+	spin(true)
 	controls.addEventListener('start', () => {
-		controls.autoRotate = false
+		spin(false)
 		host.classList.add('is-touched')
 	})
 	// 휠은 페이지 스크롤에 양보하고 Ctrl/⌘ 휠(트랙패드 핀치)만 확대로 넘긴다.
@@ -345,6 +358,8 @@ export function createFieldView(host: HTMLElement): FieldView {
 	let instanced: Instanced[] = []
 	let growStart = 0
 	let growing = false
+	/** false 면 작물을 자라는 움직임 없이 바로 놓는다 (시설을 옮길 때) */
+	let animateCrop = true
 	let crop: string | null = null
 	const mats: THREE.Material[] = []
 
@@ -354,6 +369,14 @@ export function createFieldView(host: HTMLElement): FieldView {
 		return m
 	}
 
+	// 재질은 새 장면을 한 번 그린 뒤에 버린다. 바로 버리면 셰이더가 함께 지워져
+	// 다시 지을 때마다 4–6개를 새로 컴파일한다 (휴대폰에서 한 번에 수백 ms)
+	const retired = new Set<THREE.Material>()
+	function flushRetired() {
+		for (const m of retired) m.dispose()
+		retired.clear()
+	}
+
 	function clearGroup(g: THREE.Group) {
 		const gone = new Set<THREE.Material>()
 		g.traverse((o) => {
@@ -361,7 +384,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 			if (m.geometry) m.geometry.dispose()
 			const mt = (m as { material?: THREE.Material | THREE.Material[] }).material
 			for (const x of Array.isArray(mt) ? mt : mt ? [mt] : []) {
-				x.dispose()
+				retired.add(x)
 				gone.add(x)
 			}
 			const sp = o as THREE.Sprite
@@ -588,7 +611,8 @@ export function createFieldView(host: HTMLElement): FieldView {
 		}
 	}
 
-	function buildCrop() {
+	function buildCrop(animate = true) {
+		animateCrop = animate
 		clearGroup(cropGroup)
 		instanced = []
 		if (!crop || ring.length < 3) return
@@ -751,7 +775,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 			const s = Math.sin(t)
 			for (let r = 0; r < rowsN; r++) {
 				const v = -h.w / 2 + (h.w * (r + 0.5)) / rowsN
-				for (let u = -h.l / 2 + 1; u <= h.l / 2 - 1 && spots.length < 4000; u += step)
+				for (let u = -h.l / 2 + 1; u <= h.l / 2 - 1 && spots.length < MAX_PLANTS; u += step)
 					spots.push([h.piece.x + u * c - v * s, h.piece.y + u * s + v * c, h.h])
 			}
 		}
@@ -1355,6 +1379,12 @@ export function createFieldView(host: HTMLElement): FieldView {
 	}
 
 	function startGrow() {
+		if (!animateCrop) {
+			growing = false
+			applyGrow(99)
+			wake()
+			return
+		}
 		growStart = performance.now()
 		growing = true
 		applyGrow(0)
@@ -1374,18 +1404,45 @@ export function createFieldView(host: HTMLElement): FieldView {
 	let raf = 0
 	let visible = true
 	let idleFrames = 0
-	function frame() {
+	// 실제 프레임 간격을 재서 느린 기기는 화소를 더 줄인다 (1배까지). 그래도 느리면 돌기를 멈춘다
+	let last = 0
+	let slowSum = 0
+	let slowN = 0
+	function adapt(t: number) {
+		const dt = last ? t - last : 0
+		last = t
+		if (!dt || dt > 250) return
+		slowSum += dt
+		if (++slowN < 20) return
+		const avg = slowSum / slowN
+		slowSum = slowN = 0
+		if (avg < 26) return
+		// 1배 밑으로 내리면 글자가 뭉개진다
+		const floor = Math.min(dpr, 1)
+		if (quality > floor) {
+			quality = Math.max(floor, quality * 0.8)
+			renderer.setPixelRatio(quality)
+			resize()
+		} else spin(false)
+	}
+	function frame(t: number) {
 		raf = 0
+		adapt(t)
+		if (controls.autoRotate && performance.now() > spinUntil) controls.autoRotate = false
 		if (growing) growing = !applyGrow((performance.now() - growStart) / 1000)
 		const moved = controls.update()
 		renderer.render(scene, camera)
+		if (retired.size) flushRetired()
 		idleFrames = growing || moved || controls.autoRotate ? 0 : idleFrames + 1
-		if (visible && idleFrames < 30) raf = requestAnimationFrame(frame)
+		if (raf) return
+		if (visible && !document.hidden && idleFrames < 30) raf = requestAnimationFrame(frame)
+		else last = 0
 	}
 	function wake() {
 		idleFrames = 0
-		if (!raf && visible) raf = requestAnimationFrame(frame)
+		if (!raf && visible && !document.hidden) raf = requestAnimationFrame(frame)
 	}
+	document.addEventListener('visibilitychange', wake)
 	controls.addEventListener('change', wake)
 	renderer.domElement.addEventListener('pointerdown', wake)
 
@@ -1427,7 +1484,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 			pickables.length = 0
 			buildWorld()
 			fitCamera()
-			controls.autoRotate = !reduced && !editing && !host.classList.contains('is-touched')
+			spin(!editing && !host.classList.contains('is-touched'))
 			buildCrop()
 			wake()
 		},
@@ -1441,7 +1498,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 			editing = opts.edit
 			selected = opts.selected
 			if (opts.zoneLabel) zoneLabel = opts.zoneLabel
-			if (editing) controls.autoRotate = false
+			if (editing) spin(false)
 			// 시설 자리가 바뀐 때만 작물을 다시 심는다 (고르기만 바꾸면 그대로)
 			const next = p
 				? [
@@ -1456,7 +1513,8 @@ export function createFieldView(host: HTMLElement): FieldView {
 			if (sig !== blockSig && !opts.light) {
 				blocks = next
 				blockSig = sig
-				buildCrop()
+				// 시설을 옮길 때는 자라는 움직임 없이 바로 다시 심는다
+				buildCrop(false)
 			}
 			wake()
 		},
@@ -1465,12 +1523,14 @@ export function createFieldView(host: HTMLElement): FieldView {
 		},
 		dispose() {
 			cancelAnimationFrame(raf)
+			document.removeEventListener('visibilitychange', wake)
 			ro.disconnect()
 			io.disconnect()
 			mo.disconnect()
 			clearGroup(cropGroup)
 			clearGroup(planGroup)
 			clearGroup(world)
+			flushRetired()
 			mats.forEach((m) => m.dispose())
 			controls.dispose()
 			renderer.dispose()
