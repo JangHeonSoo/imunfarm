@@ -34,6 +34,13 @@ export type CropRule = {
 	greenhouse?: boolean
 	/** 손이 가는 정도 1 적음, 2 보통, 3 많음 */
 	labor: Labor
+	/**
+	 * 10a당 소득 (원, 2024년산). 농촌진흥청 「2024 농산물소득자료집」(2025.11, 국가승인통계 제143002호) 11–13쪽,
+	 * 콩·마늘·양파·고추·쌀은 같은 책 별지 1의 국가데이터처 농축산물생산비조사 값. 딸기·방울토마토는 토경, 옥수수는 노지풋옥수수.
+	 * 땅콩·녹두·팥·메밀은 조사 대상이 아니라 없다.
+	 * https://nongsaro.go.kr/portal/ps/psb/psbf/agricultIncomeInfoLst.ps
+	 */
+	income?: { won: number; year: number }
 	reasonKo: string
 	reasonEn: string
 }
@@ -70,6 +77,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [6, 7],
 		harvest: [10],
 		labor: 1,
+		income: { won: 596862, year: 2024 },
 		reasonKo: '병해충이 적고 어느 지역에서나 잘 자라 처음 농사짓는 땅에도 무난합니다.',
 		reasonEn: 'Few pests and grows almost anywhere, so it suits a first season.'
 	},
@@ -83,6 +91,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [5],
 		harvest: [8, 9],
 		labor: 3,
+		income: { won: 1045564, year: 2024 },
 		reasonKo:
 			'값이 좋은 작물이지만 습기에 약해 물 빠짐이 좋은 밭이어야 하고, 베고 터는 일이 많습니다.',
 		reasonEn: 'Pays well but hates wet soil, and cutting and threshing take a lot of work.'
@@ -97,6 +106,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [4, 5],
 		harvest: [10, 11],
 		labor: 3,
+		income: { won: 4170854, year: 2024 },
 		reasonKo: '따뜻한 곳을 좋아해 충청 이남 밭에 맞고, 서리 오기 전에 캐야 합니다.',
 		reasonEn: 'Likes warmth, so it fits fields from Chungcheong southward; dig it before frost.'
 	},
@@ -136,6 +146,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [6],
 		harvest: [10, 11],
 		labor: 1,
+		income: { won: 454599, year: 2024 },
 		reasonKo:
 			'기계로 심고 거두기 쉬워 일손이 적게 들고, 논에 물 빠짐 공사를 하면 논콩으로도 짓습니다.',
 		reasonEn: 'Easy to mechanise, and drained paddies are widely used for soybean too.'
@@ -150,6 +161,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [5, 6],
 		harvest: [9, 10],
 		labor: 2,
+		income: { won: 1710559, year: 2024 },
 		reasonKo: '모래 섞인 물 빠짐 좋은 밭이 알맞고, 거름이 많지 않아도 잘 듭니다.',
 		reasonEn: 'Suits sandy, free-draining fields and does not need rich soil.'
 	},
@@ -163,6 +175,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [3],
 		harvest: [6],
 		labor: 2,
+		income: { won: 1249665, year: 2024 },
 		reasonKo: '봄에 심어 6월에 거두면 같은 밭에 가을 작물을 한 번 더 심을 수 있습니다.',
 		reasonEn: 'Planted in spring and lifted in June, leaving room for an autumn crop.'
 	},
@@ -177,6 +190,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [5, 6],
 		nextYear: true,
 		labor: 3,
+		income: { won: 2010609, year: 2024 },
 		reasonKo:
 			'가을에 심어 겨울을 나는 작물입니다. 남부는 난지형, 중부·북부는 한지형 품종을 고릅니다.',
 		reasonEn:
@@ -193,6 +207,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [5, 6],
 		nextYear: true,
 		labor: 3,
+		income: { won: 1960401, year: 2024 },
 		reasonKo:
 			'겨울을 나야 해서 따뜻한 남부에 맞고, 남부에서는 벼 거둔 논에 뒷그루로 많이 심습니다.',
 		reasonEn: 'Overwinters, so it fits the warm south, often after rice in paddies.'
@@ -207,6 +222,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [8, 9],
 		harvest: [11],
 		labor: 2,
+		income: { won: 2603067, year: 2024 },
 		reasonKo:
 			'김장용 가을배추는 8월 말에서 9월 초에 심습니다. 서늘한 고랭지에서는 여름배추도 됩니다.',
 		reasonEn: 'Autumn kimchi cabbage goes in late August; cool highlands can grow a summer crop.'
@@ -221,6 +237,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [8, 9],
 		harvest: [10, 11],
 		labor: 1,
+		income: { won: 1531514, year: 2024 },
 		reasonKo: '씨를 바로 뿌리는 작물이라 손이 적게 가고, 흙이 깊고 부드러운 밭이 좋습니다.',
 		reasonEn: 'Direct-sown with little work; likes deep, loose soil.'
 	},
@@ -234,6 +251,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [5],
 		harvest: [7, 8, 9, 10],
 		labor: 3,
+		income: { won: 3361880, year: 2024 },
 		reasonKo: '여름 내내 여러 번 따서 팔 수 있지만 지주 세우기, 방제, 수확에 손이 많이 갑니다.',
 		reasonEn: 'Picked many times through summer, but staking, spraying and picking take work.'
 	},
@@ -247,6 +265,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [8, 9],
 		harvest: [10, 11],
 		labor: 2,
+		income: { won: 3081534, year: 2024 },
 		reasonKo: '늦여름에 종구를 심으면 김장철에 거둘 수 있어 텃밭이나 작은 밭에 알맞습니다.',
 		reasonEn: 'Bulbs planted in late summer are ready for kimchi season; good for small plots.'
 	},
@@ -260,6 +279,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [4, 5],
 		harvest: [7, 8],
 		labor: 1,
+		income: { won: 1135449, year: 2024 },
 		reasonKo: '심고 석 달이면 거둘 수 있고 손이 적게 가서 처음 짓는 밭에 많이 심습니다.',
 		reasonEn: 'Ready about three months after sowing with little work.'
 	},
@@ -287,6 +307,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [6, 7],
 		years: '2–3',
 		labor: 2,
+		income: { won: 6459798, year: 2024 },
 		reasonKo:
 			'산성 흙이 필요해 피트모스로 흙을 바꿔 심는 경우가 많습니다. 나무 작물이라 한 번 심으면 오래 갑니다.',
 		reasonEn: 'Needs acidic soil, often made with peat moss. A long-lived bush crop.'
@@ -302,6 +323,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [9, 10],
 		years: '3–4',
 		labor: 3,
+		income: { won: 5114297, year: 2024 },
 		reasonKo:
 			'서늘한 곳이 맞아 재배지가 점점 북쪽으로 올라가고 있습니다. 묘목을 심고 몇 년 뒤부터 수확합니다.',
 		reasonEn:
@@ -318,6 +340,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [9, 10],
 		years: '4–5',
 		labor: 3,
+		income: { won: 4318622, year: 2024 },
 		reasonKo: '중부와 남부 과수원에 맞고, 봉지 씌우기와 가지치기에 손이 많이 갑니다.',
 		reasonEn: 'Fits central and southern orchards; bagging and pruning take a lot of work.'
 	},
@@ -332,6 +355,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [10, 11],
 		years: '4–5',
 		labor: 2,
+		income: { won: 2058061, year: 2024 },
 		reasonKo: '추위에 약해 경남·전남 같은 따뜻한 남부에서 짓습니다.',
 		reasonEn: 'Frost-tender, so it is grown in the warm south such as Gyeongnam and Jeonnam.'
 	},
@@ -345,6 +369,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [5, 6],
 		harvest: [9, 10],
 		labor: 1,
+		income: { won: 571863, year: 2024 },
 		reasonKo: '논에 가장 기본인 작물이고, 모내기와 수확을 대부분 기계로 맡길 수 있습니다.',
 		reasonEn:
 			'The default paddy crop; planting and harvest can mostly be contracted out by machine.'
@@ -360,6 +385,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [12, 1, 2, 3, 4],
 		greenhouse: true,
 		labor: 3,
+		income: { won: 10686223, year: 2024 },
 		reasonKo:
 			'비닐하우스에서 겨울부터 봄까지 거두는 작물입니다. 시설비와 일손이 많이 들지만 매출도 큽니다.',
 		reasonEn: 'A greenhouse crop picked from winter to spring; high cost and labour, high sales.'
@@ -375,6 +401,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [5, 6, 7, 10, 11],
 		greenhouse: true,
 		labor: 3,
+		income: { won: 10690553, year: 2024 },
 		reasonKo: '비닐하우스에서 봄·가을 두 번 짓는 경우가 많고, 줄기 유인과 수확이 매일 이어집니다.',
 		reasonEn: 'Usually grown twice a year in a greenhouse, with daily training and picking.'
 	},
@@ -389,6 +416,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [4, 5, 6, 9, 10, 11],
 		greenhouse: true,
 		labor: 2,
+		income: { won: 5020401, year: 2024 },
 		reasonKo:
 			'자라는 기간이 짧아 비닐하우스에서 1년에 여러 번 짓고, 노지에서는 봄·가을에 짓습니다.',
 		reasonEn: 'Short-cycle; several crops a year under plastic, or spring and autumn outdoors.'
@@ -441,7 +469,8 @@ export const monthsUntil = (months: number[], now: number) =>
 	Math.min(...months.map((m) => (m - now + 12) % 12))
 
 /**
- * 점수: 지목 적합 ×3 + 기후대 ×2 + 실제 이용(팜맵)이 맞으면 +3 + 일손 적으면 +1 + 석 달 안에 심을 수 있으면 +1.
+ * 순서: 지목이 맞는(2 이상) 작물 가운데 10a당 소득(농촌진흥청 농산물소득조사)이 높은 순.
+ * 점수(지목 적합 ×3 + 기후대 ×2 + 실제 이용 +3 + 일손 +1 + 석 달 안 +1)는 소득 자료가 없을 때 순서와 근거 꼬리표에만 쓴다.
  * 지목이 농지가 아니면 밭 기준으로 보고, 화면에서 '농지가 아닙니다' 안내를 따로 한다.
  */
 export const rankCrops = (
@@ -490,7 +519,19 @@ export const rankCrops = (
 		}
 		picks.push({ id: c.id, score, tags })
 	}
-	return picks.sort((a, b) => b.score - a.score).slice(0, limit)
+	// 맞는 작물(지목 2 이상) 중 10a당 소득이 높은 순. 소득 자료가 없는 작물은 뒤로, 그 안에서는 점수 순
+	const inc = (id: string) => FARMLAND_CROPS.find((c) => c.id === id)?.income?.won ?? -1
+	const fits = (id: string) => {
+		const c = FARMLAND_CROPS.find((x) => x.id === id)!
+		let f = c.jimok[base] ?? 0
+		if (base === '답' && (input.use === '밭' || input.use === '과수'))
+			f = Math.max(f, c.jimok['전'] ?? 0)
+		return f >= 2
+	}
+	return picks
+		.filter((p) => fits(p.id))
+		.sort((a, b) => inc(b.id) - inc(a.id) || b.score - a.score)
+		.slice(0, limit)
 }
 
 /** "5월", "9–10월", 이듬해 표기 */

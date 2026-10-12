@@ -279,13 +279,34 @@ export type FieldView = {
 		opts: {
 			edit: boolean
 			selected: number | null
-			zoneLabel?: (m2: number) => string
 			/** true 면 작물은 다시 심지 않는다 (끄는 중) */
 			light?: boolean
 		}
 	): void
 	onPlan(h: PlanHandlers): void
 	dispose(): void
+}
+
+/** 꺾임이 작은(12° 미만) 이웃 변을 합친 변 목록 [시작, 끝] */
+export function mergedSides(r: Ring): [[number, number], [number, number]][] {
+	const n = r.length
+	if (n < 3) return []
+	const dir = (i: number) => {
+		const [x1, y1] = r[i]
+		const [x2, y2] = r[(i + 1) % n]
+		return Math.atan2(y2 - y1, x2 - x1)
+	}
+	const bend = (i: number) => {
+		const d = dir(i) - dir((i - 1 + n) % n)
+		return Math.abs(Math.atan2(Math.sin(d), Math.cos(d)))
+	}
+	const LIM = (12 * Math.PI) / 180
+	// 진짜 모서리 (꺾임이 큰 꼭짓점)
+	const corners: number[] = []
+	for (let i = 0; i < n; i++) if (bend(i) >= LIM) corners.push(i)
+	if (corners.length < 3) for (let i = 0; i < n; i++) if (!corners.includes(i)) corners.push(i)
+	corners.sort((a, b) => a - b)
+	return corners.map((c, k) => [r[c], r[corners[(k + 1) % corners.length]]])
 }
 
 export function createFieldView(host: HTMLElement): FieldView {
@@ -345,7 +366,6 @@ export function createFieldView(host: HTMLElement): FieldView {
 	let plan: Plan | null = null
 	let editing = false
 	let selected: number | null = null
-	let zoneLabel: (m2: number) => string = (m2) => `${Math.round(m2 / 3.3058)}평`
 	let handlers: PlanHandlers = {}
 	/** 작물을 심지 않을 곳 (시설·진입로, 세계 좌표 xy) */
 	let blocks: Ring[] = []
@@ -462,49 +482,31 @@ export function createFieldView(host: HTMLElement): FieldView {
 		;(grid.material as THREE.Material).opacity = 0.9
 		world.add(grid)
 
-		// 축척 막대: 땅 크기에 맞는 둥근 길이. 긴 변 방향으로, 카메라 쪽 땅 바깥에 둔다
-		const want = radius * 0.4
-		const L = [5, 10, 20, 50, 100, 200, 500, 1000].reduce((a, b) =>
-			Math.abs(b - want) < Math.abs(a - want) ? b : a
-		)
-		const f = viewFrame()
-		const y0 = -SLAB + 0.02
-		// 세계 좌표 (x, z = -y). 축 방향 u, 폭 방향 v
-		// 화면 가로(카메라 오른쪽)와 카메라 쪽 방향 (세계 x, z)
-		const u: [number, number] = [Math.cos(f.az), -Math.sin(f.az)]
-		const v: [number, number] = [Math.sin(f.az), Math.cos(f.az)]
-		let reach = 0
-		for (const [x, y] of ring) reach = Math.max(reach, (x - f.cx) * v[0] + (-y + f.cy) * v[1])
-		const off = reach + radius * 0.12
-		const c0: [number, number] = [f.cx + v[0] * off, -f.cy + v[1] * off]
-		const t = radius * 0.04
-		const at = (k: number, w: number) =>
-			new THREE.Vector3(c0[0] + u[0] * k + v[0] * w, y0, c0[1] + u[1] * k + v[1] * w)
-		const bar = new THREE.LineSegments(
-			new THREE.BufferGeometry().setFromPoints([
-				at(-L / 2, 0),
-				at(L / 2, 0),
-				at(-L / 2, -t),
-				at(-L / 2, t),
-				at(L / 2, -t),
-				at(L / 2, t)
-			]),
-			new THREE.LineBasicMaterial({ color: C.ink })
-		)
-		world.add(bar)
-		const tag = label(`${L}m`, radius * 0.055)
-		tag.position.set(c0[0] + v[0] * t * 2.5, y0 + radius * 0.05, c0[1] + v[1] * t * 2.5)
-		world.add(tag)
+		// 변 길이 (m). 거의 일직선으로 이어진 짧은 변은 하나로 합쳐 잰다. 너무 짧은 변은 글자가 겹치니 뺀다
+		const sides = mergedSides(ring)
+		const ccw = signedArea(ring) > 0
+		const cut = Math.max(3, radius * 0.18)
+		for (const [a, b] of sides) {
+			const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+			if (len < cut) continue
+			// 바깥쪽 법선 (반시계 고리면 오른쪽이 바깥)
+			const nx = ((b[1] - a[1]) / len) * (ccw ? 1 : -1)
+			const ny = (-(b[0] - a[0]) / len) * (ccw ? 1 : -1)
+			const off = radius * 0.085
+			const tag = label(`${len.toFixed(1)}m`, radius * 0.066)
+			tag.position.set((a[0] + b[0]) / 2 + nx * off, radius * 0.02, -((a[1] + b[1]) / 2 + ny * off))
+			world.add(tag)
+		}
 
 		// 북쪽 표시: 땅 가장 북쪽 점보다 조금 더 북쪽
 		let north = Infinity
 		for (const [, y] of ring) north = Math.min(north, -y)
 		const n = label('N', radius * 0.055)
-		n.position.set(f.cx, y0 + radius * 0.04, north - radius * 0.22)
+		n.position.set(viewFrame().cx, -SLAB + 0.02 + radius * 0.04, north - radius * 0.22)
 		world.add(n)
 	}
 
-	/** 보는 방향과 땅의 축 기준 상자 (카메라·축척 막대 공용) */
+	/** 보는 방향과 땅의 축 기준 상자 (카메라·북쪽 표시 공용) */
 	function viewFrame() {
 		// 긴 땅은 긴 쪽이 화면 가로로 눕게 본다 (기본 방향 -35°에 가까운 쪽, 비스듬히 20°).
 		// 축은 가장 긴 변이 아니라 땅 전체의 주축 (꼭짓점 분산, 둘레 길이로 가중)
@@ -1131,59 +1133,10 @@ export function createFieldView(host: HTMLElement): FieldView {
 		return g
 	}
 
-	function marker(kind: 'well' | 'outlet', at: [number, number], text: string) {
-		const g = new THREE.Group()
-		// 땅 크기에 맞춰 보이는 크기 (작은 땅에서 너무 크지 않게)
-		const k = Math.max(0.7, Math.min(radius / 26, 6))
-		if (kind === 'well') {
-			const casing = new THREE.Mesh(
-				new THREE.CylinderGeometry(0.45 * k, 0.45 * k, 1.1 * k, 16),
-				mat(C.model)
-			)
-			casing.position.y = 0.55 * k
-			g.add(casing)
-			g.add(
-				new THREE.LineSegments(
-					new THREE.EdgesGeometry(
-						new THREE.CylinderGeometry(0.45 * k, 0.45 * k, 1.1 * k, 16),
-						30
-					).translate(0, 0.55 * k, 0),
-					new THREE.LineBasicMaterial({ color: C.ink })
-				)
-			)
-			const cap = new THREE.Mesh(
-				new THREE.CylinderGeometry(0.55 * k, 0.55 * k, 0.12 * k, 16),
-				mat(C.ink)
-			)
-			cap.position.y = 1.1 * k
-			g.add(cap)
-		} else {
-			// 바닥에 둔 화살촉 (물이 빠지는 쪽)
-			const cone = new THREE.Mesh(new THREE.ConeGeometry(0.6 * k, 1.2 * k, 3), mat(C.ink))
-			cone.rotation.x = Math.PI
-			cone.position.y = 0.6 * k
-			g.add(cone)
-		}
-		const tag = label(text, radius * 0.042, true)
-		tag.position.set(0, 1.4 * k + radius * 0.03, 0)
-		g.add(tag)
-		const hit = new THREE.Mesh(
-			new THREE.CylinderGeometry(1.4 * k, 1.4 * k, 2.4 * k, 8),
-			new THREE.MeshBasicMaterial({ visible: false })
-		)
-		hit.position.y = 1.2 * k
-		g.add(hit)
-		g.position.set(at[0], 0, -at[1])
-		g.userData = { pick: kind }
-		return g
-	}
-
 	function buildPlan() {
 		clearGroup(planGroup)
 		pickables.length = 0
 		if (!plan || ring.length < 3) return
-		const pipeW = Math.max(0.22, radius * 0.009)
-		const drainW = Math.max(0.5, radius * 0.022)
 		const inkLine = new THREE.LineBasicMaterial({ color: C.ink, transparent: true, opacity: 0.7 })
 
 		if (plan.entry) {
@@ -1213,32 +1166,6 @@ export function createFieldView(host: HTMLElement): FieldView {
 			const m = pieceModel(pp)
 			planGroup.add(m)
 			pickables.push(m)
-		}
-
-		if (!editing) return
-		// 배수로 (넓은 젖은 흙빛 띠) 와 급수관 (가는 먹선)
-		const drainMat = mat(C.drain)
-		for (const d of plan.drains) planGroup.add(new THREE.Mesh(ribbon(d, drainW, 0.05), drainMat))
-		const pipeMat = new THREE.MeshBasicMaterial({ color: C.ink })
-		mats.push(pipeMat)
-		for (const pl of plan.pipes) planGroup.add(new THREE.Mesh(ribbon(pl, pipeW, 0.07), pipeMat))
-		// 갈림 지점
-		const dot = new THREE.CircleGeometry(pipeW * 1.6, 14).rotateX(-Math.PI / 2)
-		for (const pl of plan.pipes) {
-			const m = new THREE.Mesh(dot, pipeMat)
-			m.position.set(pl[pl.length - 1][0], 0.075, -pl[pl.length - 1][1])
-			planGroup.add(m)
-		}
-		const isEn = document.documentElement.lang.startsWith('en')
-		const well = marker('well', plan.well, isEn ? 'Water' : '물')
-		const outlet = marker('outlet', plan.outlet, isEn ? 'Drain' : '배수')
-		planGroup.add(well, outlet)
-		pickables.push(well, outlet)
-		// 노지 밭 넓이
-		for (const z of plan.zones.slice(0, 4)) {
-			const s = label(zoneLabel(z.area), radius * 0.045, true)
-			s.position.set(z.at[0], radius * 0.035, -z.at[1])
-			planGroup.add(s)
 		}
 	}
 
@@ -1497,7 +1424,6 @@ export function createFieldView(host: HTMLElement): FieldView {
 			plan = p
 			editing = opts.edit
 			selected = opts.selected
-			if (opts.zoneLabel) zoneLabel = opts.zoneLabel
 			if (editing) spin(false)
 			// 시설 자리가 바뀐 때만 작물을 다시 심는다 (고르기만 바꾸면 그대로)
 			const next = p

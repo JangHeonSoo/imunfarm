@@ -8,7 +8,8 @@
  *   https://www.law.go.kr/LSW/flDownload.do?flSeq=17880777
  *   10-단동-2형 폭 7.0m·높이 3.3m / 08-연동(민)-1형 폭 7.0m·높이 3.63m(3연동) / 08-자동화-1(벤로형) 폭 8.0m·높이 5.7m
  * - 농막 연면적 20㎡ 이하: 농지법 시행규칙 제3조의2, 농식품부 「농촌체류형 쉼터·농막 운영 지침」(2025.12)
- * - 창고·퇴비장·작업 공간·하우스 길이·동 사이 간격·작업로 폭은 법정 규격이 아니라 화면용 시작값이다 (사용자가 바꾼다)
+ * - 동 사이 간격 1.6m: 눈 피해를 막으려면 최소 1.5m 이상 (기장군 농업기술센터 게시물, 농촌진흥청 출처 표기). 법정 기준은 없다
+ * - 창고·작업 공간·하우스 길이·작업로 폭은 법정 규격이 아니라 화면용 시작값이다
  */
 
 export type P = [number, number]
@@ -168,7 +169,7 @@ export type Site = {
 // 화면용 시작값 (법정 규격 아님)
 const ROAD_W = 3
 const EDGE_GAP = 2.5
-const HOUSE_GAP = 1.6
+export const HOUSE_GAP = 1.6
 
 // ── 기본 기하 ──────────────────────────────────────────
 
@@ -587,12 +588,14 @@ function overlapIv(a: [number, number][], b: [number, number][]) {
  * 자동 배치: 길 가까이에 창고와 작업 공간을 두고, 나머지에 단동 하우스를 긴 변 방향으로 줄지어 채운다.
  * 땅 가장자리는 작업로로 비워 둔다.
  */
-export function autoLayout(site: Site): Layout {
+export function autoLayout(site: Site, opts: { houses?: boolean } = {}): Layout {
 	const layout: Layout = { pieces: [], well: null, outlet: null }
 	for (const k of ['storage', 'yard'] as const) {
 		const { ok, ...p } = placeNew(site, layout, k)
 		if (ok) layout.pieces.push(p)
 	}
+	// 노지 작물이면 창고·작업 공간만 두고 나머지는 밭으로 남긴다
+	if (opts.houses === false) return layout
 
 	const spec = KINDS.single
 	const t = site.theta
