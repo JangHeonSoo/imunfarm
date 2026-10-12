@@ -508,7 +508,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 
 	/** 보는 방향과 땅의 축 기준 상자 (카메라·북쪽 표시 공용) */
 	function viewFrame() {
-		// 긴 땅은 긴 쪽이 화면 가로로 눕게 본다 (기본 방향 -35°에 가까운 쪽, 비스듬히 20°).
+		// 긴 땅은 긴 쪽이 화면 가로로 눕게 본다 (기본 방향 -35°에 가까운 쪽, 비스듬히 20°). 세로 화면은 세워서.
 		// 축은 가장 긴 변이 아니라 땅 전체의 주축 (꼭짓점 분산, 둘레 길이로 가중)
 		let sxx = 0
 		let syy = 0
@@ -523,7 +523,9 @@ export function createFieldView(host: HTMLElement): FieldView {
 			sxy += w * mx * my
 		})
 		const ax = ring.length > 2 ? 0.5 * Math.atan2(2 * sxy, sxx - syy) : theta
-		const pick = [ax, ax + Math.PI].map((a) => a - (20 * Math.PI) / 180)
+		// 세로로 긴 화면(휴대폰)은 긴 쪽이 화면 위아래로 서게 본다
+		const base = (camera.aspect || 1) < 0.9 ? ax + Math.PI / 2 : ax
+		const pick = [base, base + Math.PI].map((a) => a - (20 * Math.PI) / 180)
 		const near = (a: number) => Math.abs(Math.atan2(Math.sin(a + 0.61), Math.cos(a + 0.61)))
 		const az = near(pick[0]) <= near(pick[1]) ? pick[0] : pick[1]
 		const us = ring.map(([x, y]) => x * Math.cos(ax) + y * Math.sin(ax))
@@ -541,25 +543,51 @@ export function createFieldView(host: HTMLElement): FieldView {
 	}
 
 	function fitCamera() {
-		// 세로·가로 시야 중 좁은 쪽에 땅이 다 들어오게 (모바일은 가로가 좁다)
+		// 땅 꼭짓점(바닥과 하우스 높이)을 실제로 화면에 투영해 보고, 가운데로 옮기고 거리를 맞추기를 몇 번 되풀이한다.
+		// 어림 공식은 길쭉한 땅에서 화면 밖으로 잘렸다
 		const vfov = (camera.fov * Math.PI) / 180
-		const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (camera.aspect || 1))
+		const ty = Math.tan(vfov / 2)
+		const tx = ty * (camera.aspect || 1)
 		const el = (42 * Math.PI) / 180
-		const { az, halfLen, halfWid, cx, cy } = viewFrame()
-		// 20° 비스듬히 보므로 가로·깊이 모두 두 변이 섞인다. 가까운 쪽이 원근으로 커지는 만큼 여유를 둔다
-		const ob = (20 * Math.PI) / 180
-		const across = halfLen * Math.cos(ob) + halfWid * Math.sin(ob)
-		const depth = (halfWid * Math.cos(ob) + halfLen * Math.sin(ob)) * Math.sin(el)
-		const fitH = (across * 1.12) / Math.tan(hfov / 2)
-		const fitV = (depth * 1.15 + radius * 0.08) / Math.tan(vfov / 2)
-		const sphere = radius / Math.sin(Math.min(vfov, hfov) / 2)
-		const d = Math.max(fitH, fitV, sphere * 0.62) * (camera.aspect < 1 ? 0.92 : 1)
-		camera.position.set(
-			cx + d * Math.cos(el) * Math.sin(az),
-			d * Math.sin(el),
-			-cy + d * Math.cos(el) * Math.cos(az)
+		const { az, cx, cy } = viewFrame()
+		const dir = new THREE.Vector3(
+			Math.cos(el) * Math.sin(az),
+			Math.sin(el),
+			Math.cos(el) * Math.cos(az)
 		)
-		controls.target.set(cx, 0, -cy + radius * 0.04)
+		const pts = ring.flatMap(([x, y]) => [new THREE.Vector3(x, 0, -y), new THREE.Vector3(x, 4, -y)])
+		const q = new THREE.Vector3()
+		// 변 길이 글씨와 북쪽 표시가 들어갈 여백 (화면 가로 84%, 세로 76% 안에)
+		const mx = 0.84
+		const my = 0.76
+		let gx = cx
+		let gz = -cy
+		let d = radius * 2.5
+		for (let k = 0; k < 10; k++) {
+			camera.position.set(gx + d * dir.x, d * dir.y, gz + d * dir.z)
+			camera.lookAt(gx, 0, gz)
+			camera.updateMatrixWorld()
+			let x0 = Infinity
+			let x1 = -Infinity
+			let y0 = Infinity
+			let y1 = -Infinity
+			for (const p of pts) {
+				q.copy(p).project(camera)
+				x0 = Math.min(x0, q.x)
+				x1 = Math.max(x1, q.x)
+				y0 = Math.min(y0, q.y)
+				y1 = Math.max(y1, q.y)
+			}
+			const ox = (x0 + x1) / 2
+			const oy = (y0 + y1) / 2
+			// 화면 가로는 카메라 오른쪽, 세로는 바닥 위 먼 쪽으로 (비스듬히 보므로 1/sin(el) 만큼 늘어난다)
+			gx += Math.cos(az) * ox * d * tx - (Math.sin(az) * oy * d * ty) / Math.sin(el)
+			gz += -Math.sin(az) * ox * d * tx - (Math.cos(az) * oy * d * ty) / Math.sin(el)
+			d *= Math.max((x1 - x0) / 2 / mx, (y1 - y0) / 2 / my)
+		}
+		camera.position.set(gx + d * dir.x, d * dir.y, gz + d * dir.z)
+		controls.target.set(gx, 0, gz)
+		fitAspect = camera.aspect
 		controls.minDistance = radius * 0.8
 		controls.maxDistance = radius * 6
 		camera.near = Math.max(0.05, radius / 200)
@@ -569,6 +597,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 		// 먼 바닥 격자만 배경색으로 흐려지게
 		scene.fog = new THREE.Fog(C.bg, d + radius * 1.6, d + radius * 5.5)
 	}
+	let fitAspect = 0
 
 	// 이랑 방향: 가장 긴 변을 따라 (실제 밭도 긴 변을 따라 이랑을 낸다)
 	function mainAngle(r: Ring) {
@@ -1325,6 +1354,13 @@ export function createFieldView(host: HTMLElement): FieldView {
 		renderer.setSize(w, h, false)
 		camera.aspect = w / h
 		camera.updateProjectionMatrix()
+		// 화면 비율이 바뀌면 (휴대폰 돌리기 등) 아직 손대지 않은 보기는 다시 맞춘다
+		if (
+			fitAspect &&
+			Math.abs(camera.aspect / fitAspect - 1) > 0.05 &&
+			!host.classList.contains('is-touched')
+		)
+			fitCamera()
 		wake()
 	}
 
