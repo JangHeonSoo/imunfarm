@@ -59,6 +59,7 @@
 		"react-plotly.js": "^2.6.0",
 		"rehype-katex": "^7.0.1",
 		"remark-math": "^6.0.0",
+		"three": "^0.186.1",
 		"uplot": "1.6.32"
 	},
 	"devDependencies": {
@@ -73,6 +74,7 @@
 		"@tinacms/cli": "^1.5.31",
 		"@types/react": "^18.2.0",
 		"@types/react-dom": "^18.2.0",
+		"@types/three": "^0.186.0",
 		"@typescript-eslint/parser": "^6.16.0",
 		"clsx": "2.0.0",
 		"crypto-js": "^4.2.0",

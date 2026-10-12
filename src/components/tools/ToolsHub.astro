@@ -3,6 +3,7 @@ import BaseLayout from '@/layouts/BaseLayout'
 import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
 import { ITEMS, buildMarketQuotes, getPriceAsOfDate, REGIONS } from '@/data/prices'
 import { SOLAR, computeCold, computeMarket, computeSolar, feeFor } from '@/data/tools'
+import { FARMLAND_CROPS, rankCrops } from '@/data/farmland-crops'
 import '../../styles/tools.css'
 
 const { locale = DEFAULT_LOCALE } = Astro.props
@@ -46,6 +47,13 @@ const solar = computeSolar({
 	years: 1
 })
 const cold = computeCold(5, 35, 50)
+const farmEx = rankCrops(
+	{ jimok: '전', use: null, zone: 'central', month: getPriceAsOfDate().getMonth() + 1 },
+	3
+).map((p) => {
+	const c = FARMLAND_CROPS.find((x) => x.id === p.id)!
+	return isEn ? c.en : c.ko
+})
 
 const tools = [
 	{
@@ -101,6 +109,19 @@ const tools = [
 		also: isEn
 			? null
 			: { href: '/support/small-cold-storage-subsidy/', text: '보조 50%를 받는 지원사업 보기 →' }
+	},
+	{
+		href: `${prefix}/tools/farmland-crop-finder/`,
+		title: isEn ? 'What to grow on my land' : '내 땅에 맞는 작물 찾기',
+		text: isEn
+			? 'Enter a land address to see its land category, area and zoning, and the crops that fit the land and climate.'
+			: '땅 주소를 넣으면 지목·면적·용도지역을 확인하고, 그 땅과 지역 기후에 맞는 작물을 심는 시기와 시세와 함께 골라 드립니다.',
+		ex: {
+			case: isEn ? 'e.g. a field (jeon), central region' : '예) 중부 지역 밭(전)',
+			big: farmEx.join(isEn ? ', ' : '·'),
+			sub: isEn ? 'top picks this month' : '이번 달 기준 추천 상위'
+		},
+		also: null
 	}
 ]
 const smpMonth = Number(SOLAR.basis.slice(5, 7))

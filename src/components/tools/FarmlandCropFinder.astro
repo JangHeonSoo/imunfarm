@@ -1,0 +1,998 @@
+---
+/**
+ * 땅 주소 → 내 땅 3D 미리보기와 맞는 작물. 주소·필지·토지특성은 브라우저(브이월드 JSONP), 팜맵·추천은 /api/farmland.
+ * 화면은 3D 판 + 한 줄 정보 + 작물 버튼만. 검색엔진용 표·설명은 아래 접힌 칸에 서버에서 그린다.
+ */
+import ToolShell from '@/components/tools/ToolShell'
+import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
+import { ITEMS, REGIONS, buildMarketQuotes, getPriceAsOfDate, getItemStatus } from '@/data/prices'
+import {
+	FARMLAND_CROPS,
+	ZONE_LABEL,
+	monthRange,
+	rankCrops,
+	type Jimok
+} from '@/data/farmland-crops'
+
+const { locale = DEFAULT_LOCALE } = Astro.props
+const isEn = locale === 'en'
+const prefix = getLocalePrefix(locale)
+const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
+
+// 작물별 최근 도매가 (서울 먼저, 없으면 조사된 다른 시장). 철이 지난 품목은 값 대신 링크만
+const { quotes } = buildMarketQuotes(getPriceAsOfDate())
+const prices: Record<string, { price: number; unit: string; date: string; region: string } | null> =
+	{}
+for (const c of FARMLAND_CROPS) {
+	const item = c.priceId ? ITEMS.find((i) => i.id === c.priceId) : null
+	if (!item || getItemStatus(item).stale) {
+		prices[c.id] = null
+		continue
+	}
+	const region = REGIONS.find((r) => quotes[item.id]?.[r.id])
+	const q = region ? quotes[item.id][region.id] : null
+	prices[c.id] = q
+		? {
+				price: q.price,
+				unit: isEn ? item.unitEn : item.unitKo,
+				date: q.date.replace(/-/g, '.'),
+				region: isEn ? region!.en : region!.ko
+			}
+		: null
+}
+
+// 지목별 대표 작물 표 (중부, 이번 달 기준). 검색엔진과 처음 온 사람용
+const month = getPriceAsOfDate().getMonth() + 1
+const cropName = (id: string) => {
+	const c = FARMLAND_CROPS.find((x) => x.id === id)!
+	return isEn ? c.en : c.ko
+}
+const byJimok = (['전', '답', '과수원'] as Jimok[]).map((j) => ({
+	jimok: j,
+	label: isEn ? { 전: 'Field (jeon)', 답: 'Paddy (dap)', 과수원: 'Orchard' }[j as '전'] : j,
+	picks: rankCrops({ jimok: j, use: null, zone: 'central', month }, 6).map((p) => cropName(p.id))
+}))
+
+// 처음 화면의 예시 땅: 충남 서산시 운산면 여미리 1 (전 2,294㎡, 팜맵 밭). 경계는 무게중심 기준 미터
+const SAMPLE = {
+	address: isEn
+		? 'Yeomi-ri 1, Unsan-myeon, Seosan, South Chungcheong'
+		: '충청남도 서산시 운산면 여미리 1',
+	jimok: '전',
+	areaM2: 2294,
+	farmUse: '밭',
+	zone: 'central' as const,
+	isFarmland: true,
+	crops: rankCrops({ jimok: '전', use: '밭', zone: 'central', month }, 6),
+	ring: [
+		[-29.2, 5.9],
+		[-26.7, 10.2],
+		[-22, 14.9],
+		[-12.7, 19.7],
+		[-4.6, 22.3],
+		[-2, 23],
+		[3.1, 24.4],
+		[11.3, 21.6],
+		[21.6, 15.7],
+		[26.2, 9.4],
+		[26.9, 1.5],
+		[28.3, -7.2],
+		[25.9, -10.7],
+		[27.1, -14.3],
+		[24.3, -21.1],
+		[23.2, -21.8],
+		[-0.6, -37.5],
+		[-5.8, -31.5],
+		[-14.6, -15.8],
+		[-19.4, -10.4],
+		[-24, -4.7],
+		[-27.2, 0.7]
+	] as [number, number][]
+}
+
+// 3D 가 뜨기 전(또는 WebGL 이 없을 때) 보이는 위에서 본 윤곽
+const svgOf = (ring: [number, number][]) => {
+	const xs = ring.map((p) => p[0])
+	const ys = ring.map((p) => -p[1])
+	const pad = 6
+	const minX = Math.min(...xs) - pad
+	const minY = Math.min(...ys) - pad
+	const w = Math.max(...xs) - minX + pad
+	const h = Math.max(...ys) - minY + pad
+	return {
+		viewBox: `${minX.toFixed(1)} ${minY.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`,
+		d: 'M' + ring.map(([x, y]) => `${x.toFixed(1)} ${(-y).toFixed(1)}`).join('L') + 'Z'
+	}
+}
+const sampleSvg = svgOf(SAMPLE.ring)
+
+const zoneShort = (z: keyof typeof ZONE_LABEL) =>
+	(isEn ? ZONE_LABEL[z].en : ZONE_LABEL[z].ko).split(' (')[0]
+const areaText = (m2: number) =>
+	isEn ? `${num(m2 / 3.3058)} pyeong (${num(m2)} ㎡)` : `${num(m2 / 3.3058)}평 (${num(m2)}㎡)`
+const sampleFacts = [
+	SAMPLE.jimok,
+	areaText(SAMPLE.areaM2),
+	SAMPLE.farmUse,
+	zoneShort(SAMPLE.zone)
+].join(' · ')
+const first = FARMLAND_CROPS.find((c) => c.id === SAMPLE.crops[0]?.id)
+
+const season = (c: (typeof FARMLAND_CROPS)[number]) => {
+	const plant = monthRange(c.plant, isEn)
+	const h = monthRange(c.harvest, isEn)
+	const harvest = c.years
+		? isEn
+			? `${h}, from year ${c.years}`
+			: `심고 ${c.years}년 뒤부터 ${h}`
+		: c.nextYear
+			? isEn
+				? `${h} next year`
+				: `이듬해 ${h}`
+			: h
+	return isEn ? `Plant ${plant} · Harvest ${harvest}` : `심기 ${plant} · 수확 ${harvest}`
+}
+const priceText = (id: string) => {
+	const p = prices[id]
+	if (!p) return isEn ? 'Prices →' : '시세 보기 →'
+	return isEn ? `₩${num(p.price)} / ${p.unit} →` : `${p.unit} ${num(p.price)}원 →`
+}
+
+const title = isEn
+	? 'Farmland Crop Finder: Check Land Category and What to Grow by Address'
+	: '내 땅 지목 조회·농지 작물 추천: 주소만 넣으면 맞는 작물 찾기'
+const description = isEn
+	? 'Enter a Korean land address to see its land category (jimok), area and zoning, then crops that fit the land and climate, with planting months and today’s wholesale price.'
+	: '땅 주소를 넣으면 지목(전·답·과수원)과 면적, 용도지역을 확인하고 그 땅과 지역 기후에 맞는 작물을 추천합니다. 심는 시기와 오늘 도매 시세까지 함께 봅니다.'
+
+const faq = isEn
+	? [
+			{
+				q: 'Where does the land information come from?',
+				a: 'Land category, area and zoning come from the national cadastral and land characteristics data published through VWorld (Ministry of Land). Actual use (paddy, field, orchard, greenhouse) comes from the FarmMap of the Ministry of Agriculture.'
+			},
+			{
+				q: 'Does it check the soil?',
+				a: 'No. Soil fitness by parcel is published by the RDA on Heuktoram (soil.rda.go.kr). Look up the same address there before you plant.'
+			},
+			{
+				q: 'Can I farm land that is not jeon, dap or orchard?',
+				a: 'Building land (dae) or forest (imya) usually needs a change of use permit before it can be farmed or built on. Ask the city or county office.'
+			}
+		]
+	: [
+			{
+				q: '내 땅 지목은 어떻게 조회하나요?',
+				a: '위 칸에 지번 주소(예: ○○군 ○○면 ○○리 123)나 도로명 주소를 넣으면 국토교통부 연속지적도와 토지특성 자료로 지목, 면적, 용도지역을 보여 드립니다. 정식 서류가 필요하면 토지대장이나 토지이용계획확인서를 정부24에서 떼어 보세요.'
+			},
+			{
+				q: '추천 작물은 어떤 기준으로 고르나요?',
+				a: '지목(전·답·과수원), 팜맵에 나온 실제 이용(논·밭·과수·시설), 시도와 위도로 나눈 기후대, 일손, 지금부터 심을 수 있는지를 점수로 매깁니다. 흙의 성질은 반영하지 않으니 흙토람에서 같은 주소의 토양 적성도 꼭 확인해 보세요.'
+			},
+			{
+				q: '논(답)에 밭작물을 심어도 되나요?',
+				a: '농지 안에서 작물을 바꾸는 것은 대체로 가능합니다. 다만 논은 물이 잘 안 빠져서 콩·들깨 같은 밭작물을 심으려면 배수로를 내고 이랑을 높여야 합니다.'
+			},
+			{
+				q: '지목이 대지나 임야인 땅에서도 농사를 지을 수 있나요?',
+				a: '임야나 대지를 농지처럼 쓰거나 시설을 지으려면 용도 변경이나 허가가 필요한 경우가 많습니다. 시·군청 농지·산림 담당 부서에 먼저 확인하세요.'
+			}
+		]
+
+const related = [
+	{
+		href: `${prefix}/prices/`,
+		title: isEn ? 'Today’s wholesale prices' : '오늘 농산물 도매 시세',
+		sub: isEn ? 'See what each crop sells for' : '추천 작물이 지금 얼마에 팔리는지'
+	},
+	{
+		href: `${prefix}/support/`,
+		title: isEn ? 'Farm support programmes' : '농업 지원사업 모음',
+		sub: undefined
+	},
+	{
+		href: `${prefix}/blog/farm-shed-mobile-home-price-2026/`,
+		title: isEn ? 'Farm sheds and mobile homes 2026' : '농막·이동식 주택 가격 2026',
+		sub: undefined
+	}
+]
+
+const data = {
+	isEn,
+	prefix,
+	crops: FARMLAND_CROPS,
+	prices,
+	zones: ZONE_LABEL,
+	sample: SAMPLE
+}
+---
+
+<ToolShell
+	locale={locale}
+	title={title}
+	description={description}
+	h1={isEn ? 'What to grow on my land' : '내 땅에 맞는 작물 찾기'}
+	lede={isEn
+		? 'Enter an address. We raise your plot in 3D and plant the crops that suit it.'
+		: '주소를 넣으면 내 땅을 3D로 세우고, 맞는 작물을 골라 심어 봅니다.'}
+	basis={isEn ? 'Cadastral data · FarmMap' : '연속지적도·토지특성·팜맵 기준'}
+	faq={faq}
+	related={related}
+	path='/tools/farmland-crop-finder/'
+>
+	<form class='im-farm-search' id='im-farm-form' role='search'>
+		<input
+			id='im-farm-address'
+			name='address'
+			type='search'
+			autocomplete='street-address'
+			enterkeyhint='search'
+			minlength='4'
+			maxlength='120'
+			required
+			placeholder={isEn ? 'Land address' : '땅 주소'}
+			aria-label={isEn ? 'Land address' : '땅 주소'}
+		/>
+		<p class='im-farm-hint'>
+			{
+				isEn
+					? 'Lot address works best, e.g. 서산시 운산면 여미리 1'
+					: '지번 주소가 가장 정확합니다. 예) 서산시 운산면 여미리 1'
+			}
+		</p>
+		<button type='submit' class='im-farm-go'>{isEn ? 'Look up →' : '조회하기 →'}</button>
+	</form>
+	<p class='im-farm-error' id='im-farm-error' role='alert' hidden></p>
+
+	<section class='im-farm-view' id='im-farm-view' aria-live='polite'>
+		<div class='im-farm-stage' id='im-farm-stage'>
+			<svg class='im-farm-svg' viewBox={sampleSvg.viewBox} aria-hidden='true'>
+				<path d={sampleSvg.d}></path>
+			</svg>
+			<p class='im-farm-tag' id='im-farm-tag'>{isEn ? 'Example' : '예시'}</p>
+			<p class='im-farm-drag' aria-hidden='true'>{isEn ? 'Drag to turn' : '끌어서 돌려 보기'}</p>
+			<p class='im-farm-busy'>{isEn ? 'Looking up…' : '찾는 중입니다…'}</p>
+		</div>
+
+		<div class='im-farm-panel'>
+			<p class='im-farm-addr' id='im-farm-addr'>{SAMPLE.address}</p>
+			<p class='im-farm-facts' id='im-farm-facts'>{sampleFacts}</p>
+			<p class='im-farm-note' id='im-farm-note' hidden></p>
+			<div
+				class='im-farm-chips'
+				id='im-farm-chips'
+				role='group'
+				aria-label={isEn ? 'Crops that fit' : '맞는 작물'}
+			>
+				{
+					SAMPLE.crops.map((p, k) => (
+						<button
+							type='button'
+							class='im-farm-chip'
+							data-id={p.id}
+							aria-pressed={k === 0 ? 'true' : 'false'}
+						>
+							{cropName(p.id)}
+						</button>
+					))
+				}
+			</div>
+			<p class='im-farm-pick' id='im-farm-pick'>
+				{
+					first && (
+						<>
+							<span>{season(first)}</span>
+							{first.priceId && (
+								<a href={`${prefix}/prices/${first.priceId}/`}>{priceText(first.id)}</a>
+							)}
+						</>
+					)
+				}
+			</p>
+		</div>
+	</section>
+
+	<details class='im-farm-more'>
+		<summary
+			>{
+				isEn ? 'Planting months and wholesale prices by crop' : '작물별 심는 시기·도매가 보기'
+			}</summary
+		>
+
+		<section class='im-tool-section'>
+			<h2 class='im-label'>
+				{
+					isEn
+						? 'Typical crops by land category (central region)'
+						: '지목별 많이 고르는 작물 (중부 기준)'
+				}
+			</h2>
+			<table class='im-tool-table im-farm-jimok'>
+				<thead>
+					<tr>
+						<th>{isEn ? 'Land' : '지목'}</th>
+						<th>{isEn ? 'Crops that fit' : '맞는 작물'}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{
+						byJimok.map((r) => (
+							<tr>
+								<td>{r.label}</td>
+								<td>{r.picks.join(', ')}</td>
+							</tr>
+						))
+					}
+				</tbody>
+			</table>
+		</section>
+
+		<section class='im-tool-section'>
+			<h2 class='im-label'>{isEn ? 'Planting calendar' : '작물별 심는 때와 거두는 때'}</h2>
+			<table class='im-tool-table'>
+				<thead>
+					<tr>
+						<th>{isEn ? 'Crop' : '작물'}</th>
+						<th>{isEn ? 'Plant' : '심기'}</th>
+						<th>{isEn ? 'Harvest' : '수확'}</th>
+						<th class='is-hide-sm'>{isEn ? 'Wholesale' : '도매 시세'}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{
+						FARMLAND_CROPS.map((c) => {
+							const p = prices[c.id]
+							return (
+								<tr>
+									<td>
+										{c.priceId ? (
+											<a class='im-inline' href={`${prefix}/prices/${c.priceId}/`}>
+												{isEn ? c.en : c.ko}
+											</a>
+										) : isEn ? (
+											c.en
+										) : (
+											c.ko
+										)}
+									</td>
+									<td>{monthRange(c.plant, isEn)}</td>
+									<td>
+										{c.years
+											? isEn
+												? `${monthRange(c.harvest, true)}, from year ${c.years}`
+												: `심고 ${c.years}년 뒤부터 ${monthRange(c.harvest, false)}`
+											: c.nextYear
+												? isEn
+													? `${monthRange(c.harvest, true)} next year`
+													: `이듬해 ${monthRange(c.harvest, false)}`
+												: monthRange(c.harvest, isEn)}
+									</td>
+									<td class='is-hide-sm'>
+										{p
+											? isEn
+												? `₩${num(p.price)} / ${p.unit}`
+												: `${p.unit} ${num(p.price)}원`
+											: '–'}
+									</td>
+								</tr>
+							)
+						})
+					}
+				</tbody>
+			</table>
+			<p class='im-farm-small'>
+				{
+					isEn
+						? 'Months are general guides from the Rural Development Administration (Nongsaro) and move a few weeks by region and cultivar.'
+						: '시기는 농촌진흥청 농사로의 일반 기준이며, 지역과 품종에 따라 몇 주씩 앞뒤로 달라집니다.'
+				}
+			</p>
+		</section>
+
+		<section class='im-tool-section'>
+			<h2 class='im-label'>{isEn ? 'Before you plant' : '심기 전에 꼭 확인할 것'}</h2>
+			<p>
+				{
+					isEn
+						? 'This is a reference, not an official land survey or soil test. The 3D view is a model of the parcel outline, not a design drawing. '
+						: '이 결과는 참고용이며 정식 토지 서류나 토양 검사를 대신하지 않습니다. 3D 화면은 필지 경계로 만든 모형이며 설계 도면이 아닙니다. '
+				}
+				{
+					isEn
+						? 'Check the soil of the same parcel on '
+						: '같은 주소의 흙 성질과 작물별 토양 적성은 '
+				}
+				<a class='im-inline' href='https://soil.rda.go.kr/' target='_blank' rel='noopener'
+					>{isEn ? 'Heuktoram (RDA)' : '농촌진흥청 흙토람'}</a
+				>
+				{isEn ? ', and ask the ' : '에서 확인하세요. 농지 취득, 용도 변경, 비닐하우스·농막 설치는 '}
+				<a class='im-inline' href='https://www.gov.kr/' target='_blank' rel='noopener'
+					>{isEn ? 'city or county office (Gov24)' : '시·군청 농지 담당 부서(정부24)'}</a
+				>
+				{
+					isEn
+						? ' about farmland rules, change of use and installing greenhouses or sheds.'
+						: '에 먼저 문의하세요.'
+				}
+			</p>
+		</section>
+	</details>
+
+	<script type='application/json' id='im-farm-data' set:html={JSON.stringify(data)} />
+</ToolShell>
+
+<script>
+	import { monthRange, type CropRule, type CropPick, type Zone } from '@/data/farmland-crops'
+	import { geocode, landFacts, parcelAt, polygonAreaM2, vworldReady } from '@/data/farmland-vworld'
+	import type { FieldView, Ring } from './farmland-3d'
+
+	type Price = { price: number; unit: string; date: string; region: string } | null
+	type View = {
+		address: string
+		jimok: string | null
+		areaM2: number | null
+		areaEstimated?: boolean
+		farmUse: string | null
+		landUse?: string | null
+		zone: Zone
+		isFarmland: boolean
+		crops: CropPick[]
+		refined?: string | null
+		fixture?: boolean
+	}
+	type Data = {
+		isEn: boolean
+		prefix: string
+		crops: CropRule[]
+		prices: Record<string, Price>
+		zones: Record<Zone, { ko: string; en: string }>
+		sample: View & { ring: Ring }
+	}
+
+	const D = JSON.parse(document.getElementById('im-farm-data')!.textContent || '{}') as Data
+	const isEn = D.isEn
+	const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
+	const form = $<HTMLFormElement>('im-farm-form')
+	const input = $<HTMLInputElement>('im-farm-address')
+	const errorEl = $('im-farm-error')
+	const stage = $('im-farm-stage')
+	const tag = $('im-farm-tag')
+	const addrEl = $('im-farm-addr')
+	const factsEl = $('im-farm-facts')
+	const noteEl = $('im-farm-note')
+	const chipsEl = $('im-farm-chips')
+	const pickEl = $('im-farm-pick')
+	const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR')
+	const L = (ko: string, en: string) => (isEn ? en : ko)
+
+	const ERR: Record<string, [string, string]> = {
+		address: [
+			'주소를 4자에서 120자 사이로 입력해 주세요.',
+			'Enter an address of 4 to 120 characters.'
+		],
+		'not-found': [
+			'주소를 찾지 못했습니다. 시·군·읍면·리와 번지까지 넣어 보세요.',
+			'Address not found. Include the county, township, village and lot number.'
+		],
+		'no-parcel': ['이 주소의 필지 정보를 찾지 못했습니다.', 'No parcel found at this address.'],
+		unavailable: [
+			'지금은 조회 준비 중입니다. 잠시 뒤에 다시 시도해 주세요.',
+			'Lookup is not available yet. Please try again later.'
+		],
+		upstream: [
+			'토지 정보 서버가 응답하지 않습니다. 잠시 뒤에 다시 시도해 주세요.',
+			'The land data service did not respond. Please try again later.'
+		]
+	}
+	const err = (k: string) => L(...(ERR[k] ?? ERR.upstream))
+
+	// ── 3D ──────────────────────────────────────────────
+	let view: FieldView | null = null
+	let mod: Promise<typeof import('./farmland-3d')> | null = null
+	const load = () => (mod ??= import('./farmland-3d'))
+	let ring: Ring = D.sample.ring
+
+	async function show(r: Ring, crop: string | null) {
+		ring = r
+		drawSvg(r)
+		try {
+			const m = await load()
+			if (!view) {
+				view = m.createFieldView(stage)
+				stage.classList.add('is-3d')
+			}
+			view.setParcel(r)
+			view.setCrop(crop)
+		} catch {
+			// WebGL 이 없으면 위에서 본 윤곽(svg)만 남는다
+			stage.classList.remove('is-3d')
+		}
+	}
+
+	function drawSvg(r: Ring) {
+		const svg = stage.querySelector('svg')!
+		const xs = r.map((p) => p[0])
+		const ys = r.map((p) => -p[1])
+		const pad = Math.max(4, (Math.max(...xs) - Math.min(...xs)) * 0.08)
+		const minX = Math.min(...xs) - pad
+		const minY = Math.min(...ys) - pad
+		svg.setAttribute(
+			'viewBox',
+			`${minX} ${minY} ${Math.max(...xs) - minX + pad} ${Math.max(...ys) - minY + pad}`
+		)
+		svg
+			.querySelector('path')!
+			.setAttribute('d', 'M' + r.map(([x, y]) => `${x} ${-y}`).join('L') + 'Z')
+	}
+
+	// ── 정보·작물 버튼 ───────────────────────────────────
+	let current: View = D.sample
+
+	function season(c: CropRule) {
+		const plant = monthRange(c.plant, isEn)
+		const h = monthRange(c.harvest, isEn)
+		const harvest = c.years
+			? L(`심고 ${c.years}년 뒤부터 ${h}`, `${h}, from year ${c.years}`)
+			: c.nextYear
+				? L(`이듬해 ${h}`, `${h} next year`)
+				: h
+		return L(`심기 ${plant} · 수확 ${harvest}`, `Plant ${plant} · Harvest ${harvest}`)
+	}
+
+	function select(id: string | null, plant = true) {
+		for (const b of chipsEl.querySelectorAll<HTMLButtonElement>('button'))
+			b.setAttribute('aria-pressed', String(b.dataset.id === id))
+		const c = D.crops.find((x) => x.id === id)
+		pickEl.replaceChildren()
+		if (c) {
+			const pick = current.crops.find((p) => p.id === id)
+			let line = season(c)
+			if (c.greenhouse && current.farmUse !== '시설')
+				line += L(' · 비닐하우스 필요', ' · Needs a greenhouse')
+			if (pick?.tags.includes('paddy-drain'))
+				line += L(' · 논이면 배수 먼저', ' · Drain the paddy first')
+			const s = document.createElement('span')
+			s.textContent = line
+			pickEl.append(s)
+			if (c.priceId) {
+				const p = D.prices[c.id]
+				const a = document.createElement('a')
+				a.href = `${D.prefix}/prices/${c.priceId}/`
+				a.textContent = p
+					? L(`${p.unit} ${num(p.price)}원 →`, `₩${num(p.price)} / ${p.unit} →`)
+					: L('시세 보기 →', 'Prices →')
+				pickEl.append(a)
+			}
+		} else if (!current.isFarmland) {
+			pickEl.append(
+				L(
+					'작물을 누르면 밭이라고 보고 심어 봅니다.',
+					'Tap a crop to see it planted as if this were a field.'
+				)
+			)
+		}
+		if (plant) view?.setCrop(id)
+	}
+
+	chipsEl.addEventListener('click', (e) => {
+		const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-id]')
+		if (b) select(b.dataset.id!)
+	})
+
+	function render(v: View, r: Ring, isSample = false) {
+		current = v
+		tag.hidden = !isSample
+		addrEl.textContent = v.address
+		const area = v.areaM2
+			? (v.areaEstimated ? L('약 ', '≈ ') : '') +
+				L(
+					`${num(v.areaM2 / 3.3058)}평 (${num(v.areaM2)}㎡)`,
+					`${num(v.areaM2 / 3.3058)} pyeong (${num(v.areaM2)} ㎡)`
+				)
+			: null
+		const zone = (isEn ? D.zones[v.zone].en : D.zones[v.zone].ko).split(' (')[0]
+		const use = v.farmUse ?? v.landUse
+		factsEl.textContent = [v.jimok, area, use !== v.jimok ? use : null, zone]
+			.filter(Boolean)
+			.join(' · ')
+
+		const notes: string[] = []
+		if (v.refined)
+			notes.push(
+				L(
+					'입력한 번지가 없어 가장 가까운 필지로 찾았습니다.',
+					'That lot was not found, so the nearest lot is shown.'
+				)
+			)
+		if (!v.isFarmland)
+			notes.push(
+				L(
+					`농지가 아닌 땅입니다(지목 ${v.jimok ?? '–'}). 농사를 지으려면 허가가 필요할 수 있습니다.`,
+					`Not registered as farmland (${v.jimok ?? '–'}). Farming it may need a permit.`
+				)
+			)
+		if (v.fixture) notes.push('개발용 예시 응답입니다.')
+		noteEl.hidden = !notes.length
+		noteEl.textContent = notes.join(' ')
+
+		chipsEl.replaceChildren(
+			...v.crops.slice(0, 6).map((p) => {
+				const b = document.createElement('button')
+				b.type = 'button'
+				b.className = 'im-farm-chip'
+				b.dataset.id = p.id
+				const c = D.crops.find((x) => x.id === p.id)
+				b.textContent = c ? (isEn ? c.en : c.ko) : p.id
+				return b
+			})
+		)
+		const firstId = v.isFarmland ? (v.crops[0]?.id ?? null) : null
+		select(firstId, false)
+		show(r, firstId)
+	}
+
+	// ── 조회 ────────────────────────────────────────────
+	// 브이월드는 해외 서버 요청을 막아서 주소·필지·토지특성은 브라우저에서 조회하고, 팜맵·추천만 서버에 묻는다
+	async function lookup(address: string) {
+		errorEl.hidden = true
+		stage.classList.add('is-busy')
+		const fixture = new URLSearchParams(location.search).get('fixture') === '1'
+		try {
+			const q = new URLSearchParams()
+			let refined: string | null = null
+			let r: Ring | null = null
+			if (fixture) {
+				q.set('fixture', '1')
+				r = D.sample.ring
+			} else {
+				if (!vworldReady()) return fail('unavailable')
+				const point = await geocode(address)
+				if (!point) return fail('not-found')
+				const parcel = await parcelAt(point.lon, point.lat)
+				if (!parcel) return fail('no-parcel')
+				// 토지특성이 없으면(예: 새 행정구역 코드) 지번 끝 글자 지목과 경계 면적으로 계속한다
+				const [facts, m] = await Promise.all([
+					landFacts(parcel.pnu).catch(() => null),
+					load().catch(() => null)
+				])
+				r = m?.toLocalMeters(parcel.polygon) ?? null
+				const area = facts?.areaM2 ?? polygonAreaM2(parcel.polygon)
+				const addr = parcel.address || point.text
+				// 지번으로 찾았는데 번지가 바뀌었으면(예: 250 → 250-1) 알려 준다
+				const lot = (t: string) => t.match(/(산\s*)?\d+(-\d+)?\s*$/)?.[0].replace(/\s/g, '') ?? null
+				if (point.type === 'PARCEL' && lot(address) && lot(address) !== lot(addr)) refined = addr
+				const set = (k: string, v: string | number | null | undefined) => {
+					if (v !== null && v !== undefined && v !== '') q.set(k, String(v))
+				}
+				set('pnu', parcel.pnu)
+				set('lon', parcel.lon)
+				set('lat', parcel.lat)
+				set('address', addr)
+				set('jibun', parcel.jibun)
+				set('jimok', facts?.jimok)
+				set('area', area ? Math.round(area * 10) / 10 : null)
+				if (!facts?.areaM2 && area) q.set('areaEstimated', '1')
+				set('zoning', facts?.zoning)
+				set('landUse', facts?.landUse)
+			}
+			const res = await fetch(`/api/farmland?${q}`)
+			const body = (await res.json()) as View & { error?: string }
+			if (!res.ok || body.error) return fail(body.error ?? 'upstream')
+			render({ ...body, refined }, r ?? ring)
+			stage.scrollIntoView({
+				behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+				block: 'nearest'
+			})
+		} catch {
+			fail('upstream')
+		} finally {
+			stage.classList.remove('is-busy')
+		}
+	}
+
+	function fail(k: string) {
+		errorEl.textContent = err(k)
+		errorEl.hidden = false
+	}
+
+	form.addEventListener('submit', (e) => {
+		e.preventDefault()
+		const address = input.value.replace(/\s+/g, ' ').trim()
+		if (address.length < 4) return fail('address')
+		const u = new URL(location.href)
+		u.searchParams.set('address', address)
+		history.replaceState(null, '', u)
+		input.blur()
+		lookup(address)
+	})
+
+	const start = new URLSearchParams(location.search).get('address')
+	if (start) {
+		input.value = start
+		lookup(start)
+	} else {
+		show(D.sample.ring, D.sample.crops[0]?.id ?? null)
+	}
+</script>
+
+<style>
+	.im-farm-search {
+		display: grid;
+		justify-items: center;
+		gap: 12px;
+		padding: clamp(22px, 4vh, 44px) 0 clamp(16px, 3vh, 24px);
+		border-top: 1px solid var(--ink);
+	}
+
+	.im-farm-search input {
+		width: 100%;
+		border: 0;
+		background: none;
+		padding: 0;
+		outline: none;
+		color: var(--ink);
+		font-family: inherit;
+		font-weight: 800;
+		font-size: clamp(24px, 4vw, 42px);
+		letter-spacing: -0.01em;
+		text-align: center;
+	}
+
+	.im-farm-search input::placeholder {
+		color: var(--faint);
+	}
+
+	.im-farm-search input::-webkit-search-cancel-button {
+		display: none;
+	}
+
+	.im-farm-hint {
+		margin: 0;
+		color: var(--muted);
+		font-size: 13px;
+		text-align: center;
+	}
+
+	.im-farm-go {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 14px;
+		font-weight: 700;
+		text-decoration: underline;
+		text-underline-offset: 4px;
+		cursor: pointer;
+	}
+
+	.im-farm-error {
+		margin: 0 0 14px;
+		font-size: 15px;
+		font-weight: 600;
+		text-align: center;
+	}
+
+	/* 3D 무대: 본문 폭(760)보다 넓게, 화면 가장자리 여백은 남긴다 */
+	.im-farm-stage {
+		--w: min(1080px, calc(100vw - 2 * var(--gutter)));
+		position: relative;
+		width: var(--w);
+		margin-left: calc((100% - var(--w)) / 2);
+		height: clamp(380px, 62vh, 560px);
+		border-top: 1px solid var(--ink);
+		border-bottom: 1px solid var(--line);
+		overflow: hidden;
+		cursor: grab;
+		user-select: none;
+	}
+
+	.im-farm-stage:active {
+		cursor: grabbing;
+	}
+
+	.im-farm-stage :global(.im-farm-canvas) {
+		display: block;
+		width: 100%;
+		height: 100%;
+		transition: opacity 0.3s ease;
+	}
+
+	.im-farm-svg {
+		position: absolute;
+		inset: 12% 20%;
+		width: 60%;
+		height: 76%;
+	}
+
+	.im-farm-svg path {
+		fill: var(--line);
+		stroke: var(--ink);
+		stroke-width: 0.4;
+		vector-effect: non-scaling-stroke;
+	}
+
+	.im-farm-stage.is-3d .im-farm-svg {
+		display: none;
+	}
+
+	.im-farm-tag,
+	.im-farm-drag,
+	.im-farm-busy {
+		position: absolute;
+		margin: 0;
+		font-size: 12px;
+		letter-spacing: 0.06em;
+		pointer-events: none;
+	}
+
+	.im-farm-tag {
+		top: 14px;
+		left: 0;
+		padding: 3px 8px;
+		border: 1px solid var(--ink);
+		font-weight: 700;
+	}
+
+	.im-farm-tag[hidden] {
+		display: none;
+	}
+
+	.im-farm-drag {
+		right: 0;
+		bottom: 12px;
+		color: var(--muted);
+		transition: opacity 0.4s ease;
+	}
+
+	.im-farm-stage.is-touched .im-farm-drag,
+	.im-farm-stage:not(.is-3d) .im-farm-drag {
+		opacity: 0;
+	}
+
+	.im-farm-busy {
+		inset: 0;
+		display: grid;
+		place-items: center;
+		font-size: 15px;
+		font-weight: 700;
+		letter-spacing: 0;
+		opacity: 0;
+		transition: opacity 0.2s ease;
+	}
+
+	.im-farm-stage.is-busy .im-farm-busy {
+		opacity: 1;
+	}
+
+	.im-farm-stage.is-busy :global(.im-farm-canvas),
+	.im-farm-stage.is-busy .im-farm-svg {
+		opacity: 0.18;
+	}
+
+	.im-farm-panel {
+		padding: 18px 0 4px;
+	}
+
+	.im-farm-addr {
+		margin: 0;
+		font-size: clamp(18px, 2.2vw, 22px);
+		font-weight: 800;
+		line-height: 1.35;
+		letter-spacing: -0.01em;
+		overflow-wrap: anywhere;
+	}
+
+	.im-farm-facts {
+		margin: 4px 0 0;
+		font-size: 15px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-farm-note {
+		margin: 8px 0 0;
+		color: var(--muted);
+		font-size: 14px;
+		line-height: 1.6;
+	}
+
+	.im-farm-note[hidden] {
+		display: none;
+	}
+
+	.im-farm-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-top: 18px;
+	}
+
+	.im-farm-chips :global(.im-farm-chip) {
+		min-height: 40px;
+		padding: 0 16px;
+		border: 1px solid var(--ink);
+		border-radius: 999px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 15px;
+		font-weight: 700;
+		cursor: pointer;
+		transition:
+			background-color 0.15s ease,
+			color 0.15s ease;
+	}
+
+	.im-farm-chips :global(.im-farm-chip[aria-pressed='true']) {
+		background: var(--ink);
+		color: var(--bg);
+	}
+
+	@media (hover: hover) {
+		.im-farm-chips :global(.im-farm-chip[aria-pressed='false']:hover) {
+			background: var(--line);
+		}
+	}
+
+	.im-farm-pick {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 14px;
+		margin: 14px 0 0;
+		min-height: 1.6em;
+		font-size: 14px;
+		line-height: 1.6;
+	}
+
+	.im-farm-pick :global(a) {
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.im-farm-more {
+		margin-top: 40px;
+		border-top: 1px solid var(--ink);
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-farm-more > summary {
+		padding: 14px 0;
+		font-size: 15px;
+		font-weight: 600;
+		cursor: pointer;
+		list-style: none;
+	}
+
+	.im-farm-more > summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.im-farm-more > summary::after {
+		content: '+';
+		float: right;
+		color: var(--muted);
+		font-weight: 500;
+	}
+
+	.im-farm-more[open] > summary::after {
+		content: '−';
+	}
+
+	.im-farm-more .im-tool-section:first-of-type {
+		margin-top: 4px;
+	}
+
+	.im-farm-jimok th,
+	.im-farm-jimok td {
+		text-align: left;
+	}
+
+	.im-farm-small {
+		margin: 10px 0 0;
+		color: var(--muted);
+		font-size: 13px;
+	}
+</style>
