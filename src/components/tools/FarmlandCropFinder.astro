@@ -58,6 +58,9 @@ const SAMPLE = {
 	address: isEn
 		? 'Yeomi-ri 1, Unsan-myeon, Seosan, South Chungcheong'
 		: '충청남도 서산시 운산면 여미리 1',
+	pnu: '4421038034100010000',
+	jibun: '1전',
+	zoning: isEn ? 'Planned management area' : '계획관리지역',
 	jimok: '전',
 	areaM2: 2294,
 	farmUse: '밭',
@@ -268,6 +271,7 @@ const data = {
 			<p class='im-farm-foot'>
 				<span>{isEn ? 'Drag a building to move it.' : '시설은 끌어서 옮길 수 있습니다.'}</span>
 				<button type='button' id='im-farm-auto'>{isEn ? 'Reset layout' : '처음 배치로'}</button>
+				<button type='button' id='im-farm-pdf'>{isEn ? 'Download PDF' : 'PDF로 받기'}</button>
 			</p>
 			<p class='im-farm-approx' id='im-farm-approx'></p>
 		</div>
@@ -444,6 +448,9 @@ const data = {
 		crops: CropPick[]
 		refined?: string | null
 		fixture?: boolean
+		pnu?: string | null
+		jibun?: string | null
+		zoning?: string | null
 	}
 	type Data = {
 		isEn: boolean
@@ -688,7 +695,103 @@ const data = {
 
 	$('im-farm-auto').addEventListener('click', () => choose(crop))
 
+	// ── 배치 계획도 PDF (누를 때만 불러온다) ─────────────
+	const pdfBtn = $<HTMLButtonElement>('im-farm-pdf')
+	pdfBtn.addEventListener('click', async () => {
+		if (pdfBtn.disabled) return
+		if (!plan) refreshPlan()
+		if (!plan) return
+		saveHash()
+		// iOS 사파리는 내려받기 대신 새 탭에서 연다. 팝업이 막히지 않게 누르는 순간 창을 연다
+		const ios =
+			/iP(hone|ad|od)/.test(navigator.userAgent) ||
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+		const win = ios ? window.open('', '_blank') : null
+		const label = pdfBtn.textContent
+		pdfBtn.disabled = true
+		pdfBtn.textContent = L('PDF 만드는 중입니다…', 'Making the PDF…')
+		try {
+			const { buildPdf } = await import('./farmland-pdf')
+			// 표지 그림은 A4 폭에 맞는 가로 그림
+			const W = 1600
+			const H = Math.round(W / 1.6)
+			const shot = view?.snapshot(W, H) ?? null
+			const c = cropOf(crop)
+			const t = plan.totals
+			const grow = c?.greenhouse ? t.greenhouse : t.field
+			const v = current
+			const zone = (isEn ? D.zones[v.zone].en : D.zones[v.zone].ko).split(' (')[0]
+			const [w, h] = dims(site.ring, site.theta)
+			const blob = await buildPdf({
+				isEn,
+				sample: !tag.hidden,
+				address: v.address,
+				pnu: v.pnu ?? null,
+				jibun: v.jibun ?? null,
+				// 토지특성이 없어 지번 끝 글자로 받은 지목은 이름으로 풀어 쓴다
+				jimok: v.jimok
+					? (({ 과: '과수원', 목: '목장용지', 임: '임야' } as Record<string, string>)[v.jimok] ??
+						v.jimok)
+					: null,
+				areaM2: v.areaM2,
+				areaEstimated: !!v.areaEstimated,
+				size: [w, h],
+				zoning: v.zoning ?? null,
+				use: v.farmUse ?? v.landUse ?? null,
+				zone,
+				theta: site.theta,
+				plan: exportPlan(site, plan),
+				houseGap: HOUSE_GAP,
+				crop: c
+					? {
+							name: nameOf(c),
+							season: season(c),
+							greenhouse: !!c.greenhouse,
+							income: c.income ?? null,
+							grow,
+							alts: current.crops
+								.slice(1, 3)
+								.map((p) => cropOf(p.id))
+								.filter((x): x is CropRule => !!x && x.id !== c.id)
+								.map((x) => ({ name: nameOf(x), income: x.income?.won ?? null }))
+						}
+					: null,
+				notes: [noteEl.hidden ? '' : (noteEl.textContent ?? ''), approxEl.textContent ?? ''].filter(
+					Boolean
+				),
+				shareUrl: location.href,
+				snapshot: shot,
+				snapW: W,
+				snapH: H
+			})
+			const url = URL.createObjectURL(blob)
+			// 파일 이름: 번지 (예: 1, 250-1, 산12)
+			const lot =
+				v.address.match(/(산\s*)?\d+(-\d+)?\s*(\(|$)/)?.[0].replace(/[\s(]/g, '') ??
+				(v.jibun ?? '').replace(/[^\d산-]/g, '')
+			if (win) win.location.href = url
+			else {
+				const a = document.createElement('a')
+				a.href = url
+				a.download = `imunfarm-${L('배치계획', 'layout')}-${lot || 'plan'}.pdf`
+				document.body.append(a)
+				a.click()
+				a.remove()
+			}
+			setTimeout(() => URL.revokeObjectURL(url), 60_000)
+			pdfBtn.textContent = label
+		} catch {
+			win?.close()
+			pdfBtn.textContent = L('PDF를 만들지 못했습니다', 'Could not make the PDF')
+			setTimeout(() => (pdfBtn.textContent = label), 2400)
+		} finally {
+			pdfBtn.disabled = false
+		}
+	})
+
+	let current: View = D.sample
 	function render(v: View, r: Ring, isSample = false, tags: EdgeTag[] = []) {
+		current = v
 		site = makeSite(r, tags)
 		tag.hidden = !isSample
 		addrEl.textContent = v.address
@@ -1149,6 +1252,17 @@ const data = {
 		text-decoration: underline;
 		text-underline-offset: 4px;
 		cursor: pointer;
+	}
+
+	/* 배치 계획도 PDF: 오른쪽 끝 */
+	.im-farm-foot #im-farm-pdf {
+		margin-left: auto;
+	}
+
+	.im-farm-foot #im-farm-pdf:disabled {
+		color: var(--muted);
+		text-decoration: none;
+		cursor: progress;
 	}
 
 	.im-farm-approx {

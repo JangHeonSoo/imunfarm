@@ -219,10 +219,11 @@ function ribbon(pts: [number, number][], w: number, y: number, cap = true) {
 
 const lerp = (a: THREE.Color, b: THREE.Color, t: number) => a.clone().lerp(b, t)
 
-function readColors() {
+/** light = 화면이 다크 모드여도 종이(PDF)용 밝은 색으로 */
+function readColors(light = false) {
 	const cs = getComputedStyle(document.documentElement)
 	const get = (name: string, fallback: string) => {
-		const v = cs.getPropertyValue(name).trim()
+		const v = light ? '' : cs.getPropertyValue(name).trim()
 		try {
 			return new THREE.Color().setStyle(v || fallback, THREE.SRGBColorSpace)
 		} catch {
@@ -284,6 +285,8 @@ export type FieldView = {
 		}
 	): void
 	onPlan(h: PlanHandlers): void
+	/** 지금 보는 각도 그대로 밝은 색으로 한 장 (PDF 표지용). 고른 시설 표시는 뺀다. JPEG data URL */
+	snapshot(width: number, height: number): string
 	dispose(): void
 }
 
@@ -545,6 +548,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 	function fitCamera() {
 		// 땅 꼭짓점(바닥과 하우스 높이)을 실제로 화면에 투영해 보고, 가운데로 옮기고 거리를 맞추기를 몇 번 되풀이한다.
 		// 어림 공식은 길쭉한 땅에서 화면 밖으로 잘렸다
+		camera.updateProjectionMatrix()
 		const vfov = (camera.fov * Math.PI) / 180
 		const ty = Math.tan(vfov / 2)
 		const tx = ty * (camera.aspect || 1)
@@ -556,6 +560,16 @@ export function createFieldView(host: HTMLElement): FieldView {
 			Math.cos(el) * Math.cos(az)
 		)
 		const pts = ring.flatMap(([x, y]) => [new THREE.Vector3(x, 0, -y), new THREE.Vector3(x, 4, -y)])
+		// 변 길이 글씨도 화면 안에 (buildWorld 와 같은 자리, 글씨 폭만큼 조금 더 바깥)
+		const ccw = signedArea(ring) > 0
+		for (const [a, b] of mergedSides(ring)) {
+			const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+			if (len < Math.max(3, radius * 0.18)) continue
+			const nx = ((b[1] - a[1]) / len) * (ccw ? 1 : -1)
+			const ny = (-(b[0] - a[0]) / len) * (ccw ? 1 : -1)
+			const off = radius * 0.2
+			pts.push(new THREE.Vector3((a[0] + b[0]) / 2 + nx * off, 0, -((a[1] + b[1]) / 2 + ny * off)))
+		}
 		const q = new THREE.Vector3()
 		// 변 길이 글씨와 북쪽 표시가 들어갈 여백 (화면 가로 84%, 세로 76% 안에)
 		const mx = 0.84
@@ -1482,6 +1496,61 @@ export function createFieldView(host: HTMLElement): FieldView {
 		},
 		onPlan(h) {
 			handlers = h
+		},
+		snapshot(width: number, height: number) {
+			const keepSel = selected
+			const keepC = C
+			const keepRatio = renderer.getPixelRatio()
+			const keepAspect = camera.aspect
+			const relight = keepC.dark
+			selected = null
+			if (relight) {
+				C = readColors(true)
+				buildWorld()
+				buildCrop()
+			}
+			buildPlan()
+			growing = false
+			applyGrow(99)
+			renderer.setPixelRatio(1)
+			renderer.setSize(width, height, false)
+			renderer.setClearColor(C.bg, 1)
+			if (scene.fog) (scene.fog as THREE.Fog).color = C.bg.clone()
+			// 손대지 않은 보기는 그림 비율에 맞춰 다시 맞추고, 돌려 본 보기는 그 각도를 그대로 담는다
+			const keepFov = camera.fov
+			const keepPos = camera.position.clone()
+			const keepTarget = controls.target.clone()
+			const aspect = width / height
+			const touched = host.classList.contains('is-touched')
+			camera.aspect = aspect
+			if (!touched) fitCamera()
+			else if (aspect < keepAspect)
+				// 화면보다 좁은 비율이면 세로 화각을 넓혀 화면에서 보던 가로 범위를 그대로 담는다
+				camera.fov =
+					(2 * Math.atan(Math.tan((keepFov * Math.PI) / 360) * (keepAspect / aspect)) * 180) /
+					Math.PI
+			camera.updateProjectionMatrix()
+			renderer.render(scene, camera)
+			camera.fov = keepFov
+			camera.position.copy(keepPos)
+			controls.target.copy(keepTarget)
+			// 같은 작업 안에서 바로 읽으면 preserveDrawingBuffer 없이도 그림이 남아 있다
+			const url = renderer.domElement.toDataURL('image/jpeg', 0.9)
+			selected = keepSel
+			if (relight) {
+				C = keepC
+				buildWorld()
+				buildCrop()
+				applyGrow(99)
+			}
+			if (scene.fog) (scene.fog as THREE.Fog).color = C.bg.clone()
+			renderer.setClearColor(0x000000, 0)
+			buildPlan()
+			renderer.setPixelRatio(keepRatio)
+			camera.aspect = keepAspect
+			resize()
+			wake()
+			return url
 		},
 		dispose() {
 			cancelAnimationFrame(raf)
