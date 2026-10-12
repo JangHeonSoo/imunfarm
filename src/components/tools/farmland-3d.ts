@@ -5,6 +5,14 @@
  */
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import {
+	KINDS,
+	corridor,
+	localFrame,
+	rectOf,
+	type Plan,
+	type PlanPiece
+} from '@/data/farmland-layout'
 
 export type Ring = [number, number][]
 
@@ -72,17 +80,7 @@ const GH_HEIGHT = 3
 
 /** 경위도 고리 → 무게중심 기준 미터. 가장 넓은 고리 하나만 쓴다 */
 export function toLocalMeters(rings: [number, number][][]): Ring | null {
-	const pick = rings
-		.filter((r) => r.length >= 3)
-		.map((r) => ({ r, a: Math.abs(signedArea(r)) }))
-		.sort((a, b) => b.a - a.a)[0]?.r
-	if (!pick) return null
-	const lon0 = pick.reduce((s, p) => s + p[0], 0) / pick.length
-	const lat0 = pick.reduce((s, p) => s + p[1], 0) / pick.length
-	const mx = 111320 * Math.cos((lat0 * Math.PI) / 180)
-	const my = 110540
-	const ring = pick.map(([x, y]) => [(x - lon0) * mx, (y - lat0) * my] as [number, number])
-	return centre(ring)
+	return localFrame(rings)?.ring ?? null
 }
 
 function signedArea(r: Ring) {
@@ -93,32 +91,6 @@ function signedArea(r: Ring) {
 		s += x1 * y2 - x2 * y1
 	}
 	return s / 2
-}
-
-/** 넓이 무게중심을 원점으로 옮기고 닫는 점(처음과 같은 끝 점)은 뺀다 */
-function centre(ring: Ring): Ring {
-	const r = ring.slice()
-	const [fx, fy] = r[0]
-	const [lx, ly] = r[r.length - 1]
-	if (Math.hypot(fx - lx, fy - ly) < 1e-6) r.pop()
-	const a = signedArea(r)
-	let cx = 0
-	let cy = 0
-	for (let i = 0; i < r.length; i++) {
-		const [x1, y1] = r[i]
-		const [x2, y2] = r[(i + 1) % r.length]
-		const f = x1 * y2 - x2 * y1
-		cx += (x1 + x2) * f
-		cy += (y1 + y2) * f
-	}
-	if (Math.abs(a) > 1e-6) {
-		cx /= 6 * a
-		cy /= 6 * a
-	} else {
-		cx = r.reduce((s, p) => s + p[0], 0) / r.length
-		cy = r.reduce((s, p) => s + p[1], 0) / r.length
-	}
-	return r.map(([x, y]) => [x - cx, y - cy])
 }
 
 /** 가로줄 y 에서 다각형 안쪽 구간들 [x1, x2] */
@@ -173,6 +145,74 @@ function rows(rot: Ring, spacing: number, margin: number) {
 	return out
 }
 
+/** 줄 구간에서 막힌 다각형(시설·진입로, 돌린 좌표)과 겹치는 부분을 뺀다. half = 줄 폭의 반 */
+function cutRows(lines: [number, number, number][], blocks: Ring[], half: number) {
+	if (!blocks.length) return lines
+	const out: [number, number, number][] = []
+	for (const [v, a, b] of lines) {
+		let segs: [number, number][] = [[a, b]]
+		for (const blk of blocks) {
+			const cuts = [-half, 0, half].flatMap((d) => scan(blk, v + d))
+			if (!cuts.length) continue
+			const c1 = Math.min(...cuts.map((c) => c[0]))
+			const c2 = Math.max(...cuts.map((c) => c[1]))
+			segs = segs.flatMap(([s, e]) => {
+				if (c2 <= s || c1 >= e) return [[s, e] as [number, number]]
+				const keep: [number, number][] = []
+				if (c1 - s > 0.3) keep.push([s, c1])
+				if (e - c2 > 0.3) keep.push([c2, e])
+				return keep
+			})
+		}
+		for (const [s, e] of segs) out.push([v, s, e])
+	}
+	return out
+}
+
+/** 꺾은선 → 바닥에 까는 띠 (폭 w) */
+function ribbon(pts: [number, number][], w: number, y: number, cap = true) {
+	const pos: number[] = []
+	const idx: number[] = []
+	for (let i = 0; i + 1 < pts.length; i++) {
+		const [x1, y1] = pts[i]
+		const [x2, y2] = pts[i + 1]
+		const l = Math.hypot(x2 - x1, y2 - y1)
+		if (l < 1e-6) continue
+		// 이음매가 비지 않게 양 끝을 반 폭만큼 늘린다
+		const ux = (x2 - x1) / l
+		const uy = (y2 - y1) / l
+		const nx = -uy * (w / 2)
+		const ny = ux * (w / 2)
+		const ex = cap ? ux * (w / 2) : 0
+		const ey = cap ? uy * (w / 2) : 0
+		const b = pos.length / 3
+		const ax = x1 - ex
+		const ay = y1 - ey
+		const bx = x2 + ex
+		const by = y2 + ey
+		pos.push(
+			ax + nx,
+			y,
+			-(ay + ny),
+			ax - nx,
+			y,
+			-(ay - ny),
+			bx - nx,
+			y,
+			-(by - ny),
+			bx + nx,
+			y,
+			-(by + ny)
+		)
+		idx.push(b, b + 1, b + 2, b, b + 2, b + 3)
+	}
+	const g = new THREE.BufferGeometry()
+	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+	g.setIndex(idx)
+	g.computeVertexNormals()
+	return g
+}
+
 const lerp = (a: THREE.Color, b: THREE.Color, t: number) => a.clone().lerp(b, t)
 
 function readColors() {
@@ -200,7 +240,12 @@ function readColors() {
 		plant: lerp(ink, bg, dark ? 0.12 : 0.2),
 		water: lerp(bg, ink, dark ? 0.2 : 0.12),
 		grid: lerp(bg, ink, dark ? 0.14 : 0.1),
-		glass: lerp(bg, ink, dark ? 0.12 : 0.02)
+		glass: lerp(bg, ink, dark ? 0.12 : 0.02),
+		// 시설 모형: 흰 모형 판, 길은 자갈빛, 배수로는 젖은 흙빛
+		model: lerp(bg, ink, dark ? 0.1 : 0.0),
+		roof: lerp(bg, ink, dark ? 0.2 : 0.08),
+		road: lerp(bg, ink, dark ? 0.24 : 0.17),
+		drain: lerp(lerp(bg, ink, dark ? 0.5 : 0.58), warm, 0.2)
 	}
 }
 
@@ -212,9 +257,30 @@ type Instanced = {
 	delay: Float32Array
 }
 
+export type PlanHandlers = {
+	/** 시설을 눌렀다 (null = 빈 땅) */
+	pick?(id: number | null): void
+	/** 시설을 끌어 놓았다 */
+	move?(id: number, x: number, y: number): void
+	/** 물·배수 표시를 끌어 놓았다 */
+	marker?(kind: 'well' | 'outlet', x: number, y: number): void
+}
+
 export type FieldView = {
 	setParcel(ring: Ring, opts?: { label?: string }): void
 	setCrop(cropId: string | null): void
+	/** 시설 배치. edit = 배치 화면 (끌기·배관·배수·밭 넓이 표시) */
+	setPlan(
+		plan: Plan | null,
+		opts: {
+			edit: boolean
+			selected: number | null
+			zoneLabel?: (m2: number) => string
+			/** true 면 작물은 다시 심지 않는다 (끄는 중) */
+			light?: boolean
+		}
+	): void
+	onPlan(h: PlanHandlers): void
 	dispose(): void
 }
 
@@ -260,7 +326,18 @@ export function createFieldView(host: HTMLElement): FieldView {
 
 	const world = new THREE.Group()
 	const cropGroup = new THREE.Group()
-	scene.add(world, cropGroup)
+	const planGroup = new THREE.Group()
+	scene.add(world, cropGroup, planGroup)
+
+	let plan: Plan | null = null
+	let editing = false
+	let selected: number | null = null
+	let zoneLabel: (m2: number) => string = (m2) => `${Math.round(m2 / 3.3058)}평`
+	let handlers: PlanHandlers = {}
+	/** 작물을 심지 않을 곳 (시설·진입로, 세계 좌표 xy) */
+	let blocks: Ring[] = []
+	let blockSig = ''
+	const pickables: THREE.Object3D[] = []
 
 	let ring: Ring = []
 	let radius = 30
@@ -278,30 +355,45 @@ export function createFieldView(host: HTMLElement): FieldView {
 	}
 
 	function clearGroup(g: THREE.Group) {
+		const gone = new Set<THREE.Material>()
 		g.traverse((o) => {
 			const m = o as THREE.Mesh
 			if (m.geometry) m.geometry.dispose()
 			const mt = (m as { material?: THREE.Material | THREE.Material[] }).material
-			if (Array.isArray(mt)) mt.forEach((x) => x.dispose())
-			else mt?.dispose()
+			for (const x of Array.isArray(mt) ? mt : mt ? [mt] : []) {
+				x.dispose()
+				gone.add(x)
+			}
 			const sp = o as THREE.Sprite
 			if (sp.isSprite) (sp.material.map as THREE.Texture | null)?.dispose()
 		})
 		g.clear()
+		// 다시 짓기를 거듭해도 재질 목록이 쌓이지 않게
+		for (let i = mats.length - 1; i >= 0; i--) if (gone.has(mats[i])) mats.splice(i, 1)
 	}
 
-	function label(text: string, size: number) {
+	/** 글자 표 (boxed = 종이색 바탕에 먹선 테두리, 작물 위에서도 읽히게) */
+	function label(text: string, size: number, boxed = false) {
 		const c = document.createElement('canvas')
 		const px = 64
+		const pad = boxed ? 22 : 8
 		const ctx = c.getContext('2d')!
 		ctx.font = `700 ${px}px Pretendard, system-ui, sans-serif`
-		const w = Math.ceil(ctx.measureText(text).width) + 16
+		const w = Math.ceil(ctx.measureText(text).width) + pad * 2
 		c.width = w
-		c.height = px + 20
+		c.height = px + (boxed ? 36 : 20)
+		const ink = `#${C.ink.getHexString(THREE.SRGBColorSpace)}`
+		if (boxed) {
+			ctx.fillStyle = `#${C.bg.getHexString(THREE.SRGBColorSpace)}`
+			ctx.fillRect(0, 0, c.width, c.height)
+			ctx.strokeStyle = ink
+			ctx.lineWidth = 5
+			ctx.strokeRect(2.5, 2.5, c.width - 5, c.height - 5)
+		}
 		ctx.font = `700 ${px}px Pretendard, system-ui, sans-serif`
-		ctx.fillStyle = `#${C.ink.getHexString(THREE.SRGBColorSpace)}`
+		ctx.fillStyle = ink
 		ctx.textBaseline = 'middle'
-		ctx.fillText(text, 8, c.height / 2)
+		ctx.fillText(text, pad, c.height / 2 + 2)
 		const tex = new THREE.CanvasTexture(c)
 		tex.colorSpace = THREE.SRGBColorSpace
 		tex.anisotropy = 4
@@ -347,52 +439,102 @@ export function createFieldView(host: HTMLElement): FieldView {
 		;(grid.material as THREE.Material).opacity = 0.9
 		world.add(grid)
 
-		// 축척 막대: 땅 크기에 맞는 둥근 길이
+		// 축척 막대: 땅 크기에 맞는 둥근 길이. 긴 변 방향으로, 카메라 쪽 땅 바깥에 둔다
 		const want = radius * 0.4
 		const L = [5, 10, 20, 50, 100, 200, 500, 1000].reduce((a, b) =>
 			Math.abs(b - want) < Math.abs(a - want) ? b : a
 		)
-		let maxY = -Infinity
-		for (const [, y] of ring) maxY = Math.max(maxY, -y)
-		const minX = -L / 2
+		const f = viewFrame()
 		const y0 = -SLAB + 0.02
-		const z0 = maxY + radius * 0.07
+		// 세계 좌표 (x, z = -y). 축 방향 u, 폭 방향 v
+		// 화면 가로(카메라 오른쪽)와 카메라 쪽 방향 (세계 x, z)
+		const u: [number, number] = [Math.cos(f.az), -Math.sin(f.az)]
+		const v: [number, number] = [Math.sin(f.az), Math.cos(f.az)]
+		let reach = 0
+		for (const [x, y] of ring) reach = Math.max(reach, (x - f.cx) * v[0] + (-y + f.cy) * v[1])
+		const off = reach + radius * 0.12
+		const c0: [number, number] = [f.cx + v[0] * off, -f.cy + v[1] * off]
 		const t = radius * 0.04
+		const at = (k: number, w: number) =>
+			new THREE.Vector3(c0[0] + u[0] * k + v[0] * w, y0, c0[1] + u[1] * k + v[1] * w)
 		const bar = new THREE.LineSegments(
 			new THREE.BufferGeometry().setFromPoints([
-				new THREE.Vector3(minX, y0, z0),
-				new THREE.Vector3(minX + L, y0, z0),
-				new THREE.Vector3(minX, y0, z0 - t),
-				new THREE.Vector3(minX, y0, z0 + t),
-				new THREE.Vector3(minX + L, y0, z0 - t),
-				new THREE.Vector3(minX + L, y0, z0 + t)
+				at(-L / 2, 0),
+				at(L / 2, 0),
+				at(-L / 2, -t),
+				at(-L / 2, t),
+				at(L / 2, -t),
+				at(L / 2, t)
 			]),
 			new THREE.LineBasicMaterial({ color: C.ink })
 		)
 		world.add(bar)
 		const tag = label(`${L}m`, radius * 0.055)
-		tag.position.set(0, y0 + radius * 0.05, z0)
+		tag.position.set(c0[0] + v[0] * t * 2.5, y0 + radius * 0.05, c0[1] + v[1] * t * 2.5)
 		world.add(tag)
 
-		// 북쪽 표시
+		// 북쪽 표시: 땅 가장 북쪽 점보다 조금 더 북쪽
+		let north = Infinity
+		for (const [, y] of ring) north = Math.min(north, -y)
 		const n = label('N', radius * 0.055)
-		n.position.set(0, y0 + radius * 0.04, -(radius * 1.3))
+		n.position.set(f.cx, y0 + radius * 0.04, north - radius * 0.22)
 		world.add(n)
+	}
+
+	/** 보는 방향과 땅의 축 기준 상자 (카메라·축척 막대 공용) */
+	function viewFrame() {
+		// 긴 땅은 긴 쪽이 화면 가로로 눕게 본다 (기본 방향 -35°에 가까운 쪽, 비스듬히 20°).
+		// 축은 가장 긴 변이 아니라 땅 전체의 주축 (꼭짓점 분산, 둘레 길이로 가중)
+		let sxx = 0
+		let syy = 0
+		let sxy = 0
+		ring.forEach(([x, y], i) => {
+			const [x2, y2] = ring[(i + 1) % ring.length]
+			const w = Math.hypot(x2 - x, y2 - y)
+			const mx = (x + x2) / 2
+			const my = (y + y2) / 2
+			sxx += w * mx * mx
+			syy += w * my * my
+			sxy += w * mx * my
+		})
+		const ax = ring.length > 2 ? 0.5 * Math.atan2(2 * sxy, sxx - syy) : theta
+		const pick = [ax, ax + Math.PI].map((a) => a - (20 * Math.PI) / 180)
+		const near = (a: number) => Math.abs(Math.atan2(Math.sin(a + 0.61), Math.cos(a + 0.61)))
+		const az = near(pick[0]) <= near(pick[1]) ? pick[0] : pick[1]
+		const us = ring.map(([x, y]) => x * Math.cos(ax) + y * Math.sin(ax))
+		const vs = ring.map(([x, y]) => -x * Math.sin(ax) + y * Math.cos(ax))
+		const uc = (Math.min(...us) + Math.max(...us)) / 2
+		const vc = (Math.min(...vs) + Math.max(...vs)) / 2
+		return {
+			ax,
+			az,
+			halfLen: Math.max(4, (Math.max(...us) - Math.min(...us)) / 2),
+			halfWid: Math.max(4, (Math.max(...vs) - Math.min(...vs)) / 2),
+			cx: uc * Math.cos(ax) - vc * Math.sin(ax),
+			cy: uc * Math.sin(ax) + vc * Math.cos(ax)
+		}
 	}
 
 	function fitCamera() {
 		// 세로·가로 시야 중 좁은 쪽에 땅이 다 들어오게 (모바일은 가로가 좁다)
 		const vfov = (camera.fov * Math.PI) / 180
 		const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (camera.aspect || 1))
-		const d = (radius / Math.sin(Math.min(vfov, hfov) / 2)) * (camera.aspect < 1 ? 1.02 : 0.86)
 		const el = (42 * Math.PI) / 180
-		const az = (-35 * Math.PI) / 180
+		const { az, halfLen, halfWid, cx, cy } = viewFrame()
+		// 20° 비스듬히 보므로 가로·깊이 모두 두 변이 섞인다. 가까운 쪽이 원근으로 커지는 만큼 여유를 둔다
+		const ob = (20 * Math.PI) / 180
+		const across = halfLen * Math.cos(ob) + halfWid * Math.sin(ob)
+		const depth = (halfWid * Math.cos(ob) + halfLen * Math.sin(ob)) * Math.sin(el)
+		const fitH = (across * 1.12) / Math.tan(hfov / 2)
+		const fitV = (depth * 1.15 + radius * 0.08) / Math.tan(vfov / 2)
+		const sphere = radius / Math.sin(Math.min(vfov, hfov) / 2)
+		const d = Math.max(fitH, fitV, sphere * 0.62) * (camera.aspect < 1 ? 0.92 : 1)
 		camera.position.set(
-			d * Math.cos(el) * Math.sin(az),
+			cx + d * Math.cos(el) * Math.sin(az),
 			d * Math.sin(el),
-			d * Math.cos(el) * Math.cos(az)
+			-cy + d * Math.cos(el) * Math.cos(az)
 		)
-		controls.target.set(0, 0, radius * 0.06)
+		controls.target.set(cx, 0, -cy + radius * 0.04)
 		controls.minDistance = radius * 0.8
 		controls.maxDistance = radius * 6
 		camera.near = Math.max(0.05, radius / 200)
@@ -460,8 +602,22 @@ export function createFieldView(host: HTMLElement): FieldView {
 			u * Math.sin(theta) + v * Math.cos(theta)
 		]
 		const area = Math.abs(signedArea(ring))
+		// 시설·진입로 자리 (작물 좌표계로 돌린 것)
+		const rotB: Ring[] = blocks.map((b) =>
+			b.map(([x, y]) => [x * cos - y * sin, x * sin + y * cos])
+		)
+		const houses = plan ? plan.pieces.filter((p) => KINDS[p.piece.k].greenhouse && !p.outside) : []
 
-		if (look.form === 'greenhouse') return buildGreenhouses(look, rot, back)
+		if (look.form === 'greenhouse') {
+			// 배치한 하우스가 있으면 그 안에만 심는다
+			if (houses.length) {
+				plantInHouses(look, houses)
+				for (const it of instanced) cropGroup.add(it.mesh)
+				startGrow()
+				return
+			}
+			return buildGreenhouses(look, rot, back, rotB)
+		}
 
 		// 포기가 너무 많으면 간격을 넓혀 그린다 (모형이라 같은 느낌만 나면 된다)
 		const natural = area / (look.row * look.step)
@@ -469,7 +625,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 		const rowSp = look.row * k
 		const step = look.step * k
 		const margin = HEADLAND * Math.min(Math.sqrt(k), 1.6)
-		let lines = rows(rot, rowSp, margin)
+		let lines = cutRows(rows(rot, rowSp, margin), rotB, rowSp * 0.3)
 		if (lines.length > MAX_RIDGES)
 			lines = lines.filter((_, i) => i % Math.ceil(lines.length / MAX_RIDGES) === 0)
 
@@ -574,22 +730,61 @@ export function createFieldView(host: HTMLElement): FieldView {
 			plants.mesh.count = i
 			instanced.push(plants)
 		}
+		// 배치한 하우스 안에도 같은 작물을 심는다 (나무·논 작물은 빼고)
+		if (houses.length && look.form !== 'tree' && look.form !== 'paddy') plantInHouses(look, houses)
 		for (const it of instanced) cropGroup.add(it.mesh)
 		startGrow()
+	}
+
+	/** 배치한 하우스 안에 길이 방향으로 줄지어 심는다 */
+	function plantInHouses(look: Look, houses: PlanPiece[]) {
+		let natural = 0
+		for (const h of houses) natural += (h.w * h.l) / (Math.max(1.2, look.row) * look.step)
+		const k = Math.max(1, Math.sqrt(natural / 2400))
+		const step = look.step * k
+		type Spot = [number, number, number]
+		const spots: Spot[] = []
+		for (const h of houses) {
+			const rowsN = Math.max(2, Math.min(40, Math.round(h.w / Math.max(1.2, look.row * k))))
+			const t = (h.piece.a * Math.PI) / 180
+			const c = Math.cos(t)
+			const s = Math.sin(t)
+			for (let r = 0; r < rowsN; r++) {
+				const v = -h.w / 2 + (h.w * (r + 0.5)) / rowsN
+				for (let u = -h.l / 2 + 1; u <= h.l / 2 - 1 && spots.length < 4000; u += step)
+					spots.push([h.piece.x + u * c - v * s, h.piece.y + u * s + v * c, h.h])
+			}
+		}
+		if (!spots.length) return
+		const geo = look.h > 1 ? unit.tall() : look.form === 'tuft' ? unit.tuft() : unit.head()
+		const plants = makeInstanced(geo, mat(C.plant), spots.length)
+		spots.forEach(([x, y, hh], i) => {
+			const j = Math.abs((Math.sin(i * 7.31) * 43758.5453) % 1)
+			const h = Math.min(look.h * Math.min(Math.sqrt(k), 1.6), hh * 0.5)
+			const w = Math.min(look.w * Math.min(k, 2), 1.2)
+			plants.pos.set([x, 0.03, -y], i * 3)
+			plants.scale.set([w * (0.85 + 0.3 * j), h * (0.85 + 0.3 * j), w], i * 3)
+			plants.rot[i] = j * Math.PI * 2
+			plants.delay[i] = 0.4 + j * 0.5
+		})
+		instanced.push(plants)
 	}
 
 	function buildGreenhouses(
 		look: Look,
 		rot: Ring,
-		back: (u: number, v: number) => [number, number]
+		back: (u: number, v: number) => [number, number],
+		rotB: Ring[] = []
 	) {
 		const area = Math.abs(signedArea(ring))
 		// 하우스가 너무 많으면 동을 넓게 (큰 땅)
 		const k = Math.max(1, Math.sqrt(area / 25000))
 		const width = GH_WIDTH * k
-		const lines = rows(rot, width + GH_GAP * k, HEADLAND * k + width / 2).filter(
-			([, a, b]) => b - a > 8
-		)
+		const lines = cutRows(
+			rows(rot, width + GH_GAP * k, HEADLAND * k + width / 2),
+			rotB,
+			width / 2
+		).filter(([, a, b]) => b - a > 8)
 		if (!lines.length) return
 		const spread = rot.reduce((m, [u]) => Math.max(m, Math.abs(u)), 1)
 
@@ -660,6 +855,478 @@ export function createFieldView(host: HTMLElement): FieldView {
 		for (const it of instanced) cropGroup.add(it.mesh)
 		startGrow()
 	}
+
+	// ── 시설 배치 ───────────────────────────────────────
+
+	const scaleK = () => Math.max(1, radius / 40)
+
+	/** 반타원 아치 (길이 x 방향, 폭 w, 높이 h, 바닥 y0) */
+	function archGeo(l: number, w: number, h: number) {
+		const g = new THREE.CylinderGeometry(0.5, 0.5, 1, 22, 1, true, 0, Math.PI)
+		g.rotateZ(Math.PI / 2)
+		g.scale(l, 2 * h, w)
+		return g
+	}
+
+	/** 아치 단면 선 (갈빗대) 여러 개를 한 덩어리로 */
+	function ribsGeo(l: number, w: number, h: number, y0: number, z0: number, every: number) {
+		const pts: THREE.Vector3[] = []
+		const n = Math.max(2, Math.round(l / every) + 1)
+		for (let i = 0; i < n; i++) {
+			const x = -l / 2 + (l * i) / (n - 1)
+			for (let s = 0; s < 14; s++) {
+				const a1 = (Math.PI * s) / 14
+				const a2 = (Math.PI * (s + 1)) / 14
+				pts.push(
+					new THREE.Vector3(x, y0 + Math.sin(a1) * h, z0 + (Math.cos(a1) * w) / 2),
+					new THREE.Vector3(x, y0 + Math.sin(a2) * h, z0 + (Math.cos(a2) * w) / 2)
+				)
+			}
+		}
+		// 마룻대 (꼭대기 긴 선)
+		pts.push(new THREE.Vector3(-l / 2, y0 + h, z0), new THREE.Vector3(l / 2, y0 + h, z0))
+		return new THREE.BufferGeometry().setFromPoints(pts)
+	}
+
+	/** 삼각 지붕 (길이 x 방향, 폭 w, 솟음 rise) */
+	function gableGeo(l: number, w: number, rise: number) {
+		const s = new THREE.Shape([
+			new THREE.Vector2(-w / 2, 0),
+			new THREE.Vector2(w / 2, 0),
+			new THREE.Vector2(0, rise)
+		])
+		const g = new THREE.ExtrudeGeometry(s, { depth: l, bevelEnabled: false })
+		// 단면(z-y 평면 → 폭이 z) 을 x 방향으로 늘린다
+		g.translate(0, 0, -l / 2)
+		g.rotateY(Math.PI / 2)
+		return g
+	}
+
+	function rectLine(
+		l: number,
+		w: number,
+		y: number,
+		grow: number,
+		m: THREE.LineBasicMaterial | THREE.LineDashedMaterial
+	) {
+		const hl = l / 2 + grow
+		const hw = w / 2 + grow
+		const line = new THREE.LineLoop(
+			new THREE.BufferGeometry().setFromPoints([
+				new THREE.Vector3(-hl, y, -hw),
+				new THREE.Vector3(hl, y, -hw),
+				new THREE.Vector3(hl, y, hw),
+				new THREE.Vector3(-hl, y, hw)
+			]),
+			m
+		)
+		line.computeLineDistances()
+		return line
+	}
+
+	function pieceModel(pp: PlanPiece) {
+		const g = new THREE.Group()
+		const { w, l, h } = pp
+		const p = pp.piece
+		const k = scaleK()
+		const ink = new THREE.LineBasicMaterial({ color: C.ink, transparent: true, opacity: 0.8 })
+		const faint = new THREE.LineBasicMaterial({ color: C.ink, transparent: true, opacity: 0.35 })
+		const glass = mat(C.glass, {
+			transparent: true,
+			opacity: C.dark ? 0.28 : 0.5,
+			side: THREE.DoubleSide,
+			depthWrite: false
+		})
+		// 면과 테두리 선을 한 묶음으로 (같이 옮기고 돌리게)
+		const solid = (geo: THREE.BufferGeometry, color: THREE.Color, y = 0) => {
+			const box = new THREE.Group()
+			box.add(new THREE.Mesh(geo, mat(color)))
+			box.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), ink))
+			box.position.y = y
+			g.add(box)
+			return box
+		}
+		const clear = (geo: THREE.BufferGeometry, y = 0) => {
+			const m = new THREE.Mesh(geo, glass)
+			m.position.y = y
+			m.renderOrder = 2
+			g.add(m)
+			return m
+		}
+		// 바닥
+		const floor = new THREE.Mesh(
+			new THREE.PlaneGeometry(l, w).rotateX(-Math.PI / 2),
+			mat(p.k === 'yard' || p.k === 'compost' ? C.road : C.paper)
+		)
+		floor.position.y = 0.022
+		g.add(floor)
+
+		if (p.k === 'single') {
+			clear(archGeo(l, w, h))
+			g.add(new THREE.LineSegments(ribsGeo(l, w, h, 0, 0, 2.4 * Math.min(k, 2)), ink))
+		} else if (p.k === 'multi' || p.k === 'smart') {
+			const bay = KINDS[p.k].w
+			const n = Math.max(1, Math.round(w / bay))
+			// 연동: 낮은 벽 위 아치 / 벤로형 온실: 높은 유리벽 위 뾰족 지붕 (한 칸에 마루 둘)
+			const rise = p.k === 'multi' ? Math.min(1.6, h * 0.42) : 0.9
+			const wall = h - rise
+			clear(new THREE.BoxGeometry(l, wall, w), wall / 2)
+			g.add(
+				new THREE.LineSegments(
+					new THREE.EdgesGeometry(new THREE.BoxGeometry(l, wall, w)).translate(0, wall / 2, 0),
+					ink
+				)
+			)
+			for (let i = 0; i < n; i++) {
+				const z0 = -w / 2 + bay * (i + 0.5)
+				if (p.k === 'multi') {
+					const roof = clear(archGeo(l, bay, rise), wall)
+					roof.position.z = z0
+					const ribs = new THREE.LineSegments(
+						ribsGeo(l, bay, rise, wall, z0, 3 * Math.min(k, 2)),
+						ink
+					)
+					g.add(ribs)
+				} else {
+					for (const dz of [-bay / 4, bay / 4]) {
+						const geo = gableGeo(l, bay / 2, rise)
+						const roof = clear(geo, wall)
+						roof.position.z = z0 + dz
+						const e = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), ink)
+						e.position.set(0, wall, z0 + dz)
+						g.add(e)
+					}
+				}
+			}
+			// 벽 기둥 선 (4m 마다)
+			const pts: THREE.Vector3[] = []
+			for (let x = -l / 2; x <= l / 2 + 1e-6; x += 4 * Math.min(k, 2))
+				for (const z of [-w / 2, w / 2])
+					pts.push(new THREE.Vector3(x, 0, z), new THREE.Vector3(x, wall, z))
+			g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), faint))
+		} else if (p.k === 'storage') {
+			const body = h * 0.72
+			solid(new THREE.BoxGeometry(l, body, w), C.model, body / 2)
+			solid(gableGeo(l + 0.3, w + 0.3, h - body), C.roof, body)
+			// 큰 문
+			const dw = Math.min(3.2, l * 0.4)
+			const door = new THREE.Mesh(
+				new THREE.PlaneGeometry(dw, body * 0.78),
+				mat(lerp(C.model, C.ink, 0.45), { side: THREE.DoubleSide })
+			)
+			door.position.set(0, (body * 0.78) / 2, w / 2 + 0.01)
+			g.add(door)
+		} else if (p.k === 'shed') {
+			const body = h * 0.88
+			solid(new THREE.BoxGeometry(l, body, w), C.model, body / 2)
+			const roof = solid(new THREE.BoxGeometry(l + 0.5, 0.12, w + 0.5), C.roof, body + 0.08)
+			roof.rotation.x = 0.08
+			const win = new THREE.Mesh(
+				new THREE.PlaneGeometry(Math.min(1.4, l * 0.3), 0.8),
+				mat(lerp(C.model, C.ink, 0.35), { side: THREE.DoubleSide })
+			)
+			win.position.set(-l * 0.18, body * 0.62, w / 2 + 0.01)
+			g.add(win)
+			const door = new THREE.Mesh(
+				new THREE.PlaneGeometry(0.9, body * 0.8),
+				mat(lerp(C.model, C.ink, 0.5), { side: THREE.DoubleSide })
+			)
+			door.position.set(l * 0.25, (body * 0.8) / 2, w / 2 + 0.01)
+			g.add(door)
+		} else if (p.k === 'compost') {
+			const t = 0.25
+			solid(new THREE.BoxGeometry(l, h, t), C.model, h / 2).position.z = -w / 2 + t / 2
+			for (const sx of [-1, 1]) {
+				const m = solid(new THREE.BoxGeometry(t, h, w), C.model, h / 2)
+				m.position.x = (sx * (l - t)) / 2
+			}
+			// 쌓인 퇴비
+			const heap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 1), mat(C.soil))
+			heap.scale.set(l * 0.7, h * 0.9, w * 0.6)
+			heap.position.set(0, 0.05, w * 0.08)
+			g.add(heap)
+		} else if (p.k === 'yard') {
+			// 주차 칸 선 (2.5m 마다)
+			const pts: THREE.Vector3[] = []
+			for (let x = -l / 2 + 2.5; x < l / 2 - 0.5; x += 2.5)
+				pts.push(
+					new THREE.Vector3(x, 0.04, -w / 2),
+					new THREE.Vector3(x, 0.04, -w / 2 + Math.min(5, w * 0.7))
+				)
+			g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), faint))
+		}
+
+		// 바닥 테두리: 문제 있으면 점선과 ×, 고른 것은 바깥에 한 줄 더
+		const bad = pp.outside || pp.overlap || pp.tooBig
+		if (bad) {
+			const dash = new THREE.LineDashedMaterial({
+				color: C.ink,
+				dashSize: 0.7 * Math.min(k, 3),
+				gapSize: 0.45 * Math.min(k, 3)
+			})
+			g.add(rectLine(l, w, 0.06, 0.25, dash))
+			const x = new THREE.LineSegments(
+				new THREE.BufferGeometry().setFromPoints([
+					new THREE.Vector3(-l / 2, 0.06, -w / 2),
+					new THREE.Vector3(l / 2, 0.06, w / 2),
+					new THREE.Vector3(-l / 2, 0.06, w / 2),
+					new THREE.Vector3(l / 2, 0.06, -w / 2)
+				]),
+				ink
+			)
+			g.add(x)
+		} else {
+			g.add(rectLine(l, w, 0.05, 0, ink))
+		}
+		if (selected === p.id) {
+			const sel = new THREE.LineBasicMaterial({ color: C.ink })
+			const off = 0.6 * Math.min(k, 3)
+			g.add(rectLine(l, w, 0.07, off, sel), rectLine(l, w, 0.07, off * 1.25, sel))
+			// 모서리 세움선
+			const pts: THREE.Vector3[] = []
+			for (const sx of [-1, 1])
+				for (const sz of [-1, 1]) {
+					const x = sx * (l / 2 + off)
+					const z = sz * (w / 2 + off)
+					pts.push(new THREE.Vector3(x, 0, z), new THREE.Vector3(x, Math.max(1.2, h) * 1.05, z))
+				}
+			g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), sel))
+		}
+
+		// 누르기 쉬운 투명 상자
+		const hit = new THREE.Mesh(
+			new THREE.BoxGeometry(l + 0.6, Math.max(1, h), w + 0.6),
+			new THREE.MeshBasicMaterial({ visible: false })
+		)
+		hit.position.y = Math.max(1, h) / 2
+		g.add(hit)
+
+		g.position.set(p.x, 0, -p.y)
+		g.rotation.y = (p.a * Math.PI) / 180
+		g.userData = { pick: 'piece', id: p.id }
+		return g
+	}
+
+	function marker(kind: 'well' | 'outlet', at: [number, number], text: string) {
+		const g = new THREE.Group()
+		// 땅 크기에 맞춰 보이는 크기 (작은 땅에서 너무 크지 않게)
+		const k = Math.max(0.7, Math.min(radius / 26, 6))
+		if (kind === 'well') {
+			const casing = new THREE.Mesh(
+				new THREE.CylinderGeometry(0.45 * k, 0.45 * k, 1.1 * k, 16),
+				mat(C.model)
+			)
+			casing.position.y = 0.55 * k
+			g.add(casing)
+			g.add(
+				new THREE.LineSegments(
+					new THREE.EdgesGeometry(
+						new THREE.CylinderGeometry(0.45 * k, 0.45 * k, 1.1 * k, 16),
+						30
+					).translate(0, 0.55 * k, 0),
+					new THREE.LineBasicMaterial({ color: C.ink })
+				)
+			)
+			const cap = new THREE.Mesh(
+				new THREE.CylinderGeometry(0.55 * k, 0.55 * k, 0.12 * k, 16),
+				mat(C.ink)
+			)
+			cap.position.y = 1.1 * k
+			g.add(cap)
+		} else {
+			// 바닥에 둔 화살촉 (물이 빠지는 쪽)
+			const cone = new THREE.Mesh(new THREE.ConeGeometry(0.6 * k, 1.2 * k, 3), mat(C.ink))
+			cone.rotation.x = Math.PI
+			cone.position.y = 0.6 * k
+			g.add(cone)
+		}
+		const tag = label(text, radius * 0.042, true)
+		tag.position.set(0, 1.4 * k + radius * 0.03, 0)
+		g.add(tag)
+		const hit = new THREE.Mesh(
+			new THREE.CylinderGeometry(1.4 * k, 1.4 * k, 2.4 * k, 8),
+			new THREE.MeshBasicMaterial({ visible: false })
+		)
+		hit.position.y = 1.2 * k
+		g.add(hit)
+		g.position.set(at[0], 0, -at[1])
+		g.userData = { pick: kind }
+		return g
+	}
+
+	function buildPlan() {
+		clearGroup(planGroup)
+		pickables.length = 0
+		if (!plan || ring.length < 3) return
+		const pipeW = Math.max(0.22, radius * 0.009)
+		const drainW = Math.max(0.5, radius * 0.022)
+		const inkLine = new THREE.LineBasicMaterial({ color: C.ink, transparent: true, opacity: 0.7 })
+
+		if (plan.entry) {
+			const road = new THREE.Mesh(
+				ribbon([plan.entry.a, plan.entry.b], plan.entry.w, 0.03, false),
+				mat(C.road)
+			)
+			planGroup.add(road)
+			const [a, b] = [plan.entry.a, plan.entry.b]
+			const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1
+			const nx = (-(b[1] - a[1]) / l) * (plan.entry.w / 2)
+			const ny = ((b[0] - a[0]) / l) * (plan.entry.w / 2)
+			planGroup.add(
+				new THREE.LineSegments(
+					new THREE.BufferGeometry().setFromPoints([
+						new THREE.Vector3(a[0] + nx, 0.05, -(a[1] + ny)),
+						new THREE.Vector3(b[0] + nx, 0.05, -(b[1] + ny)),
+						new THREE.Vector3(a[0] - nx, 0.05, -(a[1] - ny)),
+						new THREE.Vector3(b[0] - nx, 0.05, -(b[1] - ny))
+					]),
+					inkLine
+				)
+			)
+		}
+
+		for (const pp of plan.pieces) {
+			const m = pieceModel(pp)
+			planGroup.add(m)
+			pickables.push(m)
+		}
+
+		if (!editing) return
+		// 배수로 (넓은 젖은 흙빛 띠) 와 급수관 (가는 먹선)
+		const drainMat = mat(C.drain)
+		for (const d of plan.drains) planGroup.add(new THREE.Mesh(ribbon(d, drainW, 0.05), drainMat))
+		const pipeMat = new THREE.MeshBasicMaterial({ color: C.ink })
+		mats.push(pipeMat)
+		for (const pl of plan.pipes) planGroup.add(new THREE.Mesh(ribbon(pl, pipeW, 0.07), pipeMat))
+		// 갈림 지점
+		const dot = new THREE.CircleGeometry(pipeW * 1.6, 14).rotateX(-Math.PI / 2)
+		for (const pl of plan.pipes) {
+			const m = new THREE.Mesh(dot, pipeMat)
+			m.position.set(pl[pl.length - 1][0], 0.075, -pl[pl.length - 1][1])
+			planGroup.add(m)
+		}
+		const isEn = document.documentElement.lang.startsWith('en')
+		const well = marker('well', plan.well, isEn ? 'Water' : '물')
+		const outlet = marker('outlet', plan.outlet, isEn ? 'Drain' : '배수')
+		planGroup.add(well, outlet)
+		pickables.push(well, outlet)
+		// 노지 밭 넓이
+		for (const z of plan.zones.slice(0, 4)) {
+			const s = label(zoneLabel(z.area), radius * 0.045, true)
+			s.position.set(z.at[0], radius * 0.035, -z.at[1])
+			planGroup.add(s)
+		}
+	}
+
+	// 끌기: 배치 화면에서 시설·표시를 누르면 돌리기 대신 옮긴다
+	const raycaster = new THREE.Raycaster()
+	const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+	const ndc = new THREE.Vector2()
+	function aim(cx: number, cy: number) {
+		const r = renderer.domElement.getBoundingClientRect()
+		ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1)
+		raycaster.setFromCamera(ndc, camera)
+	}
+	function pickAt(cx: number, cy: number): THREE.Object3D | null {
+		if (!editing || !pickables.length) return null
+		aim(cx, cy)
+		for (const h of raycaster.intersectObjects(pickables, true)) {
+			let o: THREE.Object3D | null = h.object
+			while (o && !o.userData.pick) o = o.parent
+			if (o) return o
+		}
+		return null
+	}
+	function groundAt(cx: number, cy: number): [number, number] | null {
+		aim(cx, cy)
+		const v = new THREE.Vector3()
+		return raycaster.ray.intersectPlane(groundPlane, v) ? [v.x, -v.z] : null
+	}
+	let drag: {
+		obj: THREE.Object3D
+		off: [number, number]
+		start: [number, number]
+		moved: boolean
+		id: number
+	} | null = null
+	let down: [number, number] | null = null
+	host.addEventListener(
+		'pointerdown',
+		(e) => {
+			down = [e.clientX, e.clientY]
+			const o = pickAt(e.clientX, e.clientY)
+			if (!o) return
+			const g = groundAt(e.clientX, e.clientY)
+			if (!g) return
+			e.stopPropagation()
+			controls.enabled = false
+			controls.autoRotate = false
+			host.classList.add('is-touched', 'is-dragging')
+			drag = {
+				obj: o,
+				off: [o.position.x - g[0], -o.position.z - g[1]],
+				start: [e.clientX, e.clientY],
+				moved: false,
+				id: e.pointerId
+			}
+			try {
+				renderer.domElement.setPointerCapture(e.pointerId)
+			} catch {
+				// 없어도 된다
+			}
+		},
+		{ capture: true }
+	)
+	host.addEventListener(
+		'pointermove',
+		(e) => {
+			if (!drag || e.pointerId !== drag.id) return
+			if (Math.hypot(e.clientX - drag.start[0], e.clientY - drag.start[1]) > 4) drag.moved = true
+			if (!drag.moved) return
+			const g = groundAt(e.clientX, e.clientY)
+			if (!g) return
+			drag.obj.position.x = g[0] + drag.off[0]
+			drag.obj.position.z = -(g[1] + drag.off[1])
+			wake()
+		},
+		{ capture: true }
+	)
+	const endDrag = (e: PointerEvent) => {
+		if (drag && e.pointerId === drag.id) {
+			const d = drag
+			drag = null
+			controls.enabled = true
+			host.classList.remove('is-dragging')
+			const x = d.obj.position.x
+			const y = -d.obj.position.z
+			const kind = d.obj.userData.pick as string
+			if (kind === 'piece') {
+				if (d.moved) handlers.move?.(d.obj.userData.id, x, y)
+				else handlers.pick?.(d.obj.userData.id)
+			} else if (d.moved) handlers.marker?.(kind as 'well' | 'outlet', x, y)
+			return
+		}
+		// 빈 땅을 톡 누르면 고른 것을 푼다
+		if (
+			editing &&
+			down &&
+			Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 5 &&
+			e.type === 'pointerup'
+		)
+			handlers.pick?.(null)
+		down = null
+	}
+	host.addEventListener('pointerup', endDrag, { capture: true })
+	host.addEventListener('pointercancel', endDrag, { capture: true })
+	// 손가락으로 시설을 누르면 페이지가 내려가지 않게
+	host.addEventListener(
+		'touchstart',
+		(e) => {
+			const t = e.touches[0]
+			if (t && e.touches.length === 1 && pickAt(t.clientX, t.clientY)) e.preventDefault()
+		},
+		{ capture: true, passive: false }
+	)
 
 	const dummy = new THREE.Object3D()
 	function applyGrow(t: number) {
@@ -738,6 +1405,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 		if (scene.fog) (scene.fog as THREE.Fog).color = C.bg.clone()
 		buildWorld()
 		buildCrop()
+		buildPlan()
 		growing = false
 		applyGrow(99)
 		wake()
@@ -751,9 +1419,15 @@ export function createFieldView(host: HTMLElement): FieldView {
 			ring = r
 			radius = Math.max(8, ...r.map(([x, y]) => Math.hypot(x, y)))
 			theta = mainAngle(r)
+			// 새 땅이면 앞 땅의 배치는 지운다 (부르는 쪽이 새 배치를 다시 준다)
+			plan = null
+			blocks = []
+			blockSig = ''
+			clearGroup(planGroup)
+			pickables.length = 0
 			buildWorld()
 			fitCamera()
-			controls.autoRotate = !reduced && !host.classList.contains('is-touched')
+			controls.autoRotate = !reduced && !editing && !host.classList.contains('is-touched')
 			buildCrop()
 			wake()
 		},
@@ -762,12 +1436,40 @@ export function createFieldView(host: HTMLElement): FieldView {
 			buildCrop()
 			wake()
 		},
+		setPlan(p, opts) {
+			plan = p
+			editing = opts.edit
+			selected = opts.selected
+			if (opts.zoneLabel) zoneLabel = opts.zoneLabel
+			if (editing) controls.autoRotate = false
+			// 시설 자리가 바뀐 때만 작물을 다시 심는다 (고르기만 바꾸면 그대로)
+			const next = p
+				? [
+						...p.pieces.map((pp) => rectOf(pp.piece, 1.1)),
+						...(p.entry ? [corridor(p.entry.a, p.entry.b, p.entry.w + 0.6)] : [])
+					]
+				: []
+			const sig = next
+				.map((r) => r.map(([x, y]) => `${Math.round(x * 10)},${Math.round(y * 10)}`).join(';'))
+				.join('|')
+			buildPlan()
+			if (sig !== blockSig && !opts.light) {
+				blocks = next
+				blockSig = sig
+				buildCrop()
+			}
+			wake()
+		},
+		onPlan(h) {
+			handlers = h
+		},
 		dispose() {
 			cancelAnimationFrame(raf)
 			ro.disconnect()
 			io.disconnect()
 			mo.disconnect()
 			clearGroup(cropGroup)
+			clearGroup(planGroup)
 			clearGroup(world)
 			mats.forEach((m) => m.dispose())
 			controls.dispose()

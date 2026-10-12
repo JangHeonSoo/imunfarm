@@ -176,6 +176,49 @@ export async function parcelAt(lon: number, lat: number): Promise<Parcel | null>
 	}
 }
 
+/**
+ * 2-1) 필지 둘레 이웃 필지 (지번 끝 지목으로 길·구거·하천을 찾는다). 경계 상자를 30m 정도 넓혀 한 번에 받는다.
+ * 실패하면 빈 목록 (길 쪽은 가장 긴 변으로 어림한다)
+ */
+export async function neighboursOf(
+	polygon: [number, number][][],
+	pnu: string
+): Promise<{ jibun: string; rings: [number, number][][] }[]> {
+	const pts = polygon.flat()
+	if (!pts.length) return []
+	const xs = pts.map((p) => p[0])
+	const ys = pts.map((p) => p[1])
+	const pad = 0.0003
+	const data = (await call('https://api.vworld.kr/req/data', {
+		service: 'data',
+		request: 'GetFeature',
+		version: '2.0',
+		data: 'LP_PA_CBND_BUBUN',
+		geomFilter: `BOX(${Math.min(...xs) - pad},${Math.min(...ys) - pad},${Math.max(...xs) + pad},${Math.max(...ys) + pad})`,
+		geometry: true,
+		attribute: true,
+		crs: 'EPSG:4326',
+		format: 'json',
+		errorformat: 'json',
+		size: 200,
+		page: 1
+	})) as {
+		response?: {
+			result?: {
+				featureCollection?: {
+					features?: {
+						geometry?: { type: string; coordinates: unknown }
+						properties?: Record<string, string>
+					}[]
+				}
+			}
+		}
+	}
+	return (data.response?.result?.featureCollection?.features ?? [])
+		.filter((f) => f.properties?.pnu !== pnu)
+		.map((f) => ({ jibun: f.properties?.jibun ?? '', rings: ringsOf(f.geometry) }))
+}
+
 /** 3) pnu → 토지특성. 해마다 한 줄씩 오래된 해부터 오므로(2013년부터 18줄 정도) 넉넉히 받아 가장 최근 해를 쓴다 */
 export async function landFacts(pnu: string): Promise<LandFacts | null> {
 	const data = (await call('https://api.vworld.kr/ned/data/getLandCharacteristics', {

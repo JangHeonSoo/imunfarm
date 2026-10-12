@@ -13,6 +13,7 @@ import {
 	rankCrops,
 	type Jimok
 } from '@/data/farmland-crops'
+import { KINDS, KIND_ORDER } from '@/data/farmland-layout'
 
 const { locale = DEFAULT_LOCALE } = Astro.props
 const isEn = locale === 'en'
@@ -53,7 +54,7 @@ const byJimok = (['전', '답', '과수원'] as Jimok[]).map((j) => ({
 	picks: rankCrops({ jimok: j, use: null, zone: 'central', month }, 6).map((p) => cropName(p.id))
 }))
 
-// 처음 화면의 예시 땅: 충남 서산시 운산면 여미리 1 (전 2,294㎡, 팜맵 밭). 경계는 무게중심 기준 미터
+// 처음 화면의 예시 땅: 충남 서산시 운산면 여미리 1 (전 2,294㎡, 팜맵 밭). 경계는 무게중심 기준 미터 (localFrame 과 같은 계산)
 const SAMPLE = {
 	address: isEn
 		? 'Yeomi-ri 1, Unsan-myeon, Seosan, South Chungcheong'
@@ -65,29 +66,36 @@ const SAMPLE = {
 	isFarmland: true,
 	crops: rankCrops({ jimok: '전', use: '밭', zone: 'central', month }, 6),
 	ring: [
-		[-29.2, 5.9],
-		[-26.7, 10.2],
-		[-22, 14.9],
-		[-12.7, 19.7],
-		[-4.6, 22.3],
-		[-2, 23],
-		[3.1, 24.4],
-		[11.3, 21.6],
-		[21.6, 15.7],
-		[26.2, 9.4],
-		[26.9, 1.5],
-		[28.3, -7.2],
-		[25.9, -10.7],
-		[27.1, -14.3],
-		[24.3, -21.1],
-		[23.2, -21.8],
-		[-0.6, -37.5],
-		[-5.8, -31.5],
-		[-14.6, -15.8],
-		[-19.4, -10.4],
-		[-24, -4.7],
-		[-27.2, 0.7]
-	] as [number, number][]
+		[-31.1, 9.1],
+		[-28.6, 13.4],
+		[-23.9, 18.2],
+		[-14.6, 23],
+		[-6.5, 25.6],
+		[-3.9, 26.3],
+		[1.2, 27.7],
+		[9.4, 24.9],
+		[19.7, 18.9],
+		[24.3, 12.6],
+		[25, 4.8],
+		[26.4, -3.9],
+		[24, -7.4],
+		[25.2, -11],
+		[22.4, -17.8],
+		[21.3, -18.6],
+		[-2.6, -34.2],
+		[-7.7, -28.3],
+		[-16.5, -12.5],
+		[-21.3, -7.2],
+		[-25.9, -1.5],
+		[-29.1, 3.9]
+	] as [number, number][],
+	// 변마다 바깥에 닿은 땅 (이웃 필지 지목으로 2026-10-12 확인: 서쪽 아래 변들이 구거 406구, 길에 닿은 변은 없음)
+	tags: [...Array(16).fill(null), ...Array(6).fill('ditch')] as (
+		| 'road'
+		| 'ditch'
+		| 'river'
+		| null
+	)[]
 }
 
 // 3D 가 뜨기 전(또는 WebGL 이 없을 때) 보이는 위에서 본 윤곽
@@ -213,8 +221,8 @@ const data = {
 	description={description}
 	h1={isEn ? 'What to grow on my land' : '내 땅에 맞는 작물 찾기'}
 	lede={isEn
-		? 'Enter an address. We raise your plot in 3D and plant the crops that suit it.'
-		: '주소를 넣으면 내 땅을 3D로 세우고, 맞는 작물을 골라 심어 봅니다.'}
+		? 'Enter an address. We raise your plot in 3D, plant the crops that suit it and let you lay out greenhouses, sheds and water.'
+		: '주소를 넣으면 내 땅을 3D로 세우고, 맞는 작물을 심어 보고 하우스·창고·물길 배치까지 그려 봅니다.'}
 	basis={isEn ? 'Cadastral data · FarmMap' : '연속지적도·토지특성·팜맵 기준'}
 	faq={faq}
 	related={related}
@@ -251,6 +259,13 @@ const data = {
 			</svg>
 			<p class='im-farm-tag' id='im-farm-tag'>{isEn ? 'Example' : '예시'}</p>
 			<p class='im-farm-drag' aria-hidden='true'>{isEn ? 'Drag to turn' : '끌어서 돌려 보기'}</p>
+			<p class='im-farm-drag is-plan-hint' aria-hidden='true'>
+				{
+					isEn
+						? 'Drag a facility, the water or drain mark to move it'
+						: '시설·물·배수 표시를 끌어 옮깁니다'
+				}
+			</p>
 			<p class='im-farm-busy'>{isEn ? 'Looking up…' : '찾는 중입니다…'}</p>
 		</div>
 
@@ -258,37 +273,124 @@ const data = {
 			<p class='im-farm-addr' id='im-farm-addr'>{SAMPLE.address}</p>
 			<p class='im-farm-facts' id='im-farm-facts'>{sampleFacts}</p>
 			<p class='im-farm-note' id='im-farm-note' hidden></p>
-			<div
-				class='im-farm-chips'
-				id='im-farm-chips'
-				role='group'
-				aria-label={isEn ? 'Crops that fit' : '맞는 작물'}
-			>
-				{
-					SAMPLE.crops.map((p, k) => (
-						<button
-							type='button'
-							class='im-farm-chip'
-							data-id={p.id}
-							aria-pressed={k === 0 ? 'true' : 'false'}
-						>
-							{cropName(p.id)}
-						</button>
-					))
-				}
+
+			<div class='im-farm-modes' role='tablist' aria-label={isEn ? 'View' : '보기'}>
+				<button type='button' role='tab' id='im-farm-tab-crop' data-mode='crop' aria-selected='true'
+					>{isEn ? 'Crops' : '작물'}</button
+				>
+				<button
+					type='button'
+					role='tab'
+					id='im-farm-tab-plan'
+					data-mode='plan'
+					aria-selected='false'>{isEn ? 'Facilities' : '시설 배치'}</button
+				>
 			</div>
-			<p class='im-farm-pick' id='im-farm-pick'>
-				{
-					first && (
-						<>
-							<span>{season(first)}</span>
-							{first.priceId && (
-								<a href={`${prefix}/prices/${first.priceId}/`}>{priceText(first.id)}</a>
-							)}
-						</>
-					)
-				}
-			</p>
+
+			<div id='im-farm-crop-pane' role='tabpanel' aria-labelledby='im-farm-tab-crop'>
+				<div
+					class='im-farm-chips'
+					id='im-farm-chips'
+					role='group'
+					aria-label={isEn ? 'Crops that fit' : '맞는 작물'}
+				>
+					{
+						SAMPLE.crops.map((p, k) => (
+							<button
+								type='button'
+								class='im-farm-chip'
+								data-id={p.id}
+								aria-pressed={k === 0 ? 'true' : 'false'}
+							>
+								{cropName(p.id)}
+							</button>
+						))
+					}
+				</div>
+				<p class='im-farm-pick' id='im-farm-pick'>
+					{
+						first && (
+							<>
+								<span>{season(first)}</span>
+								{first.priceId && (
+									<a href={`${prefix}/prices/${first.priceId}/`}>{priceText(first.id)}</a>
+								)}
+							</>
+						)
+					}
+				</p>
+			</div>
+
+			<div id='im-farm-plan-pane' role='tabpanel' aria-labelledby='im-farm-tab-plan' hidden>
+				<div
+					class='im-farm-palette'
+					role='group'
+					aria-label={isEn ? 'Add a facility' : '시설 넣기'}
+				>
+					{
+						KIND_ORDER.map((k) => (
+							<button type='button' data-kind={k}>
+								<span aria-hidden='true'>+</span>
+								{isEn ? KINDS[k].en : KINDS[k].ko}
+							</button>
+						))
+					}
+				</div>
+				<div class='im-farm-actions'>
+					<button type='button' id='im-farm-auto'>{isEn ? 'Auto layout' : '자동 배치'}</button>
+					<button type='button' id='im-farm-clear'>{isEn ? 'Clear' : '모두 지우기'}</button>
+					<button type='button' id='im-farm-share'>{isEn ? 'Copy link' : '배치 주소 복사'}</button>
+				</div>
+
+				<div class='im-farm-tool' id='im-farm-tool' hidden>
+					<p class='im-farm-tool-name' id='im-farm-tool-name'></p>
+					<div class='im-farm-tool-row'>
+						<span class='im-farm-step'>
+							<button type='button' data-act='len-' aria-label={isEn ? 'Shorter' : '짧게'}>−</button
+							>
+							<span>{isEn ? 'Length' : '길이'}</span>
+							<button type='button' data-act='len+' aria-label={isEn ? 'Longer' : '길게'}>+</button>
+						</span>
+						<span class='im-farm-step' id='im-farm-bays'>
+							<button type='button' data-act='n-' aria-label={isEn ? 'Fewer bays' : '칸 줄이기'}
+								>−</button
+							>
+							<span>{isEn ? 'Bays' : '칸'}</span>
+							<button type='button' data-act='n+' aria-label={isEn ? 'More bays' : '칸 늘리기'}
+								>+</button
+							>
+						</span>
+						<button type='button' class='im-farm-tool-btn' data-act='turn'
+							>{isEn ? 'Turn 90°' : '90° 돌리기'}</button
+						>
+						<label class='im-farm-angle'>
+							<span class='sr-only'>{isEn ? 'Angle' : '각도'}</span>
+							<input type='range' id='im-farm-angle' min='0' max='179' step='1' value='0' />
+						</label>
+						<button type='button' class='im-farm-tool-btn' data-act='del'
+							>{isEn ? 'Delete' : '삭제'}</button
+						>
+					</div>
+				</div>
+
+				<dl class='im-farm-sum' id='im-farm-sum'>
+					<div><dt>{isEn ? 'Facilities' : '시설 면적'}</dt><dd data-k='facility'>–</dd></div>
+					<div><dt>{isEn ? 'Greenhouses' : '하우스'}</dt><dd data-k='houses'>–</dd></div>
+					<div><dt>{isEn ? 'Open field left' : '남은 밭'}</dt><dd data-k='field'>–</dd></div>
+					<div>
+						<dt>
+							<i class='im-farm-key is-pipe' aria-hidden='true'></i>{isEn ? 'Water pipe' : '배관'}
+						</dt><dd data-k='pipe'>–</dd>
+					</div>
+					<div>
+						<dt>
+							<i class='im-farm-key is-drain' aria-hidden='true'></i>{isEn ? 'Drain' : '배수로'}
+						</dt><dd data-k='drain'>–</dd>
+					</div>
+				</dl>
+				<p class='im-farm-approx' id='im-farm-approx'></p>
+				<p class='im-farm-law' id='im-farm-law' hidden></p>
+			</div>
 		</div>
 	</section>
 
@@ -423,7 +525,34 @@ const data = {
 
 <script>
 	import { monthRange, type CropRule, type CropPick, type Zone } from '@/data/farmland-crops'
-	import { geocode, landFacts, parcelAt, polygonAreaM2, vworldReady } from '@/data/farmland-vworld'
+	import {
+		geocode,
+		landFacts,
+		neighboursOf,
+		parcelAt,
+		polygonAreaM2,
+		vworldReady
+	} from '@/data/farmland-vworld'
+	import {
+		KINDS,
+		autoLayout,
+		classifyEdges,
+		computePlan,
+		decodeLayout,
+		encodeLayout,
+		exportPlan,
+		inPoly,
+		localFrame,
+		makeSite,
+		nearestOnRing,
+		placeNew,
+		tagOfJibun,
+		type EdgeTag,
+		type Layout,
+		type PieceKind,
+		type Plan,
+		type Site
+	} from '@/data/farmland-layout'
 	import type { FieldView, Ring } from './farmland-3d'
 
 	type Price = { price: number; unit: string; date: string; region: string } | null
@@ -446,7 +575,7 @@ const data = {
 		crops: CropRule[]
 		prices: Record<string, Price>
 		zones: Record<Zone, { ko: string; en: string }>
-		sample: View & { ring: Ring }
+		sample: View & { ring: Ring; tags: EdgeTag[] }
 	}
 
 	const D = JSON.parse(document.getElementById('im-farm-data')!.textContent || '{}') as Data
@@ -503,6 +632,8 @@ const data = {
 			}
 			view.setParcel(r)
 			view.setCrop(crop)
+			view.onPlan(planHandlers)
+			refreshPlan()
 		} catch {
 			// WebGL 이 없으면 위에서 본 윤곽(svg)만 남는다
 			stage.classList.remove('is-3d')
@@ -579,8 +710,14 @@ const data = {
 		if (b) select(b.dataset.id!)
 	})
 
-	function render(v: View, r: Ring, isSample = false) {
+	function render(v: View, r: Ring, isSample = false, tags: EdgeTag[] = []) {
 		current = v
+		// 새 땅: 배치는 주소창에 저장된 것(처음 열 때만) 아니면 비운다
+		site = makeSite(r, tags)
+		layout = pending ?? { pieces: [], well: null, outlet: null }
+		pending = null
+		sel = null
+		autoDone = layout.pieces.length > 0
 		tag.hidden = !isSample
 		addrEl.textContent = v.address
 		const area = v.areaM2
@@ -631,6 +768,257 @@ const data = {
 		show(r, firstId)
 	}
 
+	// ── 시설 배치 ───────────────────────────────────────
+	const pane = { crop: $('im-farm-crop-pane'), plan: $('im-farm-plan-pane') }
+	const tabs = [...document.querySelectorAll<HTMLButtonElement>('.im-farm-modes [data-mode]')]
+	const toolEl = $('im-farm-tool')
+	const toolName = $('im-farm-tool-name')
+	const baysEl = $('im-farm-bays')
+	const angleEl = $<HTMLInputElement>('im-farm-angle')
+	const sumEl = $('im-farm-sum')
+	const approxEl = $('im-farm-approx')
+	const lawEl = $('im-farm-law')
+	const shareBtn = $<HTMLButtonElement>('im-farm-share')
+
+	let site: Site = makeSite(D.sample.ring, D.sample.tags)
+	let layout: Layout = { pieces: [], well: null, outlet: null }
+	let pending: Layout | null = null
+	let plan: Plan | null = null
+	let mode: 'crop' | 'plan' = 'crop'
+	let sel: number | null = null
+	let autoDone = false
+
+	const pyeong = (m2: number) => L(`${num(m2 / 3.3058)}평`, `${num(m2 / 3.3058)} py`)
+	const m1 = (v: number) => (Math.round(v * 10) / 10).toLocaleString(isEn ? 'en-US' : 'ko-KR')
+	const kindName = (k: PieceKind) => (isEn ? KINDS[k].en : KINDS[k].ko)
+
+	function setMode(m: 'crop' | 'plan', apply = true) {
+		mode = m
+		for (const t of tabs) t.setAttribute('aria-selected', String(t.dataset.mode === m))
+		pane.crop.hidden = m !== 'crop'
+		pane.plan.hidden = m !== 'plan'
+		stage.classList.toggle('is-plan', m === 'plan')
+		if (m === 'crop') sel = null
+		// 처음 시설 배치를 열면 자동 배치를 한 번 보여 준다 (지우기는 언제든)
+		if (m === 'plan' && !autoDone && !layout.pieces.length) {
+			layout = { ...autoLayout(site), well: layout.well, outlet: layout.outlet }
+			autoDone = true
+		}
+		if (apply) refreshPlan()
+	}
+	for (const t of tabs)
+		t.addEventListener('click', () => setMode(t.dataset.mode as 'crop' | 'plan'))
+
+	function refreshPlan(light = false) {
+		const any = layout.pieces.length > 0
+		plan = mode === 'plan' || any ? computePlan(site, layout) : null
+		view?.setPlan(plan, {
+			edit: mode === 'plan',
+			selected: sel,
+			light,
+			zoneLabel: (m2) => L(`밭 ${num(m2 / 3.3058)}평`, `Field ${num(m2)} ㎡`)
+		})
+		updatePanel()
+		if (!light)
+			saveHash()
+			// 3단계(배치도 PDF)가 읽을 자료
+		;(window as unknown as { imunFarmPlan?: unknown }).imunFarmPlan = plan
+			? exportPlan(site, plan)
+			: null
+	}
+
+	function updatePanel() {
+		const t = plan?.totals
+		const put = (k: string, v: string, sub = '') => {
+			const dd = sumEl.querySelector<HTMLElement>(`[data-k="${k}"]`)!
+			dd.textContent = v
+			if (sub) {
+				const s = document.createElement('small')
+				s.textContent = sub
+				dd.append(s)
+			}
+		}
+		if (t) {
+			put('facility', pyeong(t.facility), `${num(t.facility)}㎡`)
+			put('houses', L(`${t.houses}동`, `${t.houses}`), `${num(t.greenhouse)}㎡`)
+			put('field', pyeong(t.field), `${num(t.field)}㎡`)
+			put('pipe', `${num(t.pipe)}m`)
+			put('drain', `${num(t.drain)}m`)
+		}
+
+		const p = layout.pieces.find((x) => x.id === sel)
+		const pp = plan?.pieces.find((x) => x.piece.id === sel)
+		toolEl.hidden = !p
+		if (p && pp) {
+			const spec = KINDS[p.k]
+			const issues = [
+				pp.outside ? L('땅 밖으로 나갔습니다', 'outside the plot') : '',
+				pp.overlap ? L('다른 시설과 겹칩니다', 'overlaps another') : '',
+				pp.tooBig ? L(`${spec.maxArea}㎡를 넘습니다`, `over ${spec.maxArea} ㎡`) : ''
+			].filter(Boolean)
+			const name =
+				spec.n && p.k !== 'smart'
+					? `${kindName(p.k)} ${L(`${p.n}연동`, `× ${p.n}`)}`
+					: kindName(p.k)
+			toolName.textContent = [
+				name,
+				`${m1(pp.w)} × ${m1(pp.l)}m`,
+				`${num(pp.area)}㎡`,
+				...issues
+			].join(' · ')
+			toolName.classList.toggle('is-bad', issues.length > 0)
+			baysEl.hidden = !spec.n
+			angleEl.value = String(((Math.round(p.a) % 180) + 180) % 180)
+		}
+
+		approxEl.textContent =
+			L(
+				'길·배관·배수로는 지적도 경계로 그린 대략적인 선이며, 땅 높낮이는 반영하지 않았습니다.',
+				'Road, pipes and drains are rough lines drawn from the cadastral outline; slope is not considered.'
+			) +
+			(site.roadFrom === 'open'
+				? L(
+						' 지적도에 도로 필지가 없어, 이웃 땅이 닿지 않은 쪽을 길로 보았습니다.',
+						' No road parcel is mapped, so the side with no neighbouring lot is treated as the road.'
+					)
+				: site.roadFrom === 'longest'
+					? L(
+							' 길에 닿은 변을 찾지 못해 가장 긴 변을 길 쪽으로 잡았습니다.',
+							' No road edge was found, so the longest edge is treated as the road side.'
+						)
+					: '')
+
+		const law: string[] = []
+		const shed = plan?.pieces.find((x) => x.piece.k === 'shed')
+		if (shed)
+			law.push(
+				(shed.tooBig ? L('지금 농막이 20㎡를 넘습니다. ', 'This farm hut is over 20 ㎡. ') : '') +
+					L(
+						'농막은 연면적 20㎡ 이하만 됩니다(농지법 시행규칙 제3조의2).',
+						'A farm hut (nongmak) on farmland must be 20 ㎡ or less (Farmland Act Enforcement Rule, Art. 3-2).'
+					)
+			)
+		if (plan?.pieces.some((x) => x.piece.k === 'storage'))
+			law.push(
+				L(
+					'농지에 창고를 지으려면 농지전용 신고나 허가가 필요할 수 있습니다. 시·군청에 먼저 확인하세요.',
+					'A storage building on farmland may need a farmland conversion report or permit. Ask the city or county office first.'
+				)
+			)
+		lawEl.hidden = !law.length
+		lawEl.replaceChildren()
+		if (law.length) {
+			lawEl.append(law.join(' ') + ' ')
+			const a = document.createElement('a')
+			a.href = shed
+				? 'https://www.law.go.kr/법령/농지법시행규칙'
+				: 'https://www.law.go.kr/법령/농지법'
+			a.target = '_blank'
+			a.rel = 'noopener'
+			a.textContent = L('법령 보기 →', 'Read the law →')
+			lawEl.append(a)
+		}
+	}
+
+	function saveHash() {
+		const empty = !layout.pieces.length && !layout.well && !layout.outlet
+		const u = new URL(location.href)
+		u.hash = empty ? '' : `plan=${encodeLayout(layout)}`
+		history.replaceState(null, '', u)
+	}
+
+	const planHandlers = {
+		pick(id: number | null) {
+			sel = id
+			refreshPlan(true)
+		},
+		move(id: number, x: number, y: number) {
+			const p = layout.pieces.find((q) => q.id === id)
+			if (!p) return
+			p.x = x
+			p.y = y
+			sel = id
+			refreshPlan()
+		},
+		marker(kind: 'well' | 'outlet', x: number, y: number) {
+			// 배수구는 땅 경계 위로, 물 인입은 땅 안으로
+			if (kind === 'outlet') layout.outlet = nearestOnRing([x, y], site.ring).pt
+			else layout.well = inPoly([x, y], site.ring) ? [x, y] : nearestOnRing([x, y], site.ring).pt
+			refreshPlan()
+		}
+	}
+
+	pane.plan.querySelector('.im-farm-palette')!.addEventListener('click', (e) => {
+		const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-kind]')
+		if (!b) return
+		const { ok: _ok, ...p } = placeNew(site, layout, b.dataset.kind as PieceKind)
+		layout.pieces.push(p)
+		sel = p.id
+		refreshPlan()
+	})
+	$('im-farm-auto').addEventListener('click', () => {
+		layout = { ...autoLayout(site), well: layout.well, outlet: layout.outlet }
+		autoDone = true
+		sel = null
+		refreshPlan()
+	})
+	$('im-farm-clear').addEventListener('click', () => {
+		layout = { pieces: [], well: null, outlet: null }
+		autoDone = true
+		sel = null
+		refreshPlan()
+	})
+	shareBtn.addEventListener('click', async () => {
+		saveHash()
+		const label = shareBtn.textContent
+		try {
+			await navigator.clipboard.writeText(location.href)
+			shareBtn.textContent = L('복사했습니다', 'Copied')
+		} catch {
+			shareBtn.textContent = L('주소창을 복사하세요', 'Copy the address bar')
+		}
+		setTimeout(() => (shareBtn.textContent = label), 1800)
+	})
+
+	function act(a: string) {
+		const p = layout.pieces.find((q) => q.id === sel)
+		if (!p) return
+		const s = KINDS[p.k]
+		if (a === 'len-' || a === 'len+')
+			p.len = Math.max(
+				s.minLen,
+				Math.min(s.maxLen, Math.round((p.len + (a === 'len+' ? s.step : -s.step)) * 10) / 10)
+			)
+		else if ((a === 'n-' || a === 'n+') && s.n)
+			p.n = Math.max(s.n.min, Math.min(s.n.max, p.n + (a === 'n+' ? 1 : -1)))
+		else if (a === 'turn') p.a = (p.a + 90) % 360
+		else if (a === 'del') {
+			layout.pieces = layout.pieces.filter((q) => q !== p)
+			sel = null
+		}
+		refreshPlan()
+	}
+	toolEl.addEventListener('click', (e) => {
+		const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-act]')
+		if (b) act(b.dataset.act!)
+	})
+	// 각도: 끄는 동안은 시설만 다시 그리고, 놓으면 작물도 다시 심는다
+	angleEl.addEventListener('input', () => {
+		const p = layout.pieces.find((q) => q.id === sel)
+		if (!p) return
+		p.a = Number(angleEl.value)
+		refreshPlan(true)
+	})
+	angleEl.addEventListener('change', () => refreshPlan())
+	document.addEventListener('keydown', (e) => {
+		if (mode !== 'plan' || sel === null) return
+		if ((e.target as HTMLElement).closest('input, textarea, select')) return
+		if (e.key === 'Delete' || e.key === 'Backspace') {
+			e.preventDefault()
+			act('del')
+		}
+	})
+
 	// ── 조회 ────────────────────────────────────────────
 	// 브이월드는 해외 서버 요청을 막아서 주소·필지·토지특성은 브라우저에서 조회하고, 팜맵·추천만 서버에 묻는다
 	async function lookup(address: string) {
@@ -641,9 +1029,11 @@ const data = {
 			const q = new URLSearchParams()
 			let refined: string | null = null
 			let r: Ring | null = null
+			let tags: EdgeTag[] = []
 			if (fixture) {
 				q.set('fixture', '1')
 				r = D.sample.ring
+				tags = D.sample.tags
 			} else {
 				if (!vworldReady()) return fail('unavailable')
 				const point = await geocode(address)
@@ -651,11 +1041,24 @@ const data = {
 				const parcel = await parcelAt(point.lon, point.lat)
 				if (!parcel) return fail('no-parcel')
 				// 토지특성이 없으면(예: 새 행정구역 코드) 지번 끝 글자 지목과 경계 면적으로 계속한다
-				const [facts, m] = await Promise.all([
+				const [facts, nbs] = await Promise.all([
 					landFacts(parcel.pnu).catch(() => null),
+					// 이웃 필지로 길·구거에 닿은 변을 찾는다 (시설 배치의 진입로·배수 쪽)
+					neighboursOf(parcel.polygon, parcel.pnu).catch(() => []),
 					load().catch(() => null)
 				])
-				r = m?.toLocalMeters(parcel.polygon) ?? null
+				const frame = localFrame(parcel.polygon)
+				r = frame?.ring ?? null
+				if (frame)
+					tags = classifyEdges(
+						frame.ring,
+						nbs.flatMap((n) =>
+							n.rings.map((rr) => ({
+								ring: rr.map(([a, b]) => frame.toLocal(a, b)),
+								tag: tagOfJibun(n.jibun)
+							}))
+						)
+					)
 				const area = facts?.areaM2 ?? polygonAreaM2(parcel.polygon)
 				const addr = parcel.address || point.text
 				// 지번으로 찾았는데 번지가 바뀌었으면(예: 250 → 250-1) 알려 준다
@@ -678,7 +1081,7 @@ const data = {
 			const res = await fetch(`/api/farmland?${q}`)
 			const body = (await res.json()) as View & { error?: string }
 			if (!res.ok || body.error) return fail(body.error ?? 'upstream')
-			render({ ...body, refined }, r ?? ring)
+			render({ ...body, refined }, r ?? ring, false, tags)
 			stage.scrollIntoView({
 				behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
 				block: 'nearest'
@@ -701,16 +1104,31 @@ const data = {
 		if (address.length < 4) return fail('address')
 		const u = new URL(location.href)
 		u.searchParams.set('address', address)
+		u.hash = ''
 		history.replaceState(null, '', u)
 		input.blur()
 		lookup(address)
 	})
+
+	// 주소창 # 에 저장된 배치가 있으면 그 배치로 시설 배치 화면을 연다
+	const saved = new URLSearchParams(location.hash.slice(1)).get('plan')
+	pending = saved ? decodeLayout(saved) : null
+	if (pending) {
+		autoDone = true
+		setMode('plan', false)
+	}
 
 	const start = new URLSearchParams(location.search).get('address')
 	if (start) {
 		input.value = start
 		lookup(start)
 	} else {
+		site = makeSite(D.sample.ring, D.sample.tags)
+		if (pending) {
+			layout = pending
+			pending = null
+			autoDone = true
+		}
 		show(D.sample.ring, D.sample.crops[0]?.id ?? null)
 	}
 </script>
@@ -950,6 +1368,278 @@ const data = {
 		font-variant-numeric: tabular-nums;
 		text-decoration: underline;
 		text-underline-offset: 3px;
+	}
+
+	/* 작물 | 시설 배치 */
+	.im-farm-modes {
+		display: flex;
+		gap: 22px;
+		margin-top: 20px;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-farm-modes button {
+		margin-bottom: -1px;
+		padding: 0 0 9px;
+		border: 0;
+		border-bottom: 2px solid transparent;
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 16px;
+		font-weight: 800;
+		cursor: pointer;
+	}
+
+	.im-farm-modes button[aria-selected='true'] {
+		border-bottom-color: var(--ink);
+		color: var(--ink);
+	}
+
+	#im-farm-crop-pane[hidden],
+	#im-farm-plan-pane[hidden],
+	.im-farm-tool[hidden],
+	.im-farm-law[hidden],
+	.im-farm-step[hidden] {
+		display: none;
+	}
+
+	.im-farm-palette {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-top: 16px;
+	}
+
+	.im-farm-palette button {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		min-height: 38px;
+		padding: 0 13px;
+		border: 1px solid var(--ink);
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 14px;
+		font-weight: 700;
+		cursor: pointer;
+		transition: background-color 0.15s ease;
+	}
+
+	.im-farm-palette button span {
+		font-weight: 500;
+	}
+
+	.im-farm-palette button:active {
+		background: var(--ink);
+		color: var(--bg);
+	}
+
+	.im-farm-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 18px;
+		margin-top: 14px;
+	}
+
+	.im-farm-actions button,
+	.im-farm-tool-btn {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 14px;
+		font-weight: 700;
+		text-decoration: underline;
+		text-underline-offset: 4px;
+		cursor: pointer;
+	}
+
+	.im-farm-actions button + button {
+		color: var(--muted);
+		font-weight: 600;
+	}
+
+	/* 고른 시설 */
+	.im-farm-tool {
+		margin-top: 18px;
+		padding: 12px 0;
+		border-top: 1px solid var(--ink);
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-farm-tool-name {
+		margin: 0;
+		font-size: 15px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-farm-tool-name.is-bad {
+		text-decoration: underline dashed;
+		text-underline-offset: 5px;
+	}
+
+	.im-farm-tool-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10px 18px;
+		margin-top: 10px;
+	}
+
+	.im-farm-step {
+		display: inline-flex;
+		align-items: center;
+		border: 1px solid var(--ink);
+	}
+
+	.im-farm-step span {
+		padding: 0 10px;
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	.im-farm-step button {
+		width: 36px;
+		height: 34px;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 18px;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.im-farm-step button:active {
+		background: var(--ink);
+		color: var(--bg);
+	}
+
+	.im-farm-angle input {
+		width: 120px;
+		accent-color: var(--ink);
+		vertical-align: middle;
+	}
+
+	/* 숫자 줄 */
+	.im-farm-sum {
+		display: grid;
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+		gap: 0;
+		margin: 18px 0 0;
+		border-top: 1px solid var(--ink);
+	}
+
+	.im-farm-sum > div {
+		padding: 10px 10px 2px 0;
+	}
+
+	.im-farm-sum > div + div {
+		padding-left: 12px;
+		border-left: 1px solid var(--line);
+	}
+
+	.im-farm-sum dt {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		color: var(--muted);
+		font-size: 12px;
+		font-weight: 600;
+	}
+
+	.im-farm-sum dd {
+		margin: 4px 0 0;
+		font-size: clamp(18px, 2.2vw, 22px);
+		font-weight: 800;
+		letter-spacing: -0.01em;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-farm-sum dd :global(small) {
+		display: block;
+		margin-top: 1px;
+		color: var(--muted);
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0;
+	}
+
+	.im-farm-key {
+		display: inline-block;
+		width: 16px;
+	}
+
+	.im-farm-key.is-pipe {
+		height: 2px;
+		background: var(--ink);
+	}
+
+	.im-farm-key.is-drain {
+		height: 6px;
+		background: var(--muted);
+	}
+
+	.im-farm-approx,
+	.im-farm-law {
+		margin: 12px 0 0;
+		color: var(--muted);
+		font-size: 13px;
+		line-height: 1.6;
+	}
+
+	.im-farm-law {
+		margin-top: 6px;
+		color: var(--ink);
+	}
+
+	.im-farm-law :global(a) {
+		font-weight: 700;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	@media (max-width: 560px) {
+		/* 좁은 화면은 땅이 가로에 맞춰지므로 세로 빈칸을 줄인다 */
+		.im-farm-stage {
+			height: clamp(340px, min(62vh, 112vw), 520px);
+		}
+
+		.im-farm-sum {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+
+		/* 위 `div + div` 보다 세게 (Astro 범위 속성이 단어마다 붙는다) */
+		.im-farm-sum > div + div:nth-child(4) {
+			padding-left: 0;
+			border-left: 0;
+		}
+
+		.im-farm-sum > div:nth-child(n + 4) {
+			border-top: 1px solid var(--line);
+		}
+	}
+
+	.im-farm-stage.is-plan {
+		cursor: default;
+	}
+
+	.im-farm-drag.is-plan-hint,
+	.im-farm-stage.is-plan .im-farm-drag {
+		display: none;
+	}
+
+	.im-farm-stage.is-plan .im-farm-drag.is-plan-hint {
+		display: block;
+		opacity: 1;
+	}
+
+	.im-farm-stage:global(.is-dragging) {
+		cursor: grabbing;
 	}
 
 	.im-farm-more {
