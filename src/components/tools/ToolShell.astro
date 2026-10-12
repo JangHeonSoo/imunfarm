@@ -19,6 +19,7 @@ type Props = {
 	related?: Link[]
 	faq?: { q: string; a: string }[]
 	path: string
+	active?: string
 }
 
 const {
@@ -30,7 +31,8 @@ const {
 	basis,
 	related = [],
 	faq = [],
-	path
+	path,
+	active = 'tools'
 } = Astro.props
 const isEn = locale === 'en'
 const prefix = getLocalePrefix(locale)
@@ -85,7 +87,7 @@ const jsonLd = [
 ]
 ---
 
-<BaseLayout title={title} description={description} locale={locale} active='tools'>
+<BaseLayout title={title} description={description} locale={locale} active={active}>
 	<article class='im-tool'>
 		<nav class='im-tool-crumb im-label' aria-label={isEn ? 'Breadcrumb' : '경로'}>
 			<a href={`${prefix}/tools/`}>{isEn ? 'Tools' : '계산기'}</a>
