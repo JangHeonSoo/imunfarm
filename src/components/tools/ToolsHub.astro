@@ -4,6 +4,7 @@ import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
 import { ITEMS, buildMarketQuotes, getPriceAsOfDate, REGIONS } from '@/data/prices'
 import { SOLAR, computeCold, computeMarket, computeSolar, feeFor } from '@/data/tools'
 import { FARMLAND_CROPS, rankCrops } from '@/data/farmland-crops'
+import { SUPPORT_PROGRAMS, currentMonthKST, monthsUntil } from '@/data/support'
 import '../../styles/tools.css'
 
 const { locale = DEFAULT_LOCALE } = Astro.props
@@ -54,6 +55,9 @@ const farmEx = rankCrops(
 	const c = FARMLAND_CROPS.find((x) => x.id === p.id)!
 	return isEn ? c.en : c.ko
 })
+
+// 지원사업은 메뉴를 줄이면서 도구 안으로 들어왔다 (한국어만)
+const supportSoon = SUPPORT_PROGRAMS.filter((p) => monthsUntil(p, currentMonthKST()) <= 1).length
 
 const tools = [
 	{
@@ -122,7 +126,22 @@ const tools = [
 			sub: isEn ? 'top picks this month' : '이번 달 기준 추천 상위'
 		},
 		also: null
-	}
+	},
+	...(isEn
+		? []
+		: [
+				{
+					href: '/support/',
+					title: '농업 지원사업 모음',
+					text: `저온저장고·농기계·면세유·안전보험·청년농 등 ${SUPPORT_PROGRAMS.length}개 사업의 받는 금액·대상·신청 시기를 공고 원문과 함께 정리했습니다.`,
+					ex: {
+						case: '이번 달·다음 달',
+						big: `신청 ${supportSoon}개`,
+						sub: '신청 시기가 가까운 사업'
+					},
+					also: null
+				}
+			])
 ]
 const smpMonth = Number(SOLAR.basis.slice(5, 7))
 
@@ -147,7 +166,7 @@ const jsonLd = {
 
 <BaseLayout title={title} description={description} locale={locale} active='tools'>
 	<div class='im-tool im-tools-page'>
-		<h1>{isEn ? 'Farm calculators' : '농업 계산기'}</h1>
+		<h1>{isEn ? 'Farm calculators' : '농업 계산기·지원사업'}</h1>
 		<p class='im-tool-lede'>
 			{
 				isEn

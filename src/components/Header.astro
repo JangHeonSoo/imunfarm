@@ -9,43 +9,21 @@ const prefix = getLocalePrefix(locale)
 	<nav class='im-header-left'>
 		<a
 			class='im-header-link'
-			href={`${prefix}/tools/`}
-			aria-current={active === 'tools' ? 'page' : undefined}
-		>
-			계산기 <span>Tools</span>
-		</a>
-		{
-			locale === DEFAULT_LOCALE && (
-				<a
-					class='im-header-link'
-					href='/support/'
-					aria-current={active === 'support' ? 'page' : undefined}
-				>
-					지원 <span>Support</span>
-				</a>
-			)
-		}
-		<a
-			class='im-header-link'
 			href={`${prefix}/tools/farmland-crop-finder/`}
 			aria-current={active === 'land' ? 'page' : undefined}
 		>
-			내 땅 <span>Land</span>
+			농지 분석 <span>Farmland</span>
+		</a>
+		<a
+			class='im-header-link'
+			href={`${prefix}/tools/`}
+			aria-current={active === 'tools' || active === 'support' ? 'page' : undefined}
+		>
+			도구 <span>Tools</span>
 		</a>
 	</nav>
 	<a class='im-wordmark' href={`${prefix}/`} aria-label='IMUN.FARM'>IMUN.FARM</a>
 	<nav class='im-header-right'>
-		{
-			locale === DEFAULT_LOCALE && (
-				<a
-					class='im-header-link'
-					href='/picks/'
-					aria-current={active === 'picks' ? 'page' : undefined}
-				>
-					장비 <span>Picks</span>
-				</a>
-			)
-		}
 		<a
 			class='im-header-link'
 			href={`${prefix}/prices/`}
@@ -118,7 +96,7 @@ const prefix = getLocalePrefix(locale)
 		}
 	}
 
-	/* 왼쪽 메뉴가 셋이라 아주 좁은 화면에서는 간격과 글자를 줄여 가로 넘침을 막는다 */
+	/* 아주 좁은 화면에서는 간격과 글자를 줄여 가로 넘침을 막는다 */
 	@media (max-width: 380px) {
 		.im-header,
 		.im-header-left,
