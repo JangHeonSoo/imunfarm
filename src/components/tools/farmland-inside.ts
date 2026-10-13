@@ -106,7 +106,9 @@ const EQUIP = {
 
 /** 한 번에 그리는 포기 수·조각 수 한도 (휴대폰도 버티게) */
 const MAX = 9000
-const PARTS = 9000
+// 휴대폰(손가락 화면)은 조각을 줄인다. 줄어드는 것은 심은 길이뿐, 간격은 그대로
+const COARSE = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+const PARTS = COARSE ? 6000 : 9000
 
 export function buildInside(s: InsideSpec, ctx: InsideCtx): InsideScene {
 	const { mat, label, C } = ctx
