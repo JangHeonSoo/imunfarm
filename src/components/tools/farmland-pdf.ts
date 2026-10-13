@@ -940,17 +940,39 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 				`${num(p.area)}㎡ (${py(p.area)})`,
 				issueText(p)
 			])
+		// 하우스·온실 넓이와, 창고·작업 공간까지 더한 합계를 따로 적는다
+		const growArea = d.plan.pieces
+			.filter((p) => KINDS[p.kind].greenhouse)
+			.reduce((s, p) => s + p.area, 0)
+		if (growArea && growArea < t.facility - 1)
+			row([
+				'',
+				L(
+					singles ? `하우스 ${singles}동` : smart ? '유리온실' : '하우스·온실',
+					singles
+						? `${singles} house${singles === 1 ? '' : 's'}`
+						: smart
+							? 'Glasshouse'
+							: 'Greenhouses'
+				),
+				'',
+				'',
+				`${num(growArea)}㎡ (${py(growArea)})`,
+				''
+			])
 		row(
 			[
 				'',
-				L(
-					singles ? `합계 · 하우스 ${singles}동` : smart ? '합계 · 유리온실 1동' : '합계',
-					singles
-						? `Total · ${singles} house${singles === 1 ? '' : 's'}`
-						: smart
-							? 'Total · 1 glasshouse'
-							: 'Total'
-				),
+				growArea && growArea < t.facility - 1
+					? L('합계 (창고·작업 공간 포함)', 'Total (incl. storage and yard)')
+					: L(
+							singles ? `합계 · 하우스 ${singles}동` : smart ? '합계 · 유리온실 1동' : '합계',
+							singles
+								? `Total · ${singles} house${singles === 1 ? '' : 's'}`
+								: smart
+									? 'Total · 1 glasshouse'
+									: 'Total'
+						),
 				'',
 				'',
 				`${num(t.facility)}㎡ (${py(t.facility)})`,

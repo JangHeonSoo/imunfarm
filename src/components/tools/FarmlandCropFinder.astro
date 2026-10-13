@@ -651,11 +651,48 @@ const data = {
 	const specEl = $('im-farm-spec')
 	const srcEl = $('im-farm-src')
 	/** 심는 간격 한 줄 (PDF 용) */
+	// 토지특성 값(정부 자료 한글)을 영어 화면에서 풀어 쓴다
+	const LAND_EN: Record<string, string> = {
+		저지: 'Low-lying',
+		평지: 'Flat',
+		완경사: 'Gentle slope',
+		급경사: 'Steep slope',
+		고지: 'Highland',
+		정방형: 'Square',
+		가로장방: 'Wide rectangle',
+		세로장방: 'Long rectangle',
+		사다리형: 'Trapezoid',
+		삼각형: 'Triangle',
+		역삼각형: 'Inverted triangle',
+		부정형: 'Irregular',
+		자루형: 'Flag-shaped'
+	}
+	const enLand = (v: string) => (isEn ? (LAND_EN[v] ?? v) : v)
+	// 도로 접면: 광대로 25m+, 중로 12–25m, 소로 8–12m, 세로 8m 밑 (가: 차 다님, 불: 차 못 다님)
+	const enRoad = (v: string) => {
+		if (!isEn) return v
+		const w = /광대/.test(v)
+			? 'Wide road (25 m+)'
+			: /중로/.test(v)
+				? 'Road 12–25 m'
+				: /소로/.test(v)
+					? 'Road 8–12 m'
+					: /세로/.test(v)
+						? /불/.test(v)
+							? 'Lane, no car access'
+							: 'Lane, car access'
+						: null
+		if (!w) return v
+		return `${w} · ${/각|소각|세각/.test(v) ? 'corner' : 'one side'}`
+	}
 	let specLine: string | null = null
 	/** 설치비·땅 조건 안내 문장 (화면 아래·PDF) */
 	let costNotes: string[] = []
 	/** PDF 에 그대로 옮길 표 (설치비·땅 조건) */
 	let specGroups: { title: string; rows: Row[] }[] = []
+	// PDF 안내: 화면에선 한 문단, PDF에선 한 줄씩
+	let srcParts: string[] = []
+	let approxParts: string[] = []
 	// 나눠 짓기: 하우스·온실 밖 남은 밭(통로 뺀 덩어리)에 노지 작물을 함께 심는다
 	const mixEl = $('im-farm-mix')
 	const mixLabel = $('im-farm-mix-label')
@@ -1296,12 +1333,12 @@ const data = {
 		const ld = current.land
 		const ditch = site.tags.filter((t) => t === 'ditch').length
 		const river = site.tags.filter((t) => t === 'river').length
-		if (ld?.terrain) landRows.push([L('높낮이', 'Terrain'), ld.terrain])
-		if (ld?.shape) landRows.push([L('모양', 'Shape'), ld.shape])
+		if (ld?.terrain) landRows.push([L('높낮이', 'Terrain'), enLand(ld.terrain)])
+		if (ld?.shape) landRows.push([L('모양', 'Shape'), enLand(ld.shape)])
 		if (ld?.road)
 			landRows.push([
 				L('도로', 'Road'),
-				ld.roadCode === '12' ? L('맹지 (길에 닿지 않음)', 'Landlocked') : ld.road
+				ld.roadCode === '12' ? L('맹지 (길에 닿지 않음)', 'Landlocked') : enRoad(ld.road)
 			])
 		landRows.push([
 			L('물길', 'Water'),
@@ -1315,7 +1352,7 @@ const data = {
 			costNotes.push(
 				L(
 					`이 땅은 '${ld.terrain}'로 조사되어 하우스·온실은 터를 고르거나 계단식으로 나눠 지어야 할 수 있습니다.`,
-					`Recorded as '${ld.terrain}'; houses may need levelling or terracing.`
+					`Recorded as '${enLand(ld.terrain)}'; houses may need levelling or terracing.`
 				)
 			)
 		if (ld?.roadCode === '12')
@@ -1347,27 +1384,32 @@ const data = {
 			...(costRows.length ? [specGroup(L('설치비 · 회수', 'Build cost · payback'), costRows)] : []),
 			specGroup(L('땅 조건', 'Plot'), landRows)
 		)
+		// PDF용 시세 표 (화살표·링크 없이)
+		const priceRows: Row[] = money1
+			.filter(([, , href]) => href)
+			.map(([k, v]) => [k, v.replace(/\s*→$/, '')] as Row)
+			.concat(money1.filter(([k]) => k === L('오르내림', 'Change') || k === L('조사', 'Market')))
 		specGroups = [
+			...(priceRows.length ? [{ title: L('오늘 시세', 'Market price'), rows: priceRows }] : []),
 			...(costRows.length
 				? [{ title: L('설치비 · 회수', 'Build cost · payback'), rows: costRows }]
 				: []),
 			{ title: L('땅 조건', 'Plot'), rows: landRows }
 		]
 		srcEl.hidden = !c?.spacing && !c?.income?.item && !costNotes.length
-		srcEl.textContent = [
+		srcParts = [
 			...costNotes,
 			c?.income?.item ? L(`소득 항목: ${c.income.item}`, `Income item: ${c.income.item}`) : '',
 			c?.spacing ? L(`간격 출처: ${c.spacing.src}`, `Spacing source: ${c.spacing.src}`) : ''
-		]
-			.filter(Boolean)
-			.join(' · ')
+		].filter(Boolean)
+		srcEl.textContent = srcParts.join(' · ')
 
 		renderMix()
 
-		approxEl.textContent = [
+		approxParts = [
 			c?.income
 				? L(
-						`소득은 농촌진흥청 ${c.income.year} 농산물소득자료집의 전국 평균(10a = 약 300평)으로, 총수입에서 경영비(비료·농약·인건비·기존 시설의 해마다 감가상각비 등)를 뺀 값입니다. 새로 짓는 시설의 설치비와 대출이자는 따로 셉니다.`,
+						`소득은 농촌진흥청 ${c.income.year} 농산물소득자료집의 전국 평균(10a = 약 300평)으로, 총수입에서 경영비(비료·농약·고용 인건비·기존 시설의 해마다 감가상각비 등)를 뺀 값입니다. 새로 짓는 시설의 설치비와 대출이자는 따로 셉니다.`,
 						`Income is the national average in the RDA ${c.income.year} farm income data book (10a = 1,000 ㎡): revenue minus operating costs, which include yearly depreciation of existing facilities. New build cost and loan interest are counted separately.`
 					)
 				: '',
@@ -1377,9 +1419,8 @@ const data = {
 						'길에 닿은 변을 지적도에서 찾지 못해 진입로 쪽은 어림했습니다.',
 						'No road edge was found on the cadastral map, so the entrance side is a guess.'
 					)
-		]
-			.filter(Boolean)
-			.join(' ')
+		].filter(Boolean)
+		approxEl.textContent = approxParts.join(' ')
 	}
 
 	function saveHash() {
@@ -1482,8 +1523,8 @@ const data = {
 					: null,
 				notes: [
 					noteEl.hidden ? '' : (noteEl.textContent ?? ''),
-					approxEl.textContent ?? '',
-					srcEl.hidden ? '' : (srcEl.textContent ?? '')
+					...approxParts,
+					...srcParts
 				].filter(Boolean),
 				shareUrl: location.href,
 				snapshot: shot,

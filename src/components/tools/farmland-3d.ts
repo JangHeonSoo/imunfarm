@@ -1371,6 +1371,38 @@ export function createFieldView(host: HTMLElement): FieldView {
 		}
 	}
 
+	/** 화면에서 겹치는 치수 글씨는 숨긴다 (먼저 단 글씨가 남고, 땅 변 길이는 늘 남는다) */
+	const dcV = new THREE.Vector3()
+	const dcBoxes: number[][] = []
+	function declutter(w: number, h: number) {
+		dcBoxes.length = 0
+		const k = h / (2 * Math.tan((camera.fov * Math.PI) / 360))
+		const box = (o: THREE.Object3D) => {
+			const d = dcV.copy(o.position).applyMatrix4(camera.matrixWorldInverse).z
+			if (d >= 0) return null
+			const px = k / -d
+			dcV.copy(o.position).project(camera)
+			const cx = ((dcV.x + 1) / 2) * w
+			const cy = ((1 - dcV.y) / 2) * h
+			const hw = (o.scale.x * px) / 2 + 2
+			const hh = (o.scale.y * px) / 2 + 2
+			return [cx - hw, cy - hh, cx + hw, cy + hh]
+		}
+		const hits = (b: number[]) =>
+			dcBoxes.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1])
+		for (const o of world.children)
+			if ((o as THREE.Sprite).isSprite) {
+				const b = box(o)
+				if (b) dcBoxes.push(b)
+			}
+		for (const o of dimGroup.children) {
+			if (!(o as THREE.Sprite).isSprite) continue
+			const b = box(o)
+			o.visible = !!b && !hits(b)
+			if (o.visible) dcBoxes.push(b!)
+		}
+	}
+
 	// 끌기: 배치 화면에서 시설·표시를 누르면 돌리기 대신 옮긴다
 	const raycaster = new THREE.Raycaster()
 	const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
@@ -1567,6 +1599,10 @@ export function createFieldView(host: HTMLElement): FieldView {
 		if (controls.autoRotate && performance.now() > spinUntil) controls.autoRotate = false
 		if (growing) growing = !applyGrow((performance.now() - growStart) / 1000)
 		const moved = controls.update()
+		if (dimGroup.visible) {
+			camera.updateMatrixWorld()
+			declutter(renderer.domElement.clientWidth, renderer.domElement.clientHeight)
+		}
 		renderer.render(scene, camera)
 		if (retired.size) flushRetired()
 		idleFrames = growing || moved || controls.autoRotate ? 0 : idleFrames + 1
@@ -1705,6 +1741,8 @@ export function createFieldView(host: HTMLElement): FieldView {
 					(2 * Math.atan(Math.tan((keepFov * Math.PI) / 360) * (keepAspect / aspect)) * 180) /
 					Math.PI
 			camera.updateProjectionMatrix()
+			camera.updateMatrixWorld()
+			declutter(width, height)
 			renderer.render(scene, camera)
 			camera.fov = keepFov
 			camera.position.copy(keepPos)
