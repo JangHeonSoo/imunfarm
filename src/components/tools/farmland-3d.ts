@@ -13,6 +13,7 @@ import {
 	type Plan,
 	type PlanPiece
 } from '@/data/farmland-layout'
+import { buildInside, type InsideLook, type InsideSpec } from './farmland-inside'
 
 export type Ring = [number, number][]
 
@@ -60,6 +61,17 @@ const LOOK: Record<string, Look> = {
 	'cucumber-hydro': { form: 'greenhouse', row: 2, step: 0.2, h: 2.2, w: 0.45 },
 	paprika: { form: 'greenhouse', row: 1.5, step: 0.33, h: 2.2, w: 0.5 }
 }
+
+// 유리온실 수경재배: 걸이식 거터(토마토·오이·파프리카) / 고설 벤치(딸기)
+const HYDRO: Record<string, 'gutter' | 'bench'> = {
+	'tomato-hydro': 'gutter',
+	'cucumber-hydro': 'gutter',
+	paprika: 'gutter',
+	'strawberry-hydro': 'bench'
+}
+// 검은 비닐 멀칭을 덮어 그리는 노지 작물: 농사로 농작업일정에서 비닐 덮기가 기본인 작물만
+// (고추·마늘·양파·감자·땅콩·참깨. 고구마·무·옥수수·배추는 작형에 따라, 생강·콩·들깨는 아님)
+const MULCH = new Set<string>(['red-chili-pepper', 'garlic', 'onion', 'potato', 'peanut', 'sesame'])
 
 // 이랑 높이 (모양별). 0 이면 이랑을 세우지 않는다
 const RIDGE: Record<Form, number> = {
@@ -289,6 +301,8 @@ export type CropSpacing = {
 	step: number
 	/** 3D 밭 위에 붙일 간격 글 (화면 표와 같은 말) */
 	label: string
+	/** 안에서 보기 치수 글 (범위는 범위 그대로, 예: '70–75cm') */
+	cm?: { pitch: string; bed?: string; furrow?: string; step: string; lineGap?: string }
 }
 
 export type FieldView = {
@@ -308,6 +322,10 @@ export type FieldView = {
 		}
 	): void
 	onPlan(h: PlanHandlers): void
+	/** 안에서 보기 (하우스·온실 안 또는 밭 한가운데, 눈높이). 들어가면 true */
+	inside(on: boolean): boolean
+	/** 지금 안에서 보는 중이면 그 곳 ('house' | 'smart' | 'field') */
+	insideKind(): InsideSpec['kind'] | null
 	/** 지금 보는 각도 그대로 밝은 색으로 한 장 (PDF 표지용). 고른 시설 표시는 뺀다. JPEG data URL */
 	snapshot(width: number, height: number): string
 	dispose(): void
@@ -1403,6 +1421,159 @@ export function createFieldView(host: HTMLElement): FieldView {
 		}
 	}
 
+	// ── 안에서 보기 ─────────────────────────────────────
+	const insideGroup = new THREE.Group()
+	scene.add(insideGroup)
+	let insideOn: InsideSpec['kind'] | null = null
+	let outside: {
+		pos: THREE.Vector3
+		target: THREE.Vector3
+		fog: THREE.Fog | null
+		minD: number
+		maxD: number
+		minP: number
+		maxP: number
+		fov: number
+	} | null = null
+
+	/** 지금 작물·배치로 들어갈 곳: 1위가 하우스·온실 작물이면 가장 큰 시설 안, 밭 작물이면 밭 */
+	function insideSpec(): InsideSpec | null {
+		if (!crop) return null
+		const look = LOOK[crop] ?? LOOK['perilla-seed']
+		const en = document.documentElement.lang.startsWith('en')
+		const L = (ko: string, eng: string) => (en ? eng : ko)
+		const m1 = (v: number) => String(Math.round(v * 10) / 10)
+		const sp = spacing
+		const hydro = HYDRO[crop] ?? null
+		let kind: InsideSpec['kind'] = 'field'
+		let w = 0
+		let l = 0
+		let h = 0
+		let bays: number | undefined
+		if (look.form === 'greenhouse') {
+			const gh = plan ? plan.pieces.filter((p) => KINDS[p.piece.k].greenhouse && !p.outside) : []
+			const pick =
+				gh.find((p) => p.piece.k === 'smart') ??
+				gh.slice().sort((a, b) => b.area - a.area)[0] ??
+				null
+			if (pick?.piece.k === 'smart') {
+				kind = 'smart'
+				bays = pick.piece.n
+			} else kind = 'house'
+			// 배치가 없으면 표준 단동 한 동 (폭 7m, 길이 40m)
+			const k = pick?.piece.k ?? 'single'
+			w = pick ? (k === 'multi' ? KINDS.multi.w : pick.w) : KINDS.single.w
+			l = pick?.l ?? KINDS.single.len
+			h = pick?.h ?? KINDS.single.h
+		}
+		const ilook: InsideLook =
+			look.form === 'greenhouse'
+				? { shape: look.h > 1 ? 'tall' : 'low', h: look.h, w: look.w }
+				: look.form === 'tree'
+					? { shape: 'tree', h: look.h, w: look.w }
+					: look.form === 'tuft'
+						? { shape: 'blade', h: look.h, w: look.w }
+						: look.form === 'tall'
+							? { shape: 'stalk', h: look.h, w: look.w }
+							: { shape: 'bush', h: look.h, w: look.w }
+		const pitch = sp?.pitch ?? look.row
+		const step = sp?.step ?? look.step
+		const lines = sp ? Math.max(1, sp.lines) : 1
+		const cm = sp?.cm
+		const rowWord = hydro
+			? L('줄 사이', 'Rows')
+			: look.form === 'tree'
+				? L('줄 사이', 'Rows')
+				: L('이랑', 'Row pitch')
+		return {
+			kind,
+			w,
+			l,
+			h,
+			bays,
+			look: ilook,
+			pitch,
+			bed: hydro ? null : (sp?.bed ?? null),
+			lines,
+			lineGap: sp?.lineGap ?? 0,
+			step,
+			hydro,
+			mulch: kind === 'field' && MULCH.has(crop),
+			text: {
+				size:
+					kind === 'smart'
+						? `${m1(w)} × ${m1(l)}m · ${L(`8m ${bays ?? 1}칸`, `${bays ?? 1} × 8m bays`)}`
+						: kind === 'house'
+							? `${L('폭', 'W')} ${m1(w)}m × ${L('길이', 'L')} ${m1(l)}m`
+							: (sp?.label ?? ''),
+				height: kind === 'house' ? `${L('높이', 'H')} ${m1(h)}m` : undefined,
+				pitch: cm ? `${rowWord} ${cm.pitch}` : undefined,
+				bed: !hydro && cm?.bed ? `${L('두둑', 'Bed')} ${cm.bed}` : undefined,
+				furrow: !hydro && cm?.furrow ? `${L('고랑', 'Furrow')} ${cm.furrow}` : undefined,
+				step: cm ? `${L('포기 사이', 'Plants')} ${cm.step}` : undefined,
+				lineGap: cm?.lineGap
+			}
+		}
+	}
+
+	function enterInside(): boolean {
+		const spec = insideSpec()
+		if (!spec) return false
+		clearGroup(insideGroup)
+		const r = buildInside(spec, { mat, label, C })
+		insideGroup.add(r.group)
+		if (!insideOn)
+			outside = {
+				pos: camera.position.clone(),
+				target: controls.target.clone(),
+				fog: (scene.fog as THREE.Fog | null) ?? null,
+				minD: controls.minDistance,
+				maxD: controls.maxDistance,
+				minP: controls.minPolarAngle,
+				maxP: controls.maxPolarAngle,
+				fov: camera.fov
+			}
+		insideOn = spec.kind
+		world.visible = cropGroup.visible = planGroup.visible = dimGroup.visible = false
+		insideGroup.visible = true
+		spin(false)
+		camera.position.copy(r.eye)
+		controls.target.copy(r.target)
+		controls.minDistance = 1.2
+		controls.maxDistance = r.reach
+		// 하늘(지붕)도 올려다볼 수 있게
+		controls.minPolarAngle = (25 * Math.PI) / 180
+		controls.maxPolarAngle = (98 * Math.PI) / 180
+		camera.fov = 55
+		camera.near = 0.05
+		camera.updateProjectionMatrix()
+		scene.fog = new THREE.Fog(C.bg, r.far * 0.35, r.far)
+		controls.update()
+		wake()
+		return true
+	}
+
+	function leaveInside() {
+		if (!insideOn || !outside) return
+		insideOn = null
+		clearGroup(insideGroup)
+		insideGroup.visible = false
+		world.visible = cropGroup.visible = planGroup.visible = dimGroup.visible = true
+		camera.position.copy(outside.pos)
+		controls.target.copy(outside.target)
+		controls.minDistance = outside.minD
+		controls.maxDistance = outside.maxD
+		controls.minPolarAngle = outside.minP
+		controls.maxPolarAngle = outside.maxP
+		camera.fov = outside.fov
+		camera.near = 0.1
+		camera.updateProjectionMatrix()
+		scene.fog = outside.fog
+		outside = null
+		controls.update()
+		wake()
+	}
+
 	// 끌기: 배치 화면에서 시설·표시를 누르면 돌리기 대신 옮긴다
 	const raycaster = new THREE.Raycaster()
 	const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
@@ -1413,7 +1584,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 		raycaster.setFromCamera(ndc, camera)
 	}
 	function pickAt(cx: number, cy: number): THREE.Object3D | null {
-		if (!editing || !pickables.length) return null
+		if (!editing || !pickables.length || insideOn) return null
 		aim(cx, cy)
 		for (const h of raycaster.intersectObjects(pickables, true)) {
 			let o: THREE.Object3D | null = h.object
@@ -1561,6 +1732,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 		camera.updateProjectionMatrix()
 		// 화면 비율이 바뀌면 (휴대폰 돌리기 등) 아직 손대지 않은 보기는 다시 맞춘다
 		if (
+			!insideOn &&
 			fitAspect &&
 			Math.abs(camera.aspect / fitAspect - 1) > 0.05 &&
 			!host.classList.contains('is-touched')
@@ -1638,6 +1810,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 		buildDims()
 		growing = false
 		applyGrow(99)
+		if (insideOn) enterInside()
 		wake()
 	})
 	mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
@@ -1646,6 +1819,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 
 	return {
 		setParcel(r: Ring) {
+			leaveInside()
 			ring = r
 			radius = Math.max(8, ...r.map(([x, y]) => Math.hypot(x, y)))
 			theta = mainAngle(r)
@@ -1667,6 +1841,8 @@ export function createFieldView(host: HTMLElement): FieldView {
 			spacing = sp ?? null
 			buildCrop()
 			buildDims()
+			// 안에서 보는 중이면 새 작물로 다시 짓는다 (들어갈 곳이 없어지면 밖으로)
+			if (insideOn && !enterInside()) leaveInside()
 			wake()
 		},
 		setSide(id: string | null, sp?: CropSpacing | null) {
@@ -1702,12 +1878,27 @@ export function createFieldView(host: HTMLElement): FieldView {
 				// 시설을 옮길 때는 자라는 움직임 없이 바로 다시 심는다
 				buildCrop(false)
 			}
+			if (insideOn && !opts.light && !enterInside()) leaveInside()
+			if (insideOn) dimGroup.visible = planGroup.visible = false
 			wake()
+		},
+		inside(on: boolean) {
+			if (!on) {
+				leaveInside()
+				return false
+			}
+			return enterInside()
+		},
+		insideKind() {
+			return insideOn
 		},
 		onPlan(h) {
 			handlers = h
 		},
 		snapshot(width: number, height: number) {
+			// PDF 표지는 늘 바깥 모습 (안에서 보는 중이면 잠깐 나왔다가 다시 들어간다)
+			const wasInside = !!insideOn
+			if (wasInside) leaveInside()
 			const keepSel = selected
 			const keepC = C
 			const keepRatio = renderer.getPixelRatio()
@@ -1763,6 +1954,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 			renderer.setPixelRatio(keepRatio)
 			camera.aspect = keepAspect
 			resize()
+			if (wasInside) enterInside()
 			wake()
 			return url
 		},

@@ -283,6 +283,10 @@ const data = {
 			<p class='im-farm-tag' id='im-farm-tag'>{isEn ? 'Example' : '예시'}</p>
 			<p class='im-farm-drag' aria-hidden='true'>{isEn ? 'Drag to turn' : '끌어서 돌려 보기'}</p>
 			<p class='im-farm-busy' id='im-farm-busy'>{isEn ? 'Looking up…' : '찾는 중입니다…'}</p>
+			<p class='im-farm-inside-cap' id='im-farm-inside-cap' hidden></p>
+			<button type='button' class='im-farm-inside' id='im-farm-inside' aria-pressed='false' hidden>
+				{isEn ? 'Look inside' : '안에서 보기'}
+			</button>
 		</div>
 
 		<div class='im-farm-panel'>
@@ -617,6 +621,7 @@ const data = {
 				view = m.createFieldView(stage)
 				stage.classList.add('is-3d')
 			}
+			view.inside(false)
 			view.setParcel(r)
 			view.setCrop(crop, spacingOf(cropOf(crop)))
 			view.onPlan(planHandlers)
@@ -782,6 +787,32 @@ const data = {
 		renderRank()
 	})
 	const busyEl = $('im-farm-busy')
+	// 안에서 보기: 하우스·온실 안 또는 밭 한가운데를 눈높이로
+	const insideBtn = $<HTMLButtonElement>('im-farm-inside')
+	const insideCap = $('im-farm-inside-cap')
+	function syncInside() {
+		insideBtn.hidden = !view || !crop
+		const k = view?.insideKind() ?? null
+		stage.classList.toggle('is-inside', !!k)
+		insideBtn.setAttribute('aria-pressed', String(!!k))
+		insideBtn.textContent = k ? L('밖으로 나가기', 'Back outside') : L('안에서 보기', 'Look inside')
+		insideCap.hidden = !k
+		if (k) {
+			const c = cropOf(crop)
+			const where =
+				k === 'smart'
+					? L('유리온실 안', 'Inside the glasshouse')
+					: k === 'house'
+						? L('비닐하우스 안', 'Inside the tunnel house')
+						: L('밭 한가운데', 'In the field')
+			insideCap.textContent = `${where}${c ? ` · ${nameOf(c)}` : ''}`
+		}
+	}
+	insideBtn.addEventListener('click', () => {
+		if (!view) return
+		view.inside(!view.insideKind())
+		syncInside()
+	})
 	const approxEl = $('im-farm-approx')
 
 	let site: Site = makeSite(D.sample.ring, D.sample.tags)
@@ -844,6 +875,12 @@ const data = {
 	/** 하우스·온실 작물은 그 안 넓이, 밭 작물은 시설을 뺀 밭 넓이에 심는다고 본다 */
 	const growOf = (m: FarmMode, p: Plan) => (m === 'field' ? p.totals.field : p.totals.greenhouse)
 
+	// 화면 표(rng)와 같은 단위: 2m 넘으면 m, 아니면 cm
+	const cmText = (a: number, b?: number) => {
+		const m = (v: number) => String(Math.round(v / 10) / 10)
+		if (b === undefined) return a >= 200 ? `${m(a)}m` : `${a}cm`
+		return a >= 200 || b > 200 ? `${m(a)}–${m(b)}m` : `${a}–${b}cm`
+	}
 	/** 농사로 표준 재식거리(cm) → 3D 용 m */
 	function spacingOf(c: CropRule | null): CropSpacing | null {
 		const sp = c?.spacing
@@ -859,6 +896,14 @@ const data = {
 			// 줄 사이가 없으면 두둑(없으면 이랑)의 8할 안에 고르게
 			lineGap: sp.lineGap ? sp.lineGap / 100 : ((bed ?? pitch) * 0.8) / sp.lines,
 			step: mid(sp.step, sp.stepTo),
+			// 안에서 보기 치수 글 (범위는 범위대로)
+			cm: {
+				pitch: cmText(sp.pitch, sp.pitchTo),
+				bed: sp.bed ? cmText(sp.bed) : undefined,
+				furrow: sp.bed && !sp.pitchTo ? cmText(sp.pitch - sp.bed) : undefined,
+				step: cmText(sp.step, sp.stepTo),
+				lineGap: sp.lineGap ? cmText(sp.lineGap) : undefined
+			},
 			// 3D 글씨는 간격만 (포기 수 줄은 빼고)
 			label: spacingRows(c!, 0)
 				.filter(([k]) => k !== L('10a당', 'Per 10a') && k !== L('이 배치', 'This layout'))
@@ -1050,6 +1095,7 @@ const data = {
 		plan = computePlan(site, layout)
 		view?.setPlan(plan, { edit: true, selected: sel, light })
 		updateCard()
+		syncInside()
 		if (!light)
 			saveHash()
 			// 3단계(배치도 PDF)가 읽을 자료
@@ -1918,6 +1964,46 @@ const data = {
 	.im-farm-stage.is-busy :global(.im-farm-canvas),
 	.im-farm-stage.is-busy .im-farm-svg {
 		opacity: 0.18;
+	}
+
+	/* 안에서 보기 버튼: 무대 왼쪽 아래, 먹선 테두리 */
+	.im-farm-inside {
+		position: absolute;
+		left: 0;
+		bottom: 12px;
+		padding: 7px 12px;
+		border: 1px solid var(--ink);
+		background: var(--bg);
+		color: var(--ink);
+		font: inherit;
+		font-size: 13px;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.im-farm-inside[aria-pressed='true'] {
+		background: var(--ink);
+		color: var(--bg);
+	}
+
+	.im-farm-inside[hidden],
+	.im-farm-inside-cap[hidden],
+	.im-farm-stage.is-busy .im-farm-inside {
+		display: none;
+	}
+
+	.im-farm-inside-cap {
+		position: absolute;
+		top: 14px;
+		right: 0;
+		margin: 0;
+		font-size: 13px;
+		font-weight: 700;
+		pointer-events: none;
+	}
+
+	.im-farm-stage.is-inside .im-farm-drag {
+		opacity: 0;
 	}
 
 	.im-farm-panel {
