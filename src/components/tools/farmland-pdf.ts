@@ -879,8 +879,9 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 		}
 
 		// 제목만 쪽 끝에 홀로 남지 않게 첫 줄 자리까지 본다
-		const section = (title: string) => {
-			room(80)
+		// keep: 짧은 표는 쪽을 넘기지 않게 표 전체 높이만큼 자리를 본다
+		const section = (title: string, keep = 80) => {
+			room(keep)
 			text(ctx, title, M, y, { size: 10, weight: 800 })
 			y += 8
 			rule(ctx, y, 0.8)
@@ -1071,7 +1072,7 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 
 		// 설치비·회수, 땅 조건 (화면 표 그대로)
 		for (const g of d.groups) {
-			section(g.title)
+			section(g.title, g.rows.length <= 8 ? 30 + g.rows.length * 18 : 80)
 			for (const [k, v] of g.rows) kv(k, v)
 			y += 16
 		}
