@@ -5,7 +5,14 @@
  */
 import ToolShell from '@/components/tools/ToolShell'
 import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
-import { ITEMS, REGIONS, buildMarketQuotes, getPriceAsOfDate, getItemStatus } from '@/data/prices'
+import {
+	ITEMS,
+	REGIONS,
+	buildItemSeries,
+	buildMarketQuotes,
+	getPriceAsOfDate,
+	getItemStatus
+} from '@/data/prices'
 import {
 	FARMLAND_CROPS,
 	ZONE_LABEL,
@@ -21,8 +28,20 @@ const num = (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR'
 
 // 작물별 최근 도매가 (서울 먼저, 없으면 조사된 다른 시장). 철이 지난 품목은 값 대신 링크만
 const { quotes } = buildMarketQuotes(getPriceAsOfDate())
-const prices: Record<string, { price: number; unit: string; date: string; region: string } | null> =
-	{}
+type PriceInfo = {
+	price: number
+	unit: string
+	date: string
+	region: string
+	href: string
+	/** 같은 시장 약 30일 전 조사값 대비 % */
+	d30: number | null
+	/** 작년 같은 달 평균 대비 이번 달 평균 % */
+	y1: number | null
+}
+const prices: Record<string, PriceInfo | null> = {}
+const pct = (now: number, then: number | undefined) =>
+	then ? Math.round(((now - then) / then) * 1000) / 10 : null
 for (const c of FARMLAND_CROPS) {
 	const item = c.priceId ? ITEMS.find((i) => i.id === c.priceId) : null
 	if (!item || getItemStatus(item).stale) {
@@ -31,14 +50,27 @@ for (const c of FARMLAND_CROPS) {
 	}
 	const region = REGIONS.find((r) => quotes[item.id]?.[r.id])
 	const q = region ? quotes[item.id][region.id] : null
-	prices[c.id] = q
-		? {
-				price: q.price,
-				unit: isEn ? item.unitEn : item.unitKo,
-				date: q.date.replace(/-/g, '.'),
-				region: isEn ? region!.en : region!.ko
-			}
-		: null
+	if (!q || !region) {
+		prices[c.id] = null
+		continue
+	}
+	// 오르내림: 같은 시장의 약 30일 전 조사값, 작년 같은 달 평균
+	const series = buildItemSeries(item)
+	const daily = series.daily[region.id] ?? []
+	const cut = new Date(new Date(q.date).getTime() - 30 * 864e5).toISOString().slice(0, 10)
+	const before = [...daily].reverse().find(([d]) => d <= cut)?.[1]
+	const monthly = new Map(series.monthly[region.id] ?? [])
+	const ym = q.date.slice(0, 7)
+	const lastYm = `${Number(ym.slice(0, 4)) - 1}${ym.slice(4)}`
+	prices[c.id] = {
+		price: q.price,
+		unit: isEn ? item.unitEn : item.unitKo,
+		date: q.date.replace(/-/g, '.'),
+		region: isEn ? region.en : region.ko,
+		href: `${prefix}/prices/${item.id}/`,
+		d30: pct(q.price, before),
+		y1: monthly.has(ym) ? pct(monthly.get(ym)!, monthly.get(lastYm)) : null
+	}
 }
 
 // 지목별 대표 작물 표 (중부, 이번 달 기준). 검색엔진과 처음 온 사람용
@@ -280,6 +312,13 @@ const data = {
 				<p class='im-farm-best-reason' id='im-farm-best-reason'></p>
 				<div class='im-farm-spec' id='im-farm-spec'></div>
 				<p class='im-farm-src' id='im-farm-src' hidden></p>
+				<div class='im-farm-mix' id='im-farm-mix' hidden>
+					<label>
+						<span id='im-farm-mix-label'></span>
+						<select id='im-farm-mix-sel'></select>
+					</label>
+					<p class='im-farm-mix-sum' id='im-farm-mix-sum'></p>
+				</div>
 			</div>
 
 			<div class='im-farm-rank'>
@@ -477,7 +516,15 @@ const data = {
 	} from '@/data/farmland-layout'
 	import type { CropSpacing, FieldView, Ring } from './farmland-3d'
 
-	type Price = { price: number; unit: string; date: string; region: string } | null
+	type Price = {
+		price: number
+		unit: string
+		date: string
+		region: string
+		href: string
+		d30: number | null
+		y1: number | null
+	} | null
 	type View = {
 		address: string
 		jimok: string | null
@@ -588,6 +635,74 @@ const data = {
 	const srcEl = $('im-farm-src')
 	/** 심는 간격 한 줄 (PDF 용) */
 	let specLine: string | null = null
+	// 나눠 짓기: 하우스·온실 밖 남은 밭(통로 뺀 덩어리)에 노지 작물을 함께 심는다
+	const mixEl = $('im-farm-mix')
+	const mixLabel = $('im-farm-mix-label')
+	const mixSel = $<HTMLSelectElement>('im-farm-mix-sel')
+	const mixSum = $('im-farm-mix-sum')
+	let sideId: string | null = null
+	/** PDF 용 나눠 짓기 요약 */
+	let mixInfo: {
+		name: string
+		area: number
+		yearly: number | null
+		spacing: string | null
+	} | null = null
+	mixSel.addEventListener('change', () => {
+		sideId = mixSel.value || null
+		view?.setSide(sideId, spacingOf(cropOf(sideId)))
+		renderMix()
+	})
+	const zonesArea = () => (plan ? plan.zones.reduce((a, z) => a + z.area, 0) : 0)
+
+	function renderMix() {
+		const area = zonesArea()
+		const main = cropOf(crop)
+		const show = mode !== 'field' && !!main && area >= 30
+		mixEl.hidden = !show
+		mixInfo = null
+		if (!show) return
+		const yearly = (c: CropRule | null, a: number) => (c?.income ? (c.income.won * a) / 1000 : null)
+		mixLabel.textContent = L(
+			`남은 밭 ${pyeong(area)}에 함께 심기`,
+			`Also plant the open ${num(area)} ㎡`
+		)
+		const fieldCrops = picks.filter((c) => cropMode(c) === 'field')
+		mixSel.replaceChildren(
+			new Option(L('안 심음', 'Nothing'), ''),
+			...fieldCrops.map((c) => {
+				const y = yearly(c, area)
+				return new Option(
+					`${nameOf(c)}${y ? L(` · 약 ${money(y)}`, ` · ≈ ${money(y)}`) : ''}`,
+					c.id
+				)
+			})
+		)
+		if (sideId && !fieldCrops.some((c) => c.id === sideId)) sideId = null
+		mixSel.value = sideId ?? ''
+		const side = cropOf(sideId)
+		if (!side) {
+			mixSum.textContent = L(
+				'하우스·온실 사이 통로는 빼고, 이어진 밭 덩어리만 셉니다.',
+				'Paths between houses are left out; only connected open ground counts.'
+			)
+			return
+		}
+		const a = yearly(main, growOf(mode, plan!))
+		const b = yearly(side, area)
+		const sp = spacingRows(side, area)
+			.map(([k, v]) => `${k} ${v}`)
+			.join(' · ')
+		mixInfo = { name: nameOf(side), area, yearly: b, spacing: sp || null }
+		const total = document.createElement('b')
+		total.textContent = L(
+			`${nameOf(main!)} 약 ${a ? money(a) : '–'} + ${nameOf(side)} 약 ${b ? money(b) : '–'} = 한 해 합계 약 ${money((a ?? 0) + (b ?? 0))}`,
+			`${nameOf(main!)} ≈ ${a ? money(a) : '–'} + ${nameOf(side)} ≈ ${b ? money(b) : '–'} = ≈ ${money((a ?? 0) + (b ?? 0))} a year`
+		)
+		const how = document.createElement('small')
+		how.textContent = sp ? L(`${nameOf(side)} 심는 간격: ${sp}`, `${nameOf(side)}: ${sp}`) : ''
+		mixSum.replaceChildren(total, how)
+	}
 	const modesEl = $('im-farm-modes')
 	const rankEl = $('im-farm-rank')
 	const rankNone = $('im-farm-rank-none')
@@ -824,6 +939,10 @@ const data = {
 		// 오버레이가 먼저 그려지게 한 프레임 쉰다
 		await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)))
 		mode = m
+		if (m === 'field' && sideId) {
+			sideId = null
+			view?.setSide(null)
+		}
 		const id = cropId ?? bestFor(m)?.id ?? null
 		mark(id)
 		layout = structuredClone(layoutFor(m))
@@ -871,7 +990,7 @@ const data = {
 		;(window as unknown as { imunFarmPlan?: unknown }).imunFarmPlan = exportPlan(site, plan)
 	}
 
-	type Row = [string, string]
+	type Row = [string, string, string?]
 	// 2m 밑은 cm 로 (이랑 120cm · 두둑 90cm 처럼 한 단위로 읽히게), 나무 간격처럼 큰 값은 m
 	const cmTxt = (v: number) => (v >= 200 ? `${m1(v / 100)}m` : `${v}cm`)
 	const rng = (a: number, b?: number) =>
@@ -956,12 +1075,17 @@ const data = {
 		const h = document.createElement('h3')
 		h.textContent = title
 		const dl = document.createElement('dl')
-		for (const [k, v] of rows) {
+		for (const [k, v, href] of rows) {
 			const div = document.createElement('div')
 			const dt = document.createElement('dt')
 			dt.textContent = k
 			const dd = document.createElement('dd')
-			dd.textContent = v
+			if (href) {
+				const a = document.createElement('a')
+				a.href = href
+				a.textContent = v
+				dd.append(a)
+			} else dd.textContent = v
 			div.append(dt, dd)
 			dl.append(div)
 		}
@@ -998,6 +1122,28 @@ const data = {
 				])
 		}
 		if (c) money1.push(...seasonRows(c))
+		// 오늘 도매가와 오르내림 (시세 페이지로)
+		const pr = c ? D.prices[c.id] : null
+		if (pr) {
+			const sign = (v: number) =>
+				`${v > 0 ? '+' : ''}${v.toLocaleString(isEn ? 'en-US' : 'ko-KR')}%`
+			money1.push([
+				L('오늘 도매가', 'Wholesale today'),
+				L(`${num(pr.price)}원 / ${pr.unit} →`, `₩${num(pr.price)} / ${pr.unit} →`),
+				pr.href
+			])
+			const moves = [
+				pr.d30 !== null ? L(`한 달 전보다 ${sign(pr.d30)}`, `${sign(pr.d30)} vs a month ago`) : '',
+				pr.y1 !== null
+					? L(
+							`이번 달 평균이 작년 ${Number(pr.date.slice(5, 7))}월보다 ${sign(pr.y1)}`,
+							`month average ${sign(pr.y1)} vs last year`
+						)
+					: ''
+			].filter(Boolean)
+			if (moves.length) money1.push([L('오르내림', 'Change'), moves.join(' · ')])
+			money1.push([L('조사', 'Market'), `${pr.region} ${pr.date}`])
+		}
 
 		// 배치
 		const lay: Row[] = []
@@ -1062,6 +1208,8 @@ const data = {
 		]
 			.filter(Boolean)
 			.join(' · ')
+
+		renderMix()
 
 		approxEl.textContent = [
 			c?.income
@@ -1155,6 +1303,7 @@ const data = {
 				plan: exportPlan(site, plan),
 				houseGap: HOUSE_GAP,
 				spacing: specLine,
+				mix: mixInfo,
 				crop: c
 					? {
 							name: nameOf(c),
@@ -1246,6 +1395,8 @@ const data = {
 
 		picks = v.crops.map((p) => cropOf(p.id)).filter((c): c is CropRule => !!c)
 		layouts = {}
+		sideId = null
+		view?.setSide(null)
 		// 처음 방식은 10a당 소득 1위 작물의 방식. 단 스마트팜(유리온실)은 설치비가 훨씬 커서 처음엔 고르지 않고 버튼으로만
 		const first = picks.find((c) => cropMode(c) !== 'smart') ?? picks[0] ?? null
 		mode = first ? cropMode(first) : 'field'
@@ -1735,6 +1886,12 @@ const data = {
 		font-variant-numeric: tabular-nums;
 	}
 
+	.im-farm-spec :global(dd a) {
+		color: var(--ink);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
 	.im-farm-src {
 		margin: 10px 0 0;
 		color: var(--muted);
@@ -1744,6 +1901,58 @@ const data = {
 
 	.im-farm-src[hidden] {
 		display: none;
+	}
+
+	/* 나눠 짓기: 한 줄 고르기 + 합계 */
+	.im-farm-mix {
+		margin-top: 18px;
+		padding-top: 12px;
+		border-top: 1px solid var(--ink);
+	}
+
+	.im-farm-mix[hidden] {
+		display: none;
+	}
+
+	.im-farm-mix label {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 6px 10px;
+		font-size: 15px;
+		font-weight: 700;
+	}
+
+	.im-farm-mix select {
+		max-width: 100%;
+		padding: 2px 0;
+		border: 0;
+		border-bottom: 1px solid var(--ink);
+		border-radius: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.im-farm-mix-sum :global(b) {
+		display: block;
+		font-weight: 700;
+	}
+
+	.im-farm-mix-sum :global(small) {
+		display: block;
+		margin-top: 2px;
+		color: var(--muted);
+		font-size: 13px;
+	}
+
+	.im-farm-mix-sum {
+		margin: 8px 0 0;
+		font-size: 14px;
+		line-height: 1.6;
+		font-variant-numeric: tabular-nums;
 	}
 
 	/* 작물 표: 이름(방식) | 소득 막대 | 금액. 누르면 그 작물로 */

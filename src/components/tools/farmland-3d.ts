@@ -295,6 +295,8 @@ export type FieldView = {
 	setParcel(ring: Ring, opts?: { label?: string }): void
 	/** spacing 을 주면 이랑·포기를 그 간격으로 심고 치수 글씨를 단다 */
 	setCrop(cropId: string | null, spacing?: CropSpacing | null): void
+	/** 남은 밭에 함께 심는 노지 작물 (하우스·온실 작물일 때만 그린다). null 이면 비운다 */
+	setSide(cropId: string | null, spacing?: CropSpacing | null): void
 	/** 시설 배치. edit = 배치 화면 (끌기·배관·배수·밭 넓이 표시) */
 	setPlan(
 		plan: Plan | null,
@@ -389,6 +391,8 @@ export function createFieldView(host: HTMLElement): FieldView {
 	const dimGroup = new THREE.Group()
 	scene.add(world, cropGroup, planGroup, dimGroup)
 	let spacing: CropSpacing | null = null
+	/** 나눠 짓기: 하우스·온실 밖 남은 밭에 심는 둘째 작물 */
+	let side: { id: string; spacing: CropSpacing | null } | null = null
 
 	let plan: Plan | null = null
 	let editing = false
@@ -685,7 +689,10 @@ export function createFieldView(host: HTMLElement): FieldView {
 		clearGroup(cropGroup)
 		instanced = []
 		if (!crop || ring.length < 3) return
-		const look = LOOK[crop] ?? LOOK['perilla-seed']
+		let look = LOOK[crop] ?? LOOK['perilla-seed']
+		let sp = spacing
+		// 하우스·온실 작물 + 남은 밭 작물 (나눠 짓기)이면 밭 쪽은 둘째 작물로 심는다
+		let fieldOnly = false
 		const cos = Math.cos(-theta)
 		const sin = Math.sin(-theta)
 		const rot: Ring = ring.map(([x, y]) => [x * cos - y * sin, x * sin + y * cos])
@@ -704,18 +711,23 @@ export function createFieldView(host: HTMLElement): FieldView {
 			// 배치한 하우스가 있으면 그 안에만 심는다
 			if (houses.length) {
 				plantInHouses(look, houses)
-				for (const it of instanced) cropGroup.add(it.mesh)
-				startGrow()
-				return
-			}
-			return buildGreenhouses(look, rot, back, rotB)
+				const sideLook = side ? LOOK[side.id] : null
+				if (!side || !sideLook || sideLook.form === 'greenhouse') {
+					for (const it of instanced) cropGroup.add(it.mesh)
+					startGrow()
+					return
+				}
+				look = sideLook
+				sp = side.spacing
+				fieldOnly = true
+			} else return buildGreenhouses(look, rot, back, rotB)
 		}
 
 		// 이랑은 실제 간격으로 놓는다 (너무 많으면 몇 줄마다 하나). 포기는 줄 위에서 솎아 그린다
-		const pitch = spacing?.pitch ?? look.row
-		const stepT = spacing?.step ?? look.step
-		const linesPer = spacing && look.form !== 'tree' ? Math.max(1, spacing.lines) : 1
-		const lineGap = spacing?.lineGap ?? 0
+		const pitch = sp?.pitch ?? look.row
+		const stepT = sp?.step ?? look.step
+		const linesPer = sp && look.form !== 'tree' ? Math.max(1, sp.lines) : 1
+		const lineGap = sp?.lineGap ?? 0
 		const vs = rot.map((q) => q[1])
 		const kRow = Math.max(1, (Math.max(...vs) - Math.min(...vs)) / pitch / MAX_RIDGES)
 		const rowSp = pitch * kRow
@@ -733,7 +745,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 		// 솎아 그린 만큼 포기를 조금 키우되 이웃 이랑을 넘지 않게
 		const plantScaleW = Math.min(look.w * Math.min(kStep, 2.5), (rowSp * 0.9) / linesPer)
 		const plantScaleH = look.h * Math.min(Math.sqrt(kStep), 1.4)
-		const bedW = (spacing?.bed ?? pitch * 0.62) * kRow
+		const bedW = (sp?.bed ?? pitch * 0.62) * kRow
 		const spread = rot.reduce((m, [u]) => Math.max(m, Math.abs(u)), 1)
 
 		// 논: 물 댄 면을 먼저 깐다
@@ -835,7 +847,8 @@ export function createFieldView(host: HTMLElement): FieldView {
 			instanced.push(plants)
 		}
 		// 배치한 하우스 안에도 같은 작물을 심는다 (나무·논 작물은 빼고)
-		if (houses.length && look.form !== 'tree' && look.form !== 'paddy') plantInHouses(look, houses)
+		if (!fieldOnly && houses.length && look.form !== 'tree' && look.form !== 'paddy')
+			plantInHouses(look, houses)
 		for (const it of instanced) cropGroup.add(it.mesh)
 		startGrow()
 	}
@@ -1346,10 +1359,13 @@ export function createFieldView(host: HTMLElement): FieldView {
 		}
 		// 밭 작물: 가장 넓은 밭 덩어리에 이랑·포기 간격 (화면 표와 같은 글)
 		const look = crop ? LOOK[crop] : null
+		let sp = spacing
+		// 하우스 작물 + 남은 밭 작물이면 남은 밭이 좁고 하우스 글씨와 겹쳐서 밭 글씨는 달지 않는다 (간격은 화면 표에)
+		if (look?.form === 'greenhouse' && side) sp = null
 		const z = plan.zones[0]
-		if (spacing?.label && look && look.form !== 'greenhouse' && z) {
+		if (sp?.label && look && look.form !== 'greenhouse' && z) {
 			// 밭 전체를 덮는 글이라 다른 치수보다 크게
-			const t = label(spacing.label, size * 1.5, true)
+			const t = label(sp.label, size * 1.5, true)
 			t.position.set(z.at[0], size * 2.4, -z.at[1])
 			dimGroup.add(t)
 		}
@@ -1614,6 +1630,12 @@ export function createFieldView(host: HTMLElement): FieldView {
 			crop = id
 			spacing = sp ?? null
 			buildCrop()
+			buildDims()
+			wake()
+		},
+		setSide(id: string | null, sp?: CropSpacing | null) {
+			side = id ? { id, spacing: sp ?? null } : null
+			buildCrop(false)
 			buildDims()
 			wake()
 		},

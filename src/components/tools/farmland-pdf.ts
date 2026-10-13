@@ -30,6 +30,8 @@ export type PdfInput = {
 	houseGap: number
 	/** 심는 간격 한 줄 (화면과 같은 글) */
 	spacing: string | null
+	/** 나눠 짓기: 남은 밭에 함께 심는 노지 작물 */
+	mix: { name: string; area: number; yearly: number | null; spacing: string | null } | null
 	/** 이 땅에 가장 효율적인 작물 (10a당 소득 1위) */
 	crop: {
 		name: string
@@ -1009,6 +1011,18 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 					L(`한 해 약 ${money(yearly)}`, `≈ ${money(yearly)} a year`)
 				)
 			// 간격 글은 길어서 한 줄 표가 아니라 문단으로
+			if (d.mix) {
+				const m = d.mix
+				kv(
+					L(`남은 밭 ${py(m.area)} · ${m.name}`, `Open ${num(m.area)} ㎡ · ${m.name}`),
+					m.yearly ? L(`한 해 약 ${money(m.yearly)}`, `≈ ${money(m.yearly)} a year`) : '–'
+				)
+				if (yearly && m.yearly)
+					kv(
+						L('합계 (한 해)', 'Total a year'),
+						L(`약 ${money(yearly + m.yearly)}`, `≈ ${money(yearly + m.yearly)}`)
+					)
+			}
 			if (d.spacing) {
 				room(30)
 				y =
