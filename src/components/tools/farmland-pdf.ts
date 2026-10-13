@@ -1098,24 +1098,29 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 				'실제 이용(논·밭·과수·시설): 농림축산식품부 팜맵',
 				'Actual use (paddy, field, orchard, greenhouse): MAFRA FarmMap'
 			),
-			L(
-				'하우스·온실 폭과 높이: 농식품부 고시 「원예특작시설 내재해형 규격 설계도·시방서」 (단동 7.0m, 연동 7.0m씩, 벤로형 온실 8.0m)',
-				'Greenhouse widths and heights: MAFRA disaster-resistant horticultural facility standard (single 7.0m, multi-span 7.0m bays, Venlo 8.0m)'
-			),
+			// 하우스·온실이 없는 밭 배치에는 시설 규격 출처를 넣지 않는다
+			!d.plan.pieces.some((p) => KINDS[p.kind].greenhouse)
+				? ''
+				: L(
+						'하우스·온실 폭과 높이: 농식품부 고시 「원예특작시설 내재해형 규격 설계도·시방서」 (단동 7.0m, 연동 7.0m씩, 벤로형 온실 8.0m)',
+						'Greenhouse widths and heights: MAFRA disaster-resistant horticultural facility standard (single 7.0m, multi-span 7.0m bays, Venlo 8.0m)'
+					),
 			L(
 				'10a당 소득: 농촌진흥청 「2024 농산물소득자료집」 전국 평균 (총수입 − 경영비, 경영비에 기존 시설 감가상각비 포함)',
 				'Income per 10a: RDA 2024 farm income data book, national average (revenue minus operating costs, incl. depreciation of existing facilities)'
 			),
-			L(
-				'동 사이 간격 1.6m: 눈 피해를 막으려면 1.5m 이상 띄우라는 권고 (기장군 농업기술센터, 농촌진흥청 자료 인용). 법정 기준은 없음',
-				'1.6 m between houses: guidance of at least 1.5 m against snow damage (Gijang-gun Agricultural Technology Center, citing RDA). No legal standard'
-			),
+			!singles
+				? ''
+				: L(
+						'동 사이 간격 1.6m: 눈 피해를 막으려면 1.5m 이상 띄우라는 권고 (기장군 농업기술센터, 농촌진흥청 자료 인용). 법정 기준은 없음',
+						'1.6 m between houses: guidance of at least 1.5 m against snow damage (Gijang-gun Agricultural Technology Center, citing RDA). No legal standard'
+					),
 			L(
 				'창고·작업 공간 크기, 하우스 길이, 땅 경계와의 거리, 진입로 폭은 법정 규격이 아니라 자동 배치의 시작값',
 				'Storage and yard sizes, house length, boundary clearances and road width are starting values of the auto layout, not legal standards'
 			)
 		]
-		for (const s of src) {
+		for (const s of src.filter(Boolean)) {
 			room(30)
 			y = para(ctx, '· ' + s, M, y, W, { size: 8, color: INK }) + 2
 		}
