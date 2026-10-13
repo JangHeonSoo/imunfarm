@@ -287,6 +287,33 @@ const data = {
 			<button type='button' class='im-farm-inside' id='im-farm-inside' aria-pressed='false' hidden>
 				{isEn ? 'Look inside' : '안에서 보기'}
 			</button>
+			<div class='im-farm-zoom' id='im-farm-zoom' hidden>
+				<button type='button' data-zoom='1' aria-label={isEn ? 'Zoom in' : '확대'}>+</button>
+				<button type='button' data-zoom='-1' aria-label={isEn ? 'Zoom out' : '축소'}>−</button>
+			</div>
+			<div class='im-farm-card' id='im-farm-card' role='status' hidden>
+				<button
+					type='button'
+					class='im-farm-card-x'
+					id='im-farm-card-x'
+					aria-label={isEn ? 'Close' : '닫기'}>×</button
+				>
+				<p class='im-farm-card-name' id='im-farm-card-name'></p>
+				<p class='im-farm-card-role' id='im-farm-card-role'></p>
+				<p class='im-farm-card-cost' id='im-farm-card-cost'></p>
+			</div>
+			<p class='im-farm-wheel' id='im-farm-wheel' aria-hidden='true'>
+				{
+					isEn
+						? 'Click the view once to zoom with the wheel'
+						: '화면을 한 번 누르면 휠로 확대·축소합니다'
+				}
+			</p>
+		</div>
+		<div class='im-farm-equip' id='im-farm-equip' hidden>
+			<p class='im-farm-equip-head' id='im-farm-equip-head'></p>
+			<ol class='im-farm-equip-list' id='im-farm-equip-list'></ol>
+			<p class='im-farm-equip-src' id='im-farm-equip-src'></p>
 		</div>
 
 		<div class='im-farm-panel'>
@@ -528,6 +555,7 @@ const data = {
 	} from '@/data/farmland-layout'
 	import type { CropSpacing, FieldView, Ring } from './farmland-3d'
 	import { BUILD_COST, payback } from '@/data/farmland-cost'
+	import { EQUIP_COST, EQUIP_INFO, EQUIP_SET, EQUIP_SRC, type EquipId } from '@/data/farmland-equip'
 
 	type Price = {
 		price: number
@@ -625,6 +653,7 @@ const data = {
 			view.setParcel(r)
 			view.setCrop(crop, spacingOf(cropOf(crop)))
 			view.onPlan(planHandlers)
+			view.onEquip(showEquip)
 		} catch {
 			// WebGL 이 없으면 위에서 본 윤곽(svg)만 남는다
 			stage.classList.remove('is-3d')
@@ -790,7 +819,88 @@ const data = {
 	// 안에서 보기: 하우스·온실 안 또는 밭 한가운데를 눈높이로
 	const insideBtn = $<HTMLButtonElement>('im-farm-inside')
 	const insideCap = $('im-farm-inside-cap')
+	// 확대·축소: + − 버튼, 그냥 굴린 휠에는 안내 한 줄
+	const zoomBox = $('im-farm-zoom')
+	zoomBox.addEventListener('click', (e) => {
+		const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-zoom]')
+		if (b && view) view.zoom(b.dataset.zoom === '1' ? 1 : -1)
+	})
+	const wheelTip = $('im-farm-wheel')
+	let wheelTimer = 0
+	stage.addEventListener('im-farm-wheel', () => {
+		wheelTip.classList.add('is-on')
+		clearTimeout(wheelTimer)
+		wheelTimer = window.setTimeout(() => wheelTip.classList.remove('is-on'), 1400)
+	})
+	// 안의 시설: 무대 아래 목록 + 고르면 무대 안 설명 카드
+	const equipBox = $('im-farm-equip')
+	const equipList = $('im-farm-equip-list')
+	const card = $('im-farm-card')
+	let equipKey = ''
+	const costOf = (kind: string, id: EquipId) =>
+		(EQUIP_SET[kind as keyof typeof EQUIP_SET].find(([q]) => q === id)?.[1] ?? []).map((c) =>
+			L(EQUIP_COST[c].ko, EQUIP_COST[c].en)
+		)
+	function showEquip(id: EquipId | null) {
+		const k = view?.insideKind()
+		for (const b of equipList.querySelectorAll<HTMLButtonElement>('button'))
+			b.setAttribute('aria-pressed', String(b.dataset.equip === id))
+		card.hidden = !id || !k
+		if (!id || !k) return
+		const info = EQUIP_INFO[id]
+		$('im-farm-card-name').textContent = L(info.name.ko, info.name.en)
+		$('im-farm-card-role').textContent = L(info.role.ko, info.role.en)
+		const cost = costOf(k, id)
+		const costEl = $('im-farm-card-cost')
+		costEl.hidden = !cost.length
+		costEl.textContent = cost.join(' ')
+	}
+	function syncEquip() {
+		const k = view?.insideKind() ?? null
+		const ids = k && view ? view.insideEquip() : []
+		equipBox.hidden = !ids.length
+		const key = `${k}|${ids.join(',')}|${crop}`
+		if (key === equipKey) return
+		equipKey = key
+		card.hidden = true
+		if (!k || !ids.length) return
+		$('im-farm-equip-head').textContent =
+			k === 'smart'
+				? L('이 유리온실 안의 시설', 'Equipment in this glasshouse')
+				: k === 'house'
+					? L('이 하우스 안의 시설', 'Equipment in this house')
+					: L('이 밭의 시설', 'Equipment in this field')
+		equipList.replaceChildren(
+			...ids.map((id) => {
+				const li = document.createElement('li')
+				const b = document.createElement('button')
+				b.type = 'button'
+				b.dataset.equip = id
+				b.setAttribute('aria-pressed', 'false')
+				const n = document.createElement('strong')
+				n.textContent = L(EQUIP_INFO[id].name.ko, EQUIP_INFO[id].name.en)
+				const c = document.createElement('span')
+				c.textContent = costOf(k, id).join(' ')
+				b.append(n, c)
+				li.append(b)
+				return li
+			})
+		)
+		$('im-farm-equip-src').textContent = L(EQUIP_SRC.ko, EQUIP_SRC.en)
+	}
+	equipList.addEventListener('click', (e) => {
+		const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-equip]')
+		if (!b || !view) return
+		const id = b.dataset.equip as EquipId
+		view.lookEquip(id)
+		showEquip(id)
+	})
+	$('im-farm-card-x').addEventListener('click', () => {
+		view?.lookEquip(null)
+		showEquip(null)
+	})
 	function syncInside() {
+		zoomBox.hidden = !view
 		insideBtn.hidden = !view || !crop
 		const k = view?.insideKind() ?? null
 		stage.classList.toggle('is-inside', !!k)
@@ -807,6 +917,7 @@ const data = {
 						: L('밭 한가운데', 'In the field')
 			insideCap.textContent = `${where}${c ? ` · ${nameOf(c)}` : ''}`
 		}
+		syncEquip()
 	}
 	insideBtn.addEventListener('click', () => {
 		if (!view) return
@@ -2004,6 +2115,168 @@ const data = {
 
 	.im-farm-stage.is-inside .im-farm-drag {
 		opacity: 0;
+	}
+
+	/* 확대·축소: 무대 오른쪽, 안내 글 위에 세로로 두 칸 */
+	.im-farm-zoom {
+		position: absolute;
+		right: 0;
+		bottom: 40px;
+		display: grid;
+	}
+
+	.im-farm-zoom button {
+		width: 34px;
+		height: 34px;
+		padding: 0;
+		border: 1px solid var(--ink);
+		background: var(--bg);
+		color: var(--ink);
+		font: inherit;
+		font-size: 18px;
+		font-weight: 700;
+		line-height: 1;
+		cursor: pointer;
+	}
+
+	.im-farm-zoom button + button {
+		border-top: 0;
+	}
+
+	.im-farm-zoom[hidden],
+	.im-farm-stage.is-busy .im-farm-zoom,
+	.im-farm-stage.is-busy .im-farm-card {
+		display: none;
+	}
+
+	/* 고른 장비 설명: 무대 아래쪽, 버튼들 사이 */
+	.im-farm-card {
+		position: absolute;
+		left: 0;
+		right: 46px;
+		bottom: 52px;
+		max-width: 460px;
+		padding: 10px 34px 10px 12px;
+		border: 1px solid var(--ink);
+		background: var(--bg);
+		cursor: auto;
+	}
+
+	.im-farm-card[hidden] {
+		display: none;
+	}
+
+	.im-farm-card p {
+		margin: 0;
+		font-size: 13px;
+		line-height: 1.5;
+	}
+
+	.im-farm-card .im-farm-card-name {
+		margin-bottom: 2px;
+		font-size: 14px;
+		font-weight: 700;
+	}
+
+	.im-farm-card .im-farm-card-cost {
+		margin-top: 4px;
+		font-weight: 700;
+	}
+
+	.im-farm-card-cost[hidden] {
+		display: none;
+	}
+
+	.im-farm-card-x {
+		position: absolute;
+		top: 4px;
+		right: 4px;
+		width: 28px;
+		height: 28px;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 18px;
+		cursor: pointer;
+	}
+
+	.im-farm-equip {
+		padding: 14px 0 6px;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-farm-equip[hidden] {
+		display: none;
+	}
+
+	.im-farm-equip-head {
+		margin: 0 0 8px;
+		font-size: 14px;
+		font-weight: 700;
+	}
+
+	.im-farm-equip-list {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: 0 18px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.im-farm-equip-list :global(button) {
+		display: grid;
+		gap: 2px;
+		width: 100%;
+		padding: 8px 0;
+		border: 0;
+		border-top: 1px solid var(--line);
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.im-farm-equip-list :global(strong) {
+		font-size: 14px;
+	}
+
+	.im-farm-equip-list :global(span) {
+		color: var(--muted);
+		font-size: 12px;
+	}
+
+	.im-farm-equip-list :global(button[aria-pressed='true'] strong) {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.im-farm-equip-src {
+		margin: 8px 0 0;
+		color: var(--muted);
+		font-size: 12px;
+		line-height: 1.5;
+	}
+
+	.im-farm-wheel {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		margin: 0;
+		font-size: 15px;
+		font-weight: 700;
+		background: color-mix(in srgb, var(--bg) 72%, transparent);
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.25s ease;
+	}
+
+	.im-farm-wheel.is-on {
+		opacity: 1;
 	}
 
 	.im-farm-panel {

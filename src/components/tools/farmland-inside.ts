@@ -4,6 +4,7 @@
  * 좌표: 길이(통로) 방향 x, 폭 방향 z, 높이 y. 바닥 가운데가 원점.
  */
 import * as THREE from 'three'
+import { EQUIP_INFO, EQUIP_SET, type EquipId } from '../../data/farmland-equip'
 
 export type InsideKind = 'house' | 'smart' | 'field'
 
@@ -34,6 +35,8 @@ export type InsideSpec = {
 	hydro: 'gutter' | 'bench' | null
 	/** 검은 비닐 멀칭을 덮는 노지 작물 */
 	mulch: boolean
+	/** 영어 화면 (시설 이름표) */
+	en: boolean
 	/** 치수 글씨 (cm 글은 부르는 쪽이 범위까지 맞춰 준다) */
 	text: {
 		size: string
@@ -72,6 +75,10 @@ export type InsideScene = {
 	reach: number
 	/** 안개 거리 (먼 끝이 흐려지게) */
 	far: number
+	/** 그린 시설과 그 자리 (목록에서 누르면 그쪽을 본다) */
+	equip: { id: EquipId; at: THREE.Vector3; from: THREE.Vector3 }[]
+	/** 눌러서 고를 수 있는 시설 조각 (userData.equip) */
+	pick: THREE.Object3D[]
 }
 
 /**
@@ -127,6 +134,15 @@ export function buildInside(s: InsideSpec, ctx: InsideCtx): InsideScene {
 		return o
 	}
 	const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
+	const equip: InsideScene['equip'] = []
+	const pick: THREE.Object3D[] = []
+	/** 장비 조각: 눌러서 고를 수 있게 표시해 둔다 */
+	const part = <M extends THREE.Object3D>(id: EquipId, o: M) => {
+		o.userData.equip = id
+		pick.push(o)
+		g.add(o)
+		return o
+	}
 
 	// 보이는 크기: 시설은 그대로, 너무 크면 앞쪽 일부만 (포기를 솎지 않으려고)
 	let L = s.l
@@ -163,7 +179,8 @@ export function buildInside(s: InsideSpec, ctx: InsideCtx): InsideScene {
 	for (let r = 0; r < nRows; r++) rowsZ.push((r - (nRows - 1) / 2) * s.pitch)
 	// 눈이 서는 가운데 통로 왼쪽 줄 (치수 글씨도 이 통로에 단다)
 	const mid = Math.max(0, Math.floor(rowsZ.length / 2) - 1)
-	const x0 = -L / 2 + (s.kind === 'field' ? 0.4 : 1)
+	// 입구 쪽은 비워 둔다 (하우스: 난방기·관수 자리, 온실: 양액기·온수관 자리)
+	const x0 = -L / 2 + (s.kind === 'field' ? 0.4 : s.kind === 'smart' ? 3 : 1.6)
 	const x1 = Math.min(L / 2 - (s.kind === 'field' ? 0.4 : 1), x0 + plantL - 1)
 	const runL = x1 - x0
 
@@ -353,25 +370,6 @@ export function buildInside(s: InsideSpec, ctx: InsideCtx): InsideScene {
 			for (let x = x0; x <= x1 + 1e-6; x += 2)
 				hang.push(V(x, s.hydro === 'gutter' ? s.h - EQUIP.rise : 0, z), V(x, y - 0.12, z))
 		lines(hang, faint)
-		// 레일 파이프: 줄 사이 통로마다 두 줄
-		if (s.kind === 'smart') {
-			const aisles: number[] = []
-			for (let i = 0; i < rowsZ.length - 1; i++) aisles.push((rowsZ[i] + rowsZ[i + 1]) / 2)
-			const pipe = new THREE.InstancedMesh(
-				new THREE.CylinderGeometry(EQUIP.railR, EQUIP.railR, 1, 8).rotateZ(Math.PI / 2),
-				mat(C.model),
-				aisles.length * 2
-			)
-			let k = 0
-			for (const z of aisles)
-				for (const dz of [-EQUIP.railGap / 2, EQUIP.railGap / 2]) {
-					dm.position.set((x0 + x1) / 2, EQUIP.railY, z + dz)
-					dm.scale.set(runL, 1, 1)
-					dm.updateMatrix()
-					pipe.setMatrixAt(k++, dm.matrix)
-				}
-			g.add(pipe)
-		}
 	} else {
 		const hasBed = s.bed !== null
 		const bedW = s.bed ?? Math.min(s.pitch * 0.6, Math.max(0.3, s.lineGap * s.lines))
@@ -572,11 +570,337 @@ export function buildInside(s: InsideSpec, ctx: InsideCtx): InsideScene {
 		g.add(m)
 	}
 
+	// ── 시설 장비 (모양·자리는 그림이고 숫자는 적지 않는다) ──────────
+	const darkMat = mat(C.dark ? C.ink.clone().lerp(C.bg, 0.55) : C.ink.clone().lerp(C.bg, 0.3))
+	const clearMat = mat(C.model, { transparent: true, opacity: 0.6, depthWrite: false })
+	const ET = 0.15
+	const tagAt: Partial<Record<EquipId, THREE.Vector3>> = {}
+	/** 장비 이름표 (그 장비를 처음 그린 자리에 하나) */
+	const name = (id: EquipId, x: number, y: number, z: number) => {
+		if (tagAt[id]) return
+		const t = label(EQUIP_INFO[id].name[s.en ? 'en' : 'ko'], ET, true)
+		t.position.set(x, y, z)
+		t.userData.tag = 'equip'
+		t.userData.equip = id
+		g.add(t)
+		tagAt[id] = V(x, y, z)
+	}
+	/** 상자 (w 길이 방향 x, h 높이, d 폭 방향 z) */
+	const box = (
+		id: EquipId,
+		w: number,
+		h: number,
+		d: number,
+		x: number,
+		y: number,
+		z: number,
+		m: THREE.Material = darkMat
+	) => {
+		const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m)
+		o.position.set(x, y, z)
+		return part(id, o)
+	}
+	/** 관 (axis 방향으로 len) */
+	const tube = (
+		id: EquipId,
+		r: number,
+		len: number,
+		x: number,
+		y: number,
+		z: number,
+		axis: 'x' | 'y' | 'z',
+		m: THREE.Material = darkMat
+	) => {
+		const geo = new THREE.CylinderGeometry(r, r, len, 10)
+		if (axis === 'x') geo.rotateZ(Math.PI / 2)
+		else if (axis === 'z') geo.rotateX(Math.PI / 2)
+		const o = new THREE.Mesh(geo, m)
+		o.position.set(x, y, z)
+		return part(id, o)
+	}
+	const ex = -L / 2
+	const aisleOf = (i: number) =>
+		rowsZ.length >= 2 ? (rowsZ[i] + rowsZ[i + 1]) / 2 : rowsZ[0] + s.pitch / 2
+	const midZ = aisleOf(mid)
+	const gx = x0 + Math.min(10, runL / 2)
+
+	if (s.kind === 'house') {
+		const h = s.h
+		const sh = Math.min(EQUIP.shoulder, h * 0.5)
+		// 측창 개폐기: 감는 축 끝 모터와 받침 파이프 (양옆)
+		for (const z of [-W / 2 + 0.12, W / 2 - 0.12]) {
+			box('vent', 0.24, 0.26, 0.16, ex + 2.5, sh, z)
+			tube('vent', 0.016, sh - 0.13, ex + 2.5, (sh - 0.13) / 2, z, 'y', whiteMat)
+		}
+		name('vent', ex + 2.5, sh + 0.42, -W / 2 + 0.4)
+		// 차광망: 지붕 위 윗부분을 덮는 망
+		const net = new THREE.CylinderGeometry(0.5, 0.5, 1, 32, 1, true, Math.PI * 0.18, Math.PI * 0.64)
+		net.rotateZ(Math.PI / 2)
+		net.scale(L, 2 * (h - sh) * 1.03, W * 1.03)
+		net.translate(0, sh, 0)
+		part(
+			'shade',
+			new THREE.Mesh(
+				net,
+				mat(C.ink, {
+					transparent: true,
+					opacity: C.dark ? 0.35 : 0.22,
+					side: THREE.DoubleSide,
+					depthWrite: false
+				})
+			)
+		).renderOrder = 3
+		name('shade', ex + 7, h - 0.35, 0.9)
+		// 관수: 입구 오른쪽 여과기 → 주관(폭 방향) → 줄마다 점적 호스
+		const fz = W / 2 - 0.45
+		tube('water', 0.03, 1.0, ex + 0.5, 0.5, fz, 'y')
+		tube('water', 0.085, 0.36, ex + 0.5, 0.78, fz, 'y', whiteMat)
+		tube('water', 0.03, x0 - 0.35 - (ex + 0.5), (ex + 0.5 + x0 - 0.35) / 2, 0.04, fz, 'x')
+		tube('water', 0.03, W - 0.8, x0 - 0.35, 0.04, 0, 'z')
+		name('water', ex + 0.5, 1.3, fz)
+		// 순환팬: 마루 밑에 길이 방향으로
+		for (let x = ex + 8; x < L / 2 - 2; x += 14) {
+			tube('fan', 0.22, 0.32, x, h - 0.6, 0, 'x')
+			lines([V(x, h - 0.38, 0), V(x, h, 0)], faint)
+			name('fan', x, h - 1.05, 0)
+		}
+		// 보온커튼: 어깨 위 양옆에 말아 둔 커튼
+		for (const z of [-W / 2 + 0.22, W / 2 - 0.22])
+			tube('curtain', 0.07, L - 0.4, 0, sh + 0.3, z, 'x', whiteMat)
+		name('curtain', ex + 5, sh + 0.62, -W / 2 + 0.55)
+		// 온풍난방기: 입구 왼쪽 구석, 위로 올린 비닐 덕트가 안쪽 끝까지
+		const hz = -W / 2 + 0.55
+		box('heater', 0.9, 1.1, 0.62, ex + 0.75, 0.55, hz)
+		tube('heater', 0.15, 0.9, ex + 0.75, 1.55, hz, 'y', clearMat)
+		const dl = L / 2 - 1 - (ex + 0.75)
+		tube('heater', 0.15, dl, ex + 0.75 + dl / 2, 2.0, hz, 'x', clearMat)
+		name('heater', ex + 0.75, 1.4, hz + 0.1)
+		// 환경 센서: 가운데쯤 작물 높이, 위에서 매단다
+		const sy = Math.min(h - 0.7, Math.max(1.2, topY + ph + 0.25))
+		box('sensor', 0.18, 0.28, 0.18, gx, sy, rowsZ[mid], whiteMat)
+		lines([V(gx, sy + 0.14, rowsZ[mid]), V(gx, h - 0.1, rowsZ[mid])], faint)
+		name('sensor', gx, sy + 0.42, rowsZ[mid])
+		// 환경 제어기: 입구 벽, 문 오른쪽
+		box('panel', 0.12, 0.7, 0.5, ex + 0.08, 1.4, 1.55)
+		name('panel', ex + 0.3, 1.98, 1.55)
+	} else if (s.kind === 'smart') {
+		const wall = s.h - EQUIP.rise
+		const bay = 8
+		const nb = Math.max(1, Math.round(W / bay))
+		const bayZ = Array.from({ length: nb }, (_, b) => -W / 2 + bay * (b + 0.5))
+		const nearBay = bayZ.reduce((a, b) => (Math.abs(b - midZ) < Math.abs(a - midZ) ? b : a))
+		// 천창: 마루에 경첩을 단 유리판을 4m 칸마다 엇갈려 들어 올린 모습
+		const vq: number[] = []
+		const ve: THREE.Vector3[] = []
+		const open = (25 * Math.PI) / 180
+		let vi = 0
+		for (let b = 0; b < nb * 2; b++) {
+			const za = -W / 2 + (bay / 2) * b
+			const zm = za + bay / 4
+			for (let x = ex; x + EQUIP.post <= L / 2 + 1e-6; x += EQUIP.post) {
+				const left = (vi++ + b) % 2 === 0
+				const zs = left ? za : za + bay / 2
+				const a = Math.atan2(wall - s.h, zs - zm) + (left ? -open : open)
+				const dz = Math.cos(a) * 1.1
+				const dy = Math.sin(a) * 1.1
+				const xa = x + 0.3
+				const xb = x + EQUIP.post - 0.3
+				vq.push(
+					xa,
+					s.h,
+					zm,
+					xb,
+					s.h,
+					zm,
+					xb,
+					s.h + dy,
+					zm + dz,
+					xa,
+					s.h,
+					zm,
+					xb,
+					s.h + dy,
+					zm + dz,
+					xa,
+					s.h + dy,
+					zm + dz
+				)
+				ve.push(
+					V(xa, s.h + dy, zm + dz),
+					V(xb, s.h + dy, zm + dz),
+					V(xa, s.h, zm),
+					V(xa, s.h + dy, zm + dz),
+					V(xb, s.h, zm),
+					V(xb, s.h + dy, zm + dz)
+				)
+			}
+		}
+		const vg = new THREE.BufferGeometry()
+		vg.setAttribute('position', new THREE.Float32BufferAttribute(vq, 3))
+		vg.computeVertexNormals()
+		part(
+			'roofvent',
+			new THREE.Mesh(
+				vg,
+				mat(C.glass, { transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
+			)
+		).renderOrder = 3
+		lines(ve)
+		name('roofvent', ex + 6, s.h - 0.35, nearBay - bay / 4)
+		// 보온·차광 스크린: 처마 밑에 수평으로, 안쪽 절반만 펼친 모습
+		const sy = wall - 0.2
+		part(
+			'screen',
+			new THREE.Mesh(
+				new THREE.PlaneGeometry(L / 2, W).rotateX(Math.PI / 2),
+				mat(C.model, {
+					transparent: true,
+					opacity: 0.55,
+					side: THREE.DoubleSide,
+					depthWrite: false
+				})
+			)
+		).position.set(L / 4, sy, 0)
+		const sw: THREE.Vector3[] = []
+		for (let z = -W / 2; z <= W / 2 + 1e-6; z += 2) sw.push(V(ex, sy, z), V(0, sy, z))
+		lines(sw, faint)
+		tube('screen', 0.03, W, 0, sy, 0, 'z', whiteMat)
+		name('screen', 1.2, sy - 0.3, nearBay)
+		// 온수 난방관 겸 레일: 줄 사이 통로마다 두 줄, 입구 쪽 온수관에서 나뉜다
+		const aisles: number[] = []
+		for (let i = 0; i < rowsZ.length - 1; i++) aisles.push(aisleOf(i))
+		const hx = x0 - 0.7
+		const pipe = new THREE.InstancedMesh(
+			new THREE.CylinderGeometry(EQUIP.railR, EQUIP.railR, 1, 8).rotateZ(Math.PI / 2),
+			whiteMat,
+			aisles.length * 2
+		)
+		let k = 0
+		for (const z of aisles)
+			for (const dz of [-EQUIP.railGap / 2, EQUIP.railGap / 2]) {
+				dm.position.set((hx + x1) / 2, EQUIP.railY, z + dz)
+				dm.rotation.set(0, 0, 0)
+				dm.scale.set(x1 - hx, 1, 1)
+				dm.updateMatrix()
+				pipe.setMatrixAt(k++, dm.matrix)
+			}
+		if (aisles.length) {
+			part('rail', pipe)
+			name('rail', x0 + 1.4, 0.42, midZ + EQUIP.railGap / 2)
+		}
+		// 보일러 온수관: 밖 보일러에서 들어와 폭 방향으로 나눈다
+		tube('boiler', 0.06, W - 0.6, hx, EQUIP.railY, 0, 'z')
+		tube('boiler', 0.06, 0.8, hx, EQUIP.railY + 0.4, -W / 2 + 0.3, 'y')
+		tube('boiler', 0.06, hx - ex, (ex + hx) / 2, EQUIP.railY + 0.8, -W / 2 + 0.3, 'x')
+		name('boiler', hx, 0.62, midZ - 1.2)
+		// 작업 대차: 옆 통로 레일 위
+		if (aisles.length) {
+			const tz = aisles[Math.min(mid + 1, aisles.length - 1)]
+			const tx = x0 + 7
+			const top = 1.3
+			box('trolley', 1.0, 0.1, 0.5, tx, EQUIP.railY + 0.08, tz, whiteMat)
+			box('trolley', 1.0, 0.05, 0.5, tx, top, tz, whiteMat)
+			lines([
+				V(tx - 0.45, EQUIP.railY + 0.13, tz),
+				V(tx + 0.45, top - 0.03, tz),
+				V(tx + 0.45, EQUIP.railY + 0.13, tz),
+				V(tx - 0.45, top - 0.03, tz),
+				V(tx - 0.5, top, tz - 0.3),
+				V(tx - 0.5, top + 0.9, tz - 0.3),
+				V(tx + 0.5, top, tz - 0.3),
+				V(tx + 0.5, top + 0.9, tz - 0.3),
+				V(tx - 0.5, top + 0.9, tz - 0.3),
+				V(tx + 0.5, top + 0.9, tz - 0.3)
+			])
+			name('trolley', tx, top + 1.2, tz)
+		}
+		// 순환팬: 칸 가운데, 처마 밑
+		for (const z of bayZ)
+			for (let x = ex + 8; x < L / 2 - 2; x += 14) {
+				tube('fan', 0.25, 0.36, x, wall - 0.75, z, 'x')
+				lines([V(x, wall - 0.5, z), V(x, wall, z)], faint)
+			}
+		name('fan', ex + 8, wall - 1.25, nearBay)
+		// 포그: 칸마다 두 줄, 노즐은 점으로
+		const fogY = wall - 0.5
+		const fogPts: THREE.Vector3[] = []
+		const nozzle: [number, number][] = []
+		for (const z of bayZ)
+			for (const dz of [-2, 2]) {
+				fogPts.push(V(ex + 0.5, fogY, z + dz), V(L / 2 - 0.5, fogY, z + dz))
+				for (let x = ex + 1.5; x < L / 2 - 0.5; x += 2) nozzle.push([x, z + dz])
+			}
+		lines(fogPts, faint)
+		const nz = new THREE.InstancedMesh(
+			new THREE.SphereGeometry(0.035, 6, 4),
+			darkMat,
+			nozzle.length
+		)
+		nozzle.forEach(([x, z], i) => {
+			dm.position.set(x, fogY - 0.03, z)
+			dm.rotation.set(0, 0, 0)
+			dm.scale.set(1, 1, 1)
+			dm.updateMatrix()
+			nz.setMatrixAt(i, dm.matrix)
+		})
+		part('fogger', nz)
+		name('fogger', ex + 3.5, fogY - 0.3, nearBay + 2)
+		// 양액기: 입구 왼쪽 구석, 제어 상자와 A·B 통
+		const fx = ex + 1.1
+		box('feed', 0.6, 1.4, 0.9, fx, 0.7, -W / 2 + 1.0)
+		tube('feed', 0.3, 1.0, fx, 0.5, -W / 2 + 2.0, 'y', whiteMat)
+		tube('feed', 0.3, 1.0, fx, 0.5, -W / 2 + 2.7, 'y', whiteMat)
+		name('feed', fx, 1.75, -W / 2 + 1.8)
+		// 이산화탄소 공급관: 재배 줄마다 작물 옆
+		const cy =
+			s.hydro === 'gutter' ? EQUIP.gutterY - 0.2 : s.hydro === 'bench' ? EQUIP.benchY - 0.2 : 0.12
+		const co2 = new THREE.InstancedMesh(
+			new THREE.CylinderGeometry(0.014, 0.014, 1, 6).rotateZ(Math.PI / 2),
+			whiteMat,
+			rowsZ.length
+		)
+		rowsZ.forEach((z, i) => {
+			dm.position.set((x0 + x1) / 2, cy, z + 0.16)
+			dm.rotation.set(0, 0, 0)
+			dm.scale.set(runL, 1, 1)
+			dm.updateMatrix()
+			co2.setMatrixAt(i, dm.matrix)
+		})
+		part('co2', co2)
+		name('co2', x0 + 0.6, cy + 0.3, rowsZ[Math.min(mid + 1, rowsZ.length - 1)] + 0.16)
+		// 환경 센서: 가운데쯤 작물 높이 (측정 상자를 위에서 매단다)
+		const ky = Math.min(wall - 1, Math.max(1.0, topY + ph * 0.6))
+		box('sensor', 0.2, 0.3, 0.2, gx, ky, rowsZ[mid], whiteMat)
+		lines([V(gx, ky + 0.15, rowsZ[mid]), V(gx, wall, rowsZ[mid])], faint)
+		name('sensor', gx, ky + 0.45, rowsZ[mid])
+		// 환경 제어기: 입구 벽
+		box('panel', 0.12, 0.8, 0.6, ex + 0.08, 1.4, W / 2 - 1.5)
+		name('panel', ex + 0.3, 2.0, W / 2 - 1.5)
+	} else {
+		// 밭: 머리 쪽 주관에서 줄마다 점적 호스, 구석에 관정 펌프
+		const mx = x0 - 0.5
+		tube('water', 0.035, W - 0.4, mx, 0.04, 0, 'z')
+		const drip: THREE.Vector3[] = []
+		const dy = s.look.shape === 'tree' ? 0.02 : topY + 0.01
+		for (const z of rowsZ) drip.push(V(mx, dy, z), V(x1, dy, z))
+		lines(drip, ink)
+		name('water', mx, 0.65, midZ - 0.6)
+		const pz = -W / 2 + 1
+		box('pump', 0.5, 0.6, 0.5, mx - 1.0, 0.3, pz)
+		tube('pump', 0.035, 1.0, mx - 0.5, 0.04, pz, 'x')
+		name('pump', mx - 1.0, 1.0, pz)
+	}
+	for (const [id] of EQUIP_SET[s.kind]) {
+		const at = tagAt[id]
+		if (at) equip.push({ id, at, from: at })
+	}
+
 	// ── 치수 글씨 (입구 쪽) ──────────────────────────────
 	const T = 0.19
 	const tag = (text: string, x: number, y: number, z: number, size = T) => {
 		const t = label(text, size, true)
 		t.position.set(x, y, z)
+		t.userData.tag = 'dim'
 		g.add(t)
 	}
 	const xa = x0 + 2.2
@@ -642,11 +966,22 @@ export function buildInside(s: InsideSpec, ctx: InsideCtx): InsideScene {
 	const eyeZ = aisleZ
 	const eye = V(-L / 2 + (s.kind === 'field' ? -2 : 0.6), s.kind === 'field' ? 1.7 : 1.6, eyeZ)
 	const target = V(-L / 2 + Math.min(9, L * 0.45), 1.0, eyeZ * 0.6)
+	// 목록에서 고른 장비는 통로에 서서 3.5m 쯤 떨어져 본다 (입구 쪽 장비는 안쪽에서 돌아본다)
+	for (const e of equip) {
+		const lo = -L / 2 + 0.6
+		const hi = L / 2 - 0.6
+		let fx = e.at.x + 3.5
+		if (fx > hi) fx = e.at.x - 3.5
+		const back = e.at.y > 2.4 ? 1.5 : 0
+		e.from = V(Math.min(hi, Math.max(lo, fx + (fx > e.at.x ? back : -back))), 1.6, eyeZ)
+	}
 	return {
 		group: g,
 		eye,
 		target,
 		reach: Math.min(18, Math.max(6, L * 0.5)),
-		far: Math.max(L, W) * 1.4
+		far: Math.max(L, W) * 1.4,
+		equip,
+		pick
 	}
 }

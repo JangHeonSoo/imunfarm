@@ -13,7 +13,8 @@ import {
 	type Plan,
 	type PlanPiece
 } from '@/data/farmland-layout'
-import { buildInside, type InsideLook, type InsideSpec } from './farmland-inside'
+import { buildInside, type InsideLook, type InsideScene, type InsideSpec } from './farmland-inside'
+import type { EquipId } from '../../data/farmland-equip'
 
 export type Ring = [number, number][]
 
@@ -326,6 +327,14 @@ export type FieldView = {
 	inside(on: boolean): boolean
 	/** 지금 안에서 보는 중이면 그 곳 ('house' | 'smart' | 'field') */
 	insideKind(): InsideSpec['kind'] | null
+	/** 확대(+1)·축소(-1) 한 칸 */
+	zoom(dir: 1 | -1): void
+	/** 안에서 보이는 장비 (목록 순서) */
+	insideEquip(): EquipId[]
+	/** 그 장비 쪽으로 걸어가 바라본다 (null 이면 고른 것만 푼다) */
+	lookEquip(id: EquipId | null): void
+	/** 안에서 장비를 눌렀을 때 (빈 곳이면 null) */
+	onEquip(fn: (id: EquipId | null) => void): void
 	/** 지금 보는 각도 그대로 밝은 색으로 한 장 (PDF 표지용). 고른 시설 표시는 뺀다. JPEG data URL */
 	snapshot(width: number, height: number): string
 	dispose(): void
@@ -383,18 +392,49 @@ export function createFieldView(host: HTMLElement): FieldView {
 	}
 	spin(true)
 	controls.addEventListener('start', () => {
+		zoomDist = null
+		look = null
 		spin(false)
 		host.classList.add('is-touched')
 	})
-	// 휠은 페이지 스크롤에 양보하고 Ctrl/⌘ 휠(트랙패드 핀치)만 확대로 넘긴다.
+	// 휠: 화면을 한 번 누른 뒤(또는 Ctrl/⌘ 휠·트랙패드 핀치)에만 확대로 넘기고,
+	// 그냥 지나가며 굴리는 휠은 페이지 스크롤에 양보한다 (그때는 'im-farm-wheel' 로 안내를 띄운다).
 	// 터치는 세로로 밀면 페이지가 내려가고, 가로로 끌면 돌아간다 (두 손가락은 확대)
+	let armed = false
+	renderer.domElement.addEventListener('pointerdown', () => (armed = true))
+	host.addEventListener('pointerleave', () => (armed = false))
 	host.addEventListener(
 		'wheel',
 		(e) => {
-			if (!(e.ctrlKey || e.metaKey)) e.stopPropagation()
+			if (armed || e.ctrlKey || e.metaKey) {
+				zoomDist = null
+				return
+			}
+			e.stopPropagation()
+			host.dispatchEvent(new CustomEvent('im-farm-wheel'))
 		},
 		{ capture: true }
 	)
+	// 확대·축소 버튼: 보는 곳 쪽으로 다가가거나 물러난다 (안에서는 앞쪽으로 걸어 들어간다)
+	let zoomDist: number | null = null
+	function zoomBy(f: number) {
+		const d = zoomDist ?? camera.position.distanceTo(controls.target)
+		zoomDist = Math.min(controls.maxDistance, Math.max(controls.minDistance, d * f))
+		spin(false)
+		wake()
+	}
+	function stepZoom() {
+		if (zoomDist === null) return false
+		const off = camera.position.clone().sub(controls.target)
+		const d = off.length()
+		let n = d + (zoomDist - d) * 0.22
+		if (Math.abs(zoomDist - d) < zoomDist * 0.004) {
+			n = zoomDist
+			zoomDist = null
+		}
+		camera.position.copy(controls.target).add(off.setLength(n))
+		return true
+	}
 	renderer.domElement.style.touchAction = 'pan-y'
 
 	const hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 1.5)
@@ -592,6 +632,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 	}
 
 	function fitCamera() {
+		zoomDist = null
 		// 땅 꼭짓점(바닥과 하우스 높이)을 실제로 화면에 투영해 보고, 가운데로 옮기고 거리를 맞추기를 몇 번 되풀이한다.
 		// 어림 공식은 길쭉한 땅에서 화면 밖으로 잘렸다
 		camera.updateProjectionMatrix()
@@ -1408,16 +1449,36 @@ export function createFieldView(host: HTMLElement): FieldView {
 		}
 		const hits = (b: number[]) =>
 			dcBoxes.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1])
-		for (const o of world.children)
-			if ((o as THREE.Sprite).isSprite) {
+		if (!insideScene)
+			for (const o of world.children)
+				if ((o as THREE.Sprite).isSprite) {
+					const b = box(o)
+					if (b) dcBoxes.push(b)
+				}
+		if (!insideScene)
+			for (const o of dimGroup.children) {
+				if (!(o as THREE.Sprite).isSprite) continue
 				const b = box(o)
-				if (b) dcBoxes.push(b)
+				o.visible = !!b && !hits(b)
+				if (o.visible) dcBoxes.push(b!)
 			}
-		for (const o of dimGroup.children) {
-			if (!(o as THREE.Sprite).isSprite) continue
-			const b = box(o)
-			o.visible = !!b && !hits(b)
-			if (o.visible) dcBoxes.push(b!)
+		// 안에서: 고른 장비 이름표 → 치수 → 다른 장비 이름표 순으로 자리를 잡는다
+		if (insideScene) {
+			const tags = insideScene.group.children.filter((o) => (o as THREE.Sprite).isSprite)
+			// 이름표·치수 글씨는 가까우면 줄이고 멀면 키워 화면에서 비슷한 크기로 (5m 에서 원래 크기)
+			for (const o of tags) {
+				const base = (o.userData.base ??= o.scale.clone()) as THREE.Vector3
+				const k = Math.min(3, Math.max(0.45, camera.position.distanceTo(o.position) / 5))
+				o.scale.set(base.x * k, base.y * k, 1)
+			}
+			const rank = (o: THREE.Object3D) =>
+				o.userData.equip && o.userData.equip === equipSel ? 0 : o.userData.tag === 'dim' ? 1 : 2
+			tags.sort((a, b) => rank(a) - rank(b))
+			for (const o of tags) {
+				const b = box(o)
+				o.visible = !!b && (rank(o) === 0 || !hits(b))
+				if (o.visible) dcBoxes.push(b!)
+			}
 		}
 	}
 
@@ -1425,6 +1486,41 @@ export function createFieldView(host: HTMLElement): FieldView {
 	const insideGroup = new THREE.Group()
 	scene.add(insideGroup)
 	let insideOn: InsideSpec['kind'] | null = null
+	let insideScene: InsideScene | null = null
+	/** 고른 장비 (이름표를 먼저 띄운다) */
+	let equipSel: EquipId | null = null
+	let onEquip: ((id: EquipId | null) => void) | null = null
+	/** 고른 장비 쪽으로 옮겨 가는 중: 눈과 바라보는 점의 목표 */
+	let look: { pos: THREE.Vector3; target: THREE.Vector3 } | null = null
+	function stepLook() {
+		if (!look) return false
+		camera.position.lerp(look.pos, 0.14)
+		controls.target.lerp(look.target, 0.14)
+		if (
+			camera.position.distanceTo(look.pos) < 0.01 &&
+			controls.target.distanceTo(look.target) < 0.01
+		) {
+			camera.position.copy(look.pos)
+			controls.target.copy(look.target)
+			look = null
+		}
+		return true
+	}
+	function lookEquip(id: EquipId) {
+		const e = insideScene?.equip.find((q) => q.id === id)
+		if (!e) return
+		equipSel = id
+		zoomDist = null
+		look = { pos: e.from.clone(), target: e.at.clone() }
+		wake()
+	}
+	/** 안에서 화면을 톡 누른 곳의 장비 */
+	function equipAt(cx: number, cy: number): EquipId | null {
+		if (!insideScene) return null
+		aim(cx, cy)
+		const hit = raycaster.intersectObjects(insideScene.pick, false)[0]
+		return (hit?.object.userData.equip as EquipId | undefined) ?? null
+	}
 	let outside: {
 		pos: THREE.Vector3
 		target: THREE.Vector3
@@ -1499,6 +1595,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 			step,
 			hydro,
 			mulch: kind === 'field' && MULCH.has(crop),
+			en,
 			text: {
 				size:
 					kind === 'smart'
@@ -1521,6 +1618,9 @@ export function createFieldView(host: HTMLElement): FieldView {
 		if (!spec) return false
 		clearGroup(insideGroup)
 		const r = buildInside(spec, { mat, label, C })
+		insideScene = r
+		look = null
+		if (equipSel && !r.equip.some((e) => e.id === equipSel)) equipSel = null
 		insideGroup.add(r.group)
 		if (!insideOn)
 			outside = {
@@ -1534,6 +1634,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 				fov: camera.fov
 			}
 		insideOn = spec.kind
+		zoomDist = null
 		world.visible = cropGroup.visible = planGroup.visible = dimGroup.visible = false
 		insideGroup.visible = true
 		spin(false)
@@ -1556,6 +1657,10 @@ export function createFieldView(host: HTMLElement): FieldView {
 	function leaveInside() {
 		if (!insideOn || !outside) return
 		insideOn = null
+		zoomDist = null
+		insideScene = null
+		equipSel = null
+		look = null
 		clearGroup(insideGroup)
 		insideGroup.visible = false
 		world.visible = cropGroup.visible = planGroup.visible = dimGroup.visible = true
@@ -1660,6 +1765,21 @@ export function createFieldView(host: HTMLElement): FieldView {
 				if (d.moved) handlers.move?.(d.obj.userData.id, x, y)
 				else handlers.pick?.(d.obj.userData.id)
 			} else if (d.moved) handlers.marker?.(kind as 'well' | 'outlet', x, y)
+			return
+		}
+		// 안에서 장비를 톡 누르면 그 장비 설명
+		if (
+			insideOn &&
+			down &&
+			e.type === 'pointerup' &&
+			e.target === renderer.domElement &&
+			Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 5
+		) {
+			const id = equipAt(e.clientX, e.clientY)
+			equipSel = id
+			onEquip?.(id)
+			wake()
+			down = null
 			return
 		}
 		// 빈 땅을 톡 누르면 고른 것을 푼다
@@ -1770,8 +1890,9 @@ export function createFieldView(host: HTMLElement): FieldView {
 		adapt(t)
 		if (controls.autoRotate && performance.now() > spinUntil) controls.autoRotate = false
 		if (growing) growing = !applyGrow((performance.now() - growStart) / 1000)
-		const moved = controls.update()
-		if (dimGroup.visible) {
+		const zooming = stepZoom() || stepLook()
+		const moved = controls.update() || zooming
+		if (dimGroup.visible || insideOn) {
 			camera.updateMatrixWorld()
 			declutter(renderer.domElement.clientWidth, renderer.domElement.clientHeight)
 		}
@@ -1891,6 +2012,20 @@ export function createFieldView(host: HTMLElement): FieldView {
 		},
 		insideKind() {
 			return insideOn
+		},
+		zoom(dir) {
+			zoomBy(dir > 0 ? 0.72 : 1 / 0.72)
+		},
+		insideEquip() {
+			return insideScene ? insideScene.equip.map((e) => e.id) : []
+		},
+		lookEquip(id) {
+			if (id) lookEquip(id)
+			else equipSel = null
+			wake()
+		},
+		onEquip(fn) {
+			onEquip = fn
 		},
 		onPlan(h) {
 			handlers = h
