@@ -286,12 +286,20 @@ const data = {
 				<p class='im-label'>
 					{
 						isEn
-							? 'Crops that fit this plot · income per 10a'
-							: '이 땅에 심을 수 있는 작물 · 10a당 소득'
+							? 'Crops for this plot · bar = income per 10a · right = this plot, a year'
+							: '이 땅에 심을 수 있는 작물 · 막대는 10a당 소득, 오른쪽은 이 땅 한 해 예상'
 					}
 				</p>
 				<ol id='im-farm-rank'></ol>
-				<button type='button' class='im-farm-rank-more' id='im-farm-rank-more' hidden></button>
+				<div class='im-farm-rank-tools'>
+					<button type='button' class='im-farm-rank-more' id='im-farm-rank-more' hidden></button>
+					<label class='im-farm-add'>
+						<span>{isEn ? 'Add a crop' : '작물 추가해서 보기'}</span>
+						<select id='im-farm-add'>
+							<option value=''>{isEn ? 'Choose…' : '고르기…'}</option>
+						</select>
+					</label>
+				</div>
 				<p class='im-farm-rank-none' id='im-farm-rank-none' hidden></p>
 			</div>
 
@@ -584,6 +592,15 @@ const data = {
 	const rankEl = $('im-farm-rank')
 	const rankNone = $('im-farm-rank-none')
 	const rankMore = $<HTMLButtonElement>('im-farm-rank-more')
+	const addSel = $<HTMLSelectElement>('im-farm-add')
+	/** 내가 표에 더한 작물 (이 땅에 덜 맞는 작물도 넣을 수 있다) */
+	const added: string[] = []
+	addSel.addEventListener('change', () => {
+		const id = addSel.value
+		addSel.value = ''
+		if (id && !added.includes(id)) added.push(id)
+		renderRank()
+	})
 	/** 작물 표는 처음엔 위 8개만 (고른 작물이 아래에 있으면 그것까지) */
 	const RANK_TOP = 8
 	let rankAll = false
@@ -702,16 +719,29 @@ const data = {
 	}
 
 	/** 작물 표: 맞는 작물을 10a당 소득 막대로. 누르면 그 작물·방식으로 다시 배치 */
+	/** 이 땅에서 그 작물의 방식대로 배치했을 때 한 해 예상 소득 (원) */
+	function yearlyOf(c: CropRule) {
+		if (!c.income) return null
+		const m = cropMode(c)
+		const grow = growOf(m, computePlan(site, layoutFor(m)))
+		return grow > 0 ? (c.income.won * grow) / 1000 : null
+	}
+
 	function renderRank() {
 		const withIncome = picks.filter((c) => c.income)
-		const max = Math.max(1, ...withIncome.map((c) => c.income!.won))
-		const shown = rankAll ? withIncome : withIncome.filter((c, i) => i < RANK_TOP || c.id === crop)
+		const top = rankAll ? withIncome : withIncome.filter((c, i) => i < RANK_TOP || c.id === crop)
+		const extra = added
+			.map((id) => cropOf(id))
+			.filter((c): c is CropRule => !!c && !top.includes(c))
+		const rows = [...top, ...extra]
+		const max = Math.max(1, ...rows.map((c) => c.income?.won ?? 0))
 		rankMore.hidden = withIncome.length <= RANK_TOP
 		rankMore.textContent = rankAll
 			? L('위 8개만 보기', 'Show top 8')
 			: L(`작물 ${withIncome.length}개 모두 보기`, `Show all ${withIncome.length} crops`)
+		const fits = new Set(picks.map((c) => c.id))
 		rankEl.replaceChildren(
-			...shown.map((c) => {
+			...rows.map((c) => {
 				const li = document.createElement('li')
 				const b = document.createElement('button')
 				b.type = 'button'
@@ -721,22 +751,61 @@ const data = {
 				name.className = 'n'
 				name.textContent = nameOf(c)
 				const m = document.createElement('small')
-				m.textContent = modeName(cropMode(c))
+				m.textContent = fits.has(c.id)
+					? modeName(cropMode(c))
+					: L(`${modeName(cropMode(c))} · 이 땅엔 덜 맞음`, `${modeName(cropMode(c))} · weak fit`)
 				name.append(m)
 				const bar = document.createElement('span')
 				bar.className = 'b'
 				const fillEl = document.createElement('i')
-				fillEl.style.width = `${Math.max(2, (c.income!.won / max) * 100)}%`
+				fillEl.style.width = c.income ? `${Math.max(2, (c.income.won / max) * 100)}%` : '0'
 				bar.append(fillEl)
 				const val = document.createElement('span')
 				val.className = 'v'
-				val.textContent = money(c.income!.won)
+				const yr = yearlyOf(c)
+				const big = document.createElement('b')
+				big.textContent = yr
+					? L(`약 ${money(yr)}`, `≈ ${money(yr)}`)
+					: L('소득 자료 없음', 'no income data')
+				val.append(big)
+				if (c.income) {
+					const per = document.createElement('small')
+					per.textContent = L(`10a당 ${money(c.income.won)}`, `${money(c.income.won)} per 10a`)
+					val.append(per)
+				}
 				b.append(name, bar, val)
 				li.append(b)
+				if (extra.includes(c)) {
+					const x = document.createElement('button')
+					x.type = 'button'
+					x.className = 'x'
+					x.dataset.remove = c.id
+					x.setAttribute('aria-label', L(`${nameOf(c)} 빼기`, `Remove ${nameOf(c)}`))
+					x.textContent = '×'
+					li.append(x)
+				}
 				return li
 			})
 		)
-		const none = picks.filter((c) => !c.income)
+		// 추가 목록: 표에 없는 작물 전부 (이 땅에 맞는 작물 먼저, 소득 높은 순)
+		const inTable = new Set(rows.map((c) => c.id))
+		const rest = D.crops.filter((c) => !inTable.has(c.id))
+		rest.sort(
+			(a, b) =>
+				Number(fits.has(b.id)) - Number(fits.has(a.id)) ||
+				(b.income?.won ?? 0) - (a.income?.won ?? 0)
+		)
+		addSel.replaceChildren(
+			new Option(L('고르기…', 'Choose…'), ''),
+			...rest.map(
+				(c) =>
+					new Option(
+						`${nameOf(c)} · ${modeName(cropMode(c))}${fits.has(c.id) ? '' : L(' (덜 맞음)', ' (weak fit)')}`,
+						c.id
+					)
+			)
+		)
+		const none = picks.filter((c) => !c.income && !inTable.has(c.id))
 		rankNone.hidden = !none.length
 		rankNone.textContent = L(
 			`소득 자료가 없는 작물: ${none.map(nameOf).join(' · ')}`,
@@ -782,6 +851,12 @@ const data = {
 		if (b && b.dataset.mode !== mode) setMode(b.dataset.mode as FarmMode)
 	})
 	rankEl.addEventListener('click', (e) => {
+		const x = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-remove]')
+		if (x) {
+			added.splice(added.indexOf(x.dataset.remove!), 1)
+			renderRank()
+			return
+		}
 		const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-id]')
 		if (b && b.dataset.id !== crop) choose(b.dataset.id!)
 	})
@@ -797,9 +872,14 @@ const data = {
 	}
 
 	type Row = [string, string]
-	const cmTxt = (v: number) => (v >= 100 ? `${m1(v / 100)}m` : `${v}cm`)
+	// 2m 밑은 cm 로 (이랑 120cm · 두둑 90cm 처럼 한 단위로 읽히게), 나무 간격처럼 큰 값은 m
+	const cmTxt = (v: number) => (v >= 200 ? `${m1(v / 100)}m` : `${v}cm`)
 	const rng = (a: number, b?: number) =>
-		b === undefined ? cmTxt(a) : a >= 100 ? `${m1(a / 100)}–${m1(b / 100)}m` : `${a}–${b}cm`
+		b === undefined
+			? cmTxt(a)
+			: a >= 200 || b > 200
+				? `${m1(a / 100)}–${m1(b / 100)}m`
+				: `${a}–${b}cm`
 	const isTree = (c: CropRule) => !!c.years
 
 	/** 심는 간격 표 (농사로 표준 재식거리). grow = 이 배치에서 심는 넓이 ㎡ */
@@ -1686,7 +1766,7 @@ const data = {
 		border-bottom: 1px solid var(--line);
 	}
 
-	.im-farm-rank :global(button) {
+	.im-farm-rank :global(li > button[data-id]) {
 		display: grid;
 		grid-template-columns: minmax(7.5em, 10em) 1fr auto;
 		align-items: center;
@@ -1727,9 +1807,71 @@ const data = {
 	}
 
 	.im-farm-rank :global(.v) {
-		min-width: 5.5em;
+		display: grid;
+		min-width: 6.5em;
 		font-variant-numeric: tabular-nums;
 		text-align: right;
+	}
+
+	.im-farm-rank :global(.v b) {
+		color: var(--ink);
+		font-weight: 700;
+	}
+
+	.im-farm-rank :global(.v small) {
+		font-size: 12px;
+	}
+
+	.im-farm-rank :global(li) {
+		display: flex;
+		align-items: center;
+	}
+
+	.im-farm-rank :global(li > button[data-id]) {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.im-farm-rank :global(.x) {
+		width: 32px;
+		height: 32px;
+		margin-left: 6px;
+		border: 0;
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 18px;
+		cursor: pointer;
+	}
+
+	.im-farm-rank-tools {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 10px 20px;
+		margin-top: 10px;
+	}
+
+	.im-farm-add {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		font-size: 14px;
+		font-weight: 700;
+	}
+
+	.im-farm-add select {
+		max-width: 14em;
+		padding: 2px 0;
+		border: 0;
+		border-bottom: 1px solid var(--ink);
+		border-radius: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-weight: 600;
+		cursor: pointer;
 	}
 
 	.im-farm-rank :global(button[aria-pressed='true'] .n),
@@ -1749,7 +1891,6 @@ const data = {
 	}
 
 	.im-farm-rank-more {
-		margin-top: 10px;
 		padding: 0;
 		border: 0;
 		background: none;
