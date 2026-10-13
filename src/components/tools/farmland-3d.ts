@@ -54,7 +54,11 @@ const LOOK: Record<string, Look> = {
 	rice: { form: 'paddy', row: 0.3, step: 0.15, h: 0.7, w: 0.12 },
 	strawberry: { form: 'greenhouse', row: 1.2, step: 0.25, h: 0.25, w: 0.3 },
 	'cherry-tomato': { form: 'greenhouse', row: 1.2, step: 0.45, h: 1.8, w: 0.45 },
-	lettuce: { form: 'greenhouse', row: 1.2, step: 0.25, h: 0.22, w: 0.28 }
+	lettuce: { form: 'greenhouse', row: 1.2, step: 0.25, h: 0.22, w: 0.28 },
+	'tomato-hydro': { form: 'greenhouse', row: 1.6, step: 0.33, h: 2.6, w: 0.5 },
+	'strawberry-hydro': { form: 'greenhouse', row: 1.27, step: 0.2, h: 0.3, w: 0.3 },
+	'cucumber-hydro': { form: 'greenhouse', row: 2, step: 0.2, h: 2.2, w: 0.45 },
+	paprika: { form: 'greenhouse', row: 1.5, step: 0.33, h: 2.2, w: 0.5 }
 }
 
 // 이랑 높이 (모양별). 0 이면 이랑을 세우지 않는다
@@ -271,9 +275,26 @@ export type PlanHandlers = {
 	marker?(kind: 'well' | 'outlet', x: number, y: number): void
 }
 
+/** 심는 간격 (m). 농사로 표준 재식거리에서 온 값 */
+export type CropSpacing = {
+	/** 이랑 간격 (두둑 + 고랑) */
+	pitch: number
+	/** 두둑 폭 (없으면 이랑을 세우지 않는 줄뿌림·평이랑) */
+	bed: number | null
+	/** 한 이랑에 심는 줄 수 */
+	lines: number
+	/** 같은 이랑 안 줄 간격 */
+	lineGap: number
+	/** 포기 간격 */
+	step: number
+	/** 3D 밭 위에 붙일 간격 글 (화면 표와 같은 말) */
+	label: string
+}
+
 export type FieldView = {
 	setParcel(ring: Ring, opts?: { label?: string }): void
-	setCrop(cropId: string | null): void
+	/** spacing 을 주면 이랑·포기를 그 간격으로 심고 치수 글씨를 단다 */
+	setCrop(cropId: string | null, spacing?: CropSpacing | null): void
 	/** 시설 배치. edit = 배치 화면 (끌기·배관·배수·밭 넓이 표시) */
 	setPlan(
 		plan: Plan | null,
@@ -364,7 +385,10 @@ export function createFieldView(host: HTMLElement): FieldView {
 	const world = new THREE.Group()
 	const cropGroup = new THREE.Group()
 	const planGroup = new THREE.Group()
-	scene.add(world, cropGroup, planGroup)
+	// 치수 글씨 (하우스 크기·동 사이·이랑 간격). 끄는 동안은 숨기고 놓으면 다시 단다
+	const dimGroup = new THREE.Group()
+	scene.add(world, cropGroup, planGroup, dimGroup)
+	let spacing: CropSpacing | null = null
 
 	let plan: Plan | null = null
 	let editing = false
@@ -670,7 +694,6 @@ export function createFieldView(host: HTMLElement): FieldView {
 			u * Math.cos(theta) - v * Math.sin(theta),
 			u * Math.sin(theta) + v * Math.cos(theta)
 		]
-		const area = Math.abs(signedArea(ring))
 		// 시설·진입로 자리 (작물 좌표계로 돌린 것)
 		const rotB: Ring[] = blocks.map((b) =>
 			b.map(([x, y]) => [x * cos - y * sin, x * sin + y * cos])
@@ -688,21 +711,29 @@ export function createFieldView(host: HTMLElement): FieldView {
 			return buildGreenhouses(look, rot, back, rotB)
 		}
 
-		// 포기가 너무 많으면 간격을 넓혀 그린다 (모형이라 같은 느낌만 나면 된다)
-		const natural = area / (look.row * look.step)
-		const k = Math.max(1, Math.sqrt(natural / MAX_PLANTS))
-		const rowSp = look.row * k
-		const step = look.step * k
-		const margin = HEADLAND * Math.min(Math.sqrt(k), 1.6)
-		let lines = cutRows(rows(rot, rowSp, margin), rotB, rowSp * 0.3)
-		if (lines.length > MAX_RIDGES)
-			lines = lines.filter((_, i) => i % Math.ceil(lines.length / MAX_RIDGES) === 0)
+		// 이랑은 실제 간격으로 놓는다 (너무 많으면 몇 줄마다 하나). 포기는 줄 위에서 솎아 그린다
+		const pitch = spacing?.pitch ?? look.row
+		const stepT = spacing?.step ?? look.step
+		const linesPer = spacing && look.form !== 'tree' ? Math.max(1, spacing.lines) : 1
+		const lineGap = spacing?.lineGap ?? 0
+		const vs = rot.map((q) => q[1])
+		const kRow = Math.max(1, (Math.max(...vs) - Math.min(...vs)) / pitch / MAX_RIDGES)
+		const rowSp = pitch * kRow
+		const margin = HEADLAND
+		const lines = cutRows(rows(rot, rowSp, margin), rotB, rowSp * 0.3)
+		let natural = 0
+		for (const [, a, b] of lines) natural += ((b - a) / stepT) * linesPer
+		const kStep = Math.max(1, natural / MAX_PLANTS)
+		const step = stepT * kStep
+		const k = Math.sqrt(kRow * kStep)
 
 		let count = 0
-		for (const [, a, b] of lines) count += Math.max(1, Math.floor((b - a) / step) + 1)
+		for (const [, a, b] of lines) count += Math.max(1, Math.floor((b - a) / step) + 1) * linesPer
 		count = Math.floor(Math.min(count, MAX_PLANTS * 1.3))
-		const plantScaleW = look.w * Math.min(k, 3.2)
-		const plantScaleH = look.h * Math.min(Math.sqrt(k), 2.2)
+		// 솎아 그린 만큼 포기를 조금 키우되 이웃 이랑을 넘지 않게
+		const plantScaleW = Math.min(look.w * Math.min(kStep, 2.5), (rowSp * 0.9) / linesPer)
+		const plantScaleH = look.h * Math.min(Math.sqrt(kStep), 1.4)
+		const bedW = (spacing?.bed ?? pitch * 0.62) * kRow
 		const spread = rot.reduce((m, [u]) => Math.max(m, Math.abs(u)), 1)
 
 		// 논: 물 댄 면을 먼저 깐다
@@ -743,7 +774,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 			lines.forEach(([v, a, b], i) => {
 				const [x, y] = back((a + b) / 2, v)
 				ridge.pos.set([x, 0, -y], i * 3)
-				ridge.scale.set([b - a, rh * 2 * Math.min(Math.sqrt(k), 2), rowSp * 0.62], i * 3)
+				ridge.scale.set([b - a, rh * 2 * Math.min(Math.sqrt(kRow), 2), bedW], i * 3)
 				ridge.rot[i] = theta
 				ridge.delay[i] = ((b + a) / 2 / spread + 1) * 0.15
 			})
@@ -776,24 +807,28 @@ export function createFieldView(host: HTMLElement): FieldView {
 			const geo = (unit as Record<string, () => THREE.BufferGeometry>)[look.form]?.() ?? unit.bush()
 			const plants = makeInstanced(geo, mat(C.plant), count)
 			const lift =
-				rh > 0 ? rh * 2 * Math.min(Math.sqrt(k), 2) * 0.5 : look.form === 'paddy' ? 0.03 : 0
+				rh > 0 ? rh * 2 * Math.min(Math.sqrt(kRow), 2) * 0.5 : look.form === 'paddy' ? 0.03 : 0
 			let i = 0
-			for (const [v, a, b] of lines) {
+			for (const [v0, a, b] of lines) {
 				const len = b - a
 				const n = Math.max(1, Math.floor(len / step) + 1)
 				const off = (len - (n - 1) * step) / 2
-				for (let s = 0; s < n && i < count; s++, i++) {
-					const u = a + off + s * step
-					const [x, y] = back(u, v)
-					const j = Math.abs((Math.sin(i * 12.9898 + v) * 43758.5453) % 1)
-					plants.pos.set([x, lift, -y], i * 3)
-					const sw = plantScaleW * (0.85 + 0.3 * j)
-					plants.scale.set(
-						[sw, plantScaleH * (0.85 + 0.3 * j), sw * (look.form === 'mound' ? 1.4 : 1)],
-						i * 3
-					)
-					plants.rot[i] = j * Math.PI * 2
-					plants.delay[i] = 0.3 + (u / spread + 1) * 0.35 + j * 0.12
+				for (let ln = 0; ln < linesPer; ln++) {
+					// 한 이랑에 두 줄 이상이면 두둑 위에 줄 간격만큼 벌려 심는다
+					const v = v0 + (ln - (linesPer - 1) / 2) * lineGap * kRow
+					for (let s = 0; s < n && i < count; s++, i++) {
+						const u = a + off + s * step
+						const [x, y] = back(u, v)
+						const j = Math.abs((Math.sin(i * 12.9898 + v) * 43758.5453) % 1)
+						plants.pos.set([x, lift, -y], i * 3)
+						const sw = plantScaleW * (0.85 + 0.3 * j)
+						plants.scale.set(
+							[sw, plantScaleH * (0.85 + 0.3 * j), sw * (look.form === 'mound' ? 1.4 : 1)],
+							i * 3
+						)
+						plants.rot[i] = j * Math.PI * 2
+						plants.delay[i] = 0.3 + (u / spread + 1) * 0.35 + j * 0.12
+					}
 				}
 			}
 			plants.mesh.count = i
@@ -805,33 +840,58 @@ export function createFieldView(host: HTMLElement): FieldView {
 		startGrow()
 	}
 
-	/** 배치한 하우스 안에 길이 방향으로 줄지어 심는다 */
+	/** 배치한 하우스 안에 길이 방향으로 줄지어 심는다. 간격 자료가 있으면 그 이랑 간격·줄 수로 */
 	function plantInHouses(look: Look, houses: PlanPiece[]) {
+		const pitch = spacing?.pitch ?? Math.max(1.2, look.row)
+		const stepT = spacing?.step ?? look.step
+		const linesPer = spacing ? Math.max(1, spacing.lines) : 1
+		const lineGap = spacing?.lineGap ?? 0
+		// 하우스 안 이랑: 폭에서 양옆 0.3m 를 빼고 이랑 간격으로 나눈다
+		const ridgesOf = (w: number) => Math.max(1, Math.floor((w - 0.6) / pitch))
 		let natural = 0
-		for (const h of houses) natural += (h.w * h.l) / (Math.max(1.2, look.row) * look.step)
-		const k = Math.max(1, Math.sqrt(natural / 2400))
-		const step = look.step * k
+		for (const h of houses) natural += ((h.l - 2) / stepT) * ridgesOf(h.w) * linesPer
+		const kStep = Math.max(1, natural / MAX_PLANTS)
+		const step = stepT * kStep
 		type Spot = [number, number, number]
 		const spots: Spot[] = []
+		const beds: { x: number; y: number; l: number; a: number }[] = []
 		for (const h of houses) {
-			const rowsN = Math.max(2, Math.min(40, Math.round(h.w / Math.max(1.2, look.row * k))))
+			const n = ridgesOf(h.w)
 			const t = (h.piece.a * Math.PI) / 180
 			const c = Math.cos(t)
 			const s = Math.sin(t)
-			for (let r = 0; r < rowsN; r++) {
-				const v = -h.w / 2 + (h.w * (r + 0.5)) / rowsN
-				for (let u = -h.l / 2 + 1; u <= h.l / 2 - 1 && spots.length < MAX_PLANTS; u += step)
-					spots.push([h.piece.x + u * c - v * s, h.piece.y + u * s + v * c, h.h])
+			for (let r = 0; r < n; r++) {
+				const v0 = (r - (n - 1) / 2) * pitch
+				beds.push({ x: h.piece.x - v0 * s, y: h.piece.y + v0 * c, l: h.l - 2, a: t })
+				for (let ln = 0; ln < linesPer; ln++) {
+					const v = v0 + (ln - (linesPer - 1) / 2) * lineGap
+					for (let u = -h.l / 2 + 1; u <= h.l / 2 - 1 && spots.length < MAX_PLANTS; u += step)
+						spots.push([h.piece.x + u * c - v * s, h.piece.y + u * s + v * c, h.h])
+				}
 			}
 		}
 		if (!spots.length) return
+		// 두둑 (흙에 심는 하우스·온실만, 낮게)
+		if (spacing?.bed && beds.length <= MAX_RIDGES) {
+			const g = new THREE.CylinderGeometry(0.5, 0.5, 1, 7, 1, false, 0, Math.PI)
+			g.rotateZ(Math.PI / 2)
+			const ridge = makeInstanced(g, mat(C.ridge), beds.length)
+			beds.forEach((b, i) => {
+				ridge.pos.set([b.x, 0.02, -b.y], i * 3)
+				ridge.scale.set([b.l, 0.24, spacing!.bed!], i * 3)
+				ridge.rot[i] = b.a
+				ridge.delay[i] = 0.2
+			})
+			instanced.push(ridge)
+		}
 		const geo = look.h > 1 ? unit.tall() : look.form === 'tuft' ? unit.tuft() : unit.head()
 		const plants = makeInstanced(geo, mat(C.plant), spots.length)
+		const lift = spacing?.bed ? 0.12 : 0.03
 		spots.forEach(([x, y, hh], i) => {
 			const j = Math.abs((Math.sin(i * 7.31) * 43758.5453) % 1)
-			const h = Math.min(look.h * Math.min(Math.sqrt(k), 1.6), hh * 0.5)
-			const w = Math.min(look.w * Math.min(k, 2), 1.2)
-			plants.pos.set([x, 0.03, -y], i * 3)
+			const h = Math.min(look.h * Math.min(Math.sqrt(kStep), 1.4), hh * 0.7)
+			const w = Math.min(look.w * Math.min(kStep, 2), (pitch * 0.9) / linesPer, 1.2)
+			plants.pos.set([x, lift, -y], i * 3)
 			plants.scale.set([w * (0.85 + 0.3 * j), h * (0.85 + 0.3 * j), w], i * 3)
 			plants.rot[i] = j * Math.PI * 2
 			plants.delay[i] = 0.4 + j * 0.5
@@ -1211,6 +1271,89 @@ export function createFieldView(host: HTMLElement): FieldView {
 			pickables.push(m)
 		}
 	}
+	/** 치수 글씨: 시설마다 폭 × 길이, 하우스 동 사이 간격, 밭의 이랑·포기 간격 */
+	function buildDims() {
+		clearGroup(dimGroup)
+		if (!plan || ring.length < 3) return
+		const size = Math.min(3.2, Math.max(0.9, radius * 0.042))
+		const m1 = (v: number) => String(Math.round(v * 10) / 10)
+		const en = document.documentElement.lang.startsWith('en')
+		const L = (ko: string, eng: string) => (en ? eng : ko)
+		const put = (text: string, x: number, y: number, h: number, boxed = false) => {
+			const t = label(text, size, boxed)
+			t.position.set(x, h, -y)
+			dimGroup.add(t)
+		}
+		for (const pp of plan.pieces) {
+			if (pp.outside) continue
+			const p = pp.piece
+			const top = pp.h + size * 0.9
+			if (p.k === 'smart')
+				put(
+					`${m1(pp.w)} × ${m1(pp.l)}m · ${L(`${KINDS.smart.w}m ${p.n}칸`, `${p.n} × ${KINDS.smart.w}m bays`)}`,
+					p.x,
+					p.y,
+					top,
+					true
+				)
+			else if (KINDS[p.k].greenhouse) put(`${m1(pp.w)} × ${m1(pp.l)}m`, p.x, p.y, top, true)
+			else if (p.k === 'storage')
+				put(`${L('창고', 'Storage')} ${m1(pp.w)} × ${m1(pp.l)}m`, p.x, p.y, top)
+			else if (p.k === 'yard')
+				put(`${L('작업', 'Yard')} ${m1(pp.w)} × ${m1(pp.l)}m`, p.x, p.y, size)
+		}
+		// 동 사이 간격: 나란한 단동 하우스 한 쌍을 골라 그 사이에 적는다
+		const houses = plan.pieces.filter((pp) => pp.piece.k === 'single' && !pp.outside)
+		let gap: { x: number; y: number; g: number; nx: number; ny: number } | null = null
+		for (let i = 0; i < houses.length && !gap; i++)
+			for (let j = i + 1; j < houses.length && !gap; j++) {
+				const a = houses[i]
+				const b = houses[j]
+				if (Math.abs(a.piece.a - b.piece.a) > 1) continue
+				const t = (a.piece.a * Math.PI) / 180
+				const ux = Math.cos(t)
+				const uy = Math.sin(t)
+				const dx = b.piece.x - a.piece.x
+				const dy = b.piece.y - a.piece.y
+				const along = dx * ux + dy * uy
+				const across = -dx * uy + dy * ux
+				const g = Math.abs(across) - (a.w + b.w) / 2
+				const overlap = Math.min(a.l, b.l) / 2 - Math.abs(along) / 2
+				if (g < 0.3 || g > 5 || overlap < 3) continue
+				// 하우스 끝 가까이 (가운데는 지붕에 가려 안 보인다)
+				const end = Math.max(0, Math.min(a.l, b.l) / 2 - Math.abs(along) / 2 - 1.5)
+				const sgn = Math.sign(across)
+				gap = {
+					x: (a.piece.x + b.piece.x) / 2 + ux * end,
+					y: (a.piece.y + b.piece.y) / 2 + uy * end,
+					g,
+					nx: -uy * sgn,
+					ny: ux * sgn
+				}
+			}
+		if (gap) {
+			const { x, y, g, nx, ny } = gap
+			dimGroup.add(
+				new THREE.LineSegments(
+					new THREE.BufferGeometry().setFromPoints([
+						new THREE.Vector3(x - (nx * g) / 2, 0.12, -(y - (ny * g) / 2)),
+						new THREE.Vector3(x + (nx * g) / 2, 0.12, -(y + (ny * g) / 2))
+					]),
+					new THREE.LineBasicMaterial({ color: C.ink })
+				)
+			)
+			put(`${m1(g)}m`, x, y, size * 0.8, true)
+		}
+		// 밭 작물: 가장 넓은 밭 덩어리에 이랑·포기 간격 (화면 표와 같은 글)
+		const look = crop ? LOOK[crop] : null
+		const z = plan.zones[0]
+		if (spacing?.label && look && look.form !== 'greenhouse' && z) {
+			// 밭 전체를 덮는 글이라 다른 치수보다 크게
+			const t = label(spacing.label, size * 1.5, true)
+			t.position.set(z.at[0], size * 2.4, -z.at[1])
+			dimGroup.add(t)
+		}
+	}
 
 	// 끌기: 배치 화면에서 시설·표시를 누르면 돌리기 대신 옮긴다
 	const raycaster = new THREE.Raycaster()
@@ -1440,6 +1583,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 		buildWorld()
 		buildCrop()
 		buildPlan()
+		buildDims()
 		growing = false
 		applyGrow(99)
 		wake()
@@ -1458,6 +1602,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 			blocks = []
 			blockSig = ''
 			clearGroup(planGroup)
+			clearGroup(dimGroup)
 			pickables.length = 0
 			buildWorld()
 			fitCamera()
@@ -1465,9 +1610,11 @@ export function createFieldView(host: HTMLElement): FieldView {
 			buildCrop()
 			wake()
 		},
-		setCrop(id: string | null) {
+		setCrop(id: string | null, sp?: CropSpacing | null) {
 			crop = id
+			spacing = sp ?? null
 			buildCrop()
+			buildDims()
 			wake()
 		},
 		setPlan(p, opts) {
@@ -1486,6 +1633,11 @@ export function createFieldView(host: HTMLElement): FieldView {
 				.map((r) => r.map(([x, y]) => `${Math.round(x * 10)},${Math.round(y * 10)}`).join(';'))
 				.join('|')
 			buildPlan()
+			if (opts.light) dimGroup.visible = false
+			else {
+				buildDims()
+				dimGroup.visible = true
+			}
 			if (sig !== blockSig && !opts.light) {
 				blocks = next
 				blockSig = sig
@@ -1510,6 +1662,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 				buildCrop()
 			}
 			buildPlan()
+			buildDims()
 			growing = false
 			applyGrow(99)
 			renderer.setPixelRatio(1)
@@ -1546,6 +1699,7 @@ export function createFieldView(host: HTMLElement): FieldView {
 			if (scene.fog) (scene.fog as THREE.Fog).color = C.bg.clone()
 			renderer.setClearColor(0x000000, 0)
 			buildPlan()
+			buildDims()
 			renderer.setPixelRatio(keepRatio)
 			camera.aspect = keepAspect
 			resize()

@@ -72,7 +72,7 @@ export const KINDS: Record<PieceKind, KindSpec> = {
 		minLen: 16,
 		maxLen: 120,
 		step: 4,
-		n: { def: 2, min: 1, max: 10 },
+		n: { def: 2, min: 1, max: 12 },
 		greenhouse: true,
 		water: true
 	},
@@ -165,6 +165,9 @@ export type Site = {
 	theta: number
 	area: number
 }
+
+/** 농사 방식: 노지 밭 / 비닐하우스(단동) / 스마트팜(벤로형 유리온실) */
+export type FarmMode = 'field' | 'house' | 'smart'
 
 // 화면용 시작값 (법정 규격 아님)
 const ROAD_W = 3
@@ -592,13 +595,15 @@ function overlapIv(a: [number, number][], b: [number, number][]) {
  * 2) 그 방향들에서 창고·작업 공간을 길 변 여러 자리(끝·가운데)에 놓아 보고, 하우스가 가장 넓게 남는 자리를 고른다.
  * 땅 가장자리는 작업로로 비워 둔다. 노지 작물이면 같은 자리에 창고·작업 공간만 둔다.
  */
-export function autoLayout(site: Site, opts: { houses?: boolean } = {}): Layout {
-	const area = (ps: Piece[]) => ps.reduce((s, p) => s + p.len * KINDS[p.k].w, 0)
+export function autoLayout(site: Site, opts: { houses?: boolean; mode?: FarmMode } = {}): Layout {
+	const mode: FarmMode = opts.mode ?? (opts.houses === false ? 'field' : 'house')
+	const area = (ps: Piece[]) => ps.reduce((s, p) => s + p.len * KINDS[p.k].w * p.n, 0)
+	const fill = mode === 'smart' ? fillSmart : fillHouses
 	// 1) 방향·줄 위치
 	const tries: { t: number; phase: number; a: number }[] = []
 	for (const t of houseAngles(site.ring))
 		for (const phase of [-1, 0, 0.25, 0.5, 0.75]) {
-			const a = area(fillHouses(site, [], t, phase))
+			const a = area(fill(site, [], t, phase))
 			tries.push({ t, phase, a })
 		}
 	tries.sort((u, v) => v.a - u.a)
@@ -617,7 +622,7 @@ export function autoLayout(site: Site, opts: { houses?: boolean } = {}): Layout 
 			const entry = entryOf(site, { pieces: hub, well: null, outlet: null })
 			if (entry) blocked.push(corridor(entry.a, entry.b, ROAD_W + 1))
 			for (const x of top) {
-				const houses = fillHouses(site, blocked, x.t, x.phase)
+				const houses = fill(site, blocked, x.t, x.phase)
 				const pick = { hub, houses, a: area(houses) - houses.length * 2 }
 				if (yard && (!withYard || pick.a > withYard.a)) withYard = pick
 				if (!yard && (!storageOnly || pick.a > storageOnly.a)) storageOnly = pick
@@ -628,10 +633,10 @@ export function autoLayout(site: Site, opts: { houses?: boolean } = {}): Layout 
 	if (storageOnly && (!best || storageOnly.a > best.a * 1.25 + 20)) best = storageOnly
 	const hub = best?.hub ?? []
 	const pieces = [...hub]
-	if (opts.houses !== false) {
-		pieces.push(...(best?.houses ?? fillHouses(site, [], top[0].t, top[0].phase)))
-		// 3) 남은 자투리(좁은 꼬리 등)에 다른 방향으로 더 들어가면 채운다
-		for (let round = 0; round < 2; round++) {
+	if (mode !== 'field') {
+		pieces.push(...(best?.houses ?? fill(site, [], top[0].t, top[0].phase)))
+		// 3) 남은 자투리(좁은 꼬리 등)에 다른 방향으로 더 들어가면 단동 하우스로 채운다 (스마트팜은 한 덩어리만)
+		for (let round = 0; round < (mode === 'house' ? 2 : 0); round++) {
 			const blocked = pieces.map((p) => rectOf(p, HOUSE_GAP))
 			let add: Piece[] = []
 			for (const x of tries) {
@@ -645,6 +650,62 @@ export function autoLayout(site: Site, opts: { houses?: boolean } = {}): Layout 
 	const layout: Layout = { pieces: [], well: null, outlet: null }
 	for (const p of pieces) layout.pieces.push({ ...p, id: newId(layout) })
 	return layout
+}
+
+/**
+ * 스마트팜(벤로형 온실)은 8m 칸을 옆으로 붙인 한 덩어리로 놓는다.
+ * 방향 t 로 8m 칸 줄마다 들어가는 구간을 구하고, 이어진 칸들이 함께 들어가는 길이 × 칸 수가 가장 큰 덩어리를 고른다.
+ */
+function fillSmart(site: Site, blocked: Ring[], t: number, phase: number): Piece[] {
+	const spec = KINDS.smart
+	const bay = spec.w
+	const rotRing = site.ring.map((p) => rot(p, -t))
+	const blk = blocked.map((r) => r.map((q) => rot(q, -t)))
+	const ys = rotRing.map((p) => p[1])
+	const minY = Math.min(...ys)
+	const maxY = Math.max(...ys)
+	const span = maxY - minY - 2 * SIDE_GAP
+	if (span < bay) return []
+	const slack = span - Math.floor(span / bay) * bay
+	const start =
+		minY + SIDE_GAP + bay / 2 + (phase < 0 ? slack / 2 : (phase * bay) % Math.max(slack, 1e-6))
+	const rowsV: number[] = []
+	const ivs: [number, number][][] = []
+	for (let v = start; v <= maxY - SIDE_GAP - bay / 2 + 1e-6; v += bay) {
+		rowsV.push(v)
+		ivs.push(rowIntervals(rotRing, blk, v, bay / 2, spec.minLen))
+	}
+	const maxN = spec.n!.max
+	let best: { a: number; b: number; i: number; n: number; area: number } | null = null
+	for (let i = 0; i < rowsV.length; i++) {
+		let common = ivs[i]
+		for (let n = 1; n <= maxN && i + n - 1 < rowsV.length; n++) {
+			if (n > 1) common = overlapIv(common, ivs[i + n - 1])
+			if (!common.length) break
+			for (const [a0, b0] of common) {
+				const len = Math.min(spec.maxLen, Math.floor((b0 - a0) / spec.step) * spec.step)
+				if (len < spec.minLen) continue
+				const area = len * bay * n
+				if (!best || area > best.area) {
+					const a = a0 + (b0 - a0 - len) / 2
+					best = { a, b: a + len, i, n, area }
+				}
+			}
+		}
+	}
+	if (!best) return []
+	const v = (rowsV[best.i] + rowsV[best.i + best.n - 1]) / 2
+	const [x, y] = rot([(best.a + best.b) / 2, v], t)
+	const p: Piece = {
+		id: 0,
+		k: 'smart',
+		x,
+		y,
+		a: (t * 180) / Math.PI,
+		len: best.b - best.a,
+		n: best.n
+	}
+	return rectInside(rectOf(p), site.ring) ? [p] : []
 }
 
 /** 하우스 방향 후보: 긴 변들 방향과 그 직각 (라디안, 3° 안쪽은 하나로) */
@@ -686,26 +747,7 @@ function fillHouses(site: Site, blocked: Ring[], t: number, phase: number): Piec
 	const start = minY + SIDE_GAP + half + (phase < 0 ? slack / 2 : phase * pitch)
 	const out: Piece[] = []
 	for (let v = start; v <= maxY - SIDE_GAP - half + 1e-6; v += pitch) {
-		// 하우스 폭과 옆 통로까지 여러 줄에서 모두 땅 안인 구간
-		let iv = scan(rotRing, v)
-		for (const d of [-half - SIDE_GAP, -half, -half / 2, half / 2, half, half + SIDE_GAP])
-			iv = overlapIv(iv, scan(rotRing, v + d))
-		iv = iv
-			.map(([a, b]) => [a + EDGE_GAP, b - EDGE_GAP] as [number, number])
-			.filter(([a, b]) => b - a >= spec.minLen)
-		for (const r of blk) {
-			const cuts = [-half, -half / 2, 0, half / 2, half].flatMap((d) => scan(r, v + d))
-			if (!cuts.length) continue
-			const c1 = Math.min(...cuts.map((c) => c[0]))
-			const c2 = Math.max(...cuts.map((c) => c[1]))
-			iv = iv.flatMap(([a, b]) => {
-				if (c2 <= a || c1 >= b) return [[a, b] as [number, number]]
-				const o: [number, number][] = []
-				if (c1 - a >= spec.minLen) o.push([a, c1])
-				if (b - c2 >= spec.minLen) o.push([c2, b])
-				return o
-			})
-		}
+		const iv = rowIntervals(rotRing, blk, v, half, spec.minLen)
 		for (const [a, b] of iv) {
 			// 너무 긴 줄은 끊는다 (한 동 최대 길이)
 			const n = Math.ceil((b - a) / (spec.maxLen + HOUSE_GAP))
@@ -720,6 +762,33 @@ function fillHouses(site: Site, blocked: Ring[], t: number, phase: number): Piec
 		}
 	}
 	return out
+}
+
+/**
+ * 돌린 좌표에서 가로줄 v 를 중심으로 폭 2·half 인 띠가 땅 안이고(옆 통로 SIDE_GAP 포함, 끝은 EDGE_GAP 띄움)
+ * 막힌 곳(창고·진입로)에 걸리지 않는 구간들. minLen 보다 짧은 구간은 버린다
+ */
+function rowIntervals(rotRing: Ring, blk: Ring[], v: number, half: number, minLen: number) {
+	let iv = scan(rotRing, v)
+	for (const d of [-half - SIDE_GAP, -half, -half / 2, half / 2, half, half + SIDE_GAP])
+		iv = overlapIv(iv, scan(rotRing, v + d))
+	iv = iv
+		.map(([a, b]) => [a + EDGE_GAP, b - EDGE_GAP] as [number, number])
+		.filter(([a, b]) => b - a >= minLen)
+	for (const r of blk) {
+		const cuts = [-half, -half / 2, 0, half / 2, half].flatMap((d) => scan(r, v + d))
+		if (!cuts.length) continue
+		const c1 = Math.min(...cuts.map((c) => c[0]))
+		const c2 = Math.max(...cuts.map((c) => c[1]))
+		iv = iv.flatMap(([a, b]) => {
+			if (c2 <= a || c1 >= b) return [[a, b] as [number, number]]
+			const o: [number, number][] = []
+			if (c1 - a >= minLen) o.push([a, c1])
+			if (b - c2 >= minLen) o.push([c2, b])
+			return o
+		})
+	}
+	return iv
 }
 
 /** 창고 자리 후보: 길 변마다 양 끝과 가운데 (변 번호, 변 위 점) */

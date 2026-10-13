@@ -28,6 +28,8 @@ export type PdfInput = {
 	plan: PlanExport
 	/** 동 사이 간격 m */
 	houseGap: number
+	/** 심는 간격 한 줄 (화면과 같은 글) */
+	spacing: string | null
 	/** 이 땅에 가장 효율적인 작물 (10a당 소득 1위) */
 	crop: {
 		name: string
@@ -73,6 +75,8 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 	/** 만 원 단위 (EN 은 백만 원) */
 	const money = (won: number) => (d.isEn ? `₩${(won / 1e6).toFixed(1)}M` : `${num(won / 1e4)}만 원`)
 	const crop = d.crop
+	const smart = d.plan.pieces.find((p) => p.kind === 'smart') ?? null
+	const singles = d.plan.pieces.filter((p) => p.kind === 'single').length
 	const yearly = crop?.income && crop.grow > 0 ? (crop.income.won * crop.grow) / 1000 : null
 	const now = new Date()
 	const date = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`
@@ -306,13 +310,19 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 				yearly ? L(`약 ${money(yearly)}`, `≈ ${money(yearly)}`) : '–',
 				L('설치비 제외', 'before building costs')
 			],
-			t.houses
+			smart
 				? [
-						L('단동 하우스', 'Tunnel houses'),
-						L(`${t.houses}동`, `${t.houses}`),
-						L(`폭 7m · 동 사이 ${m1(d.houseGap)}m`, `7 m wide · ${m1(d.houseGap)} m apart`)
+						L('벤로형 유리온실', 'Venlo glasshouse'),
+						L(`${smart.bays}칸`, `${smart.bays} bays`),
+						`${m1(smart.width)} × ${m1(smart.length)}m`
 					]
-				: [L('시설', 'Buildings'), py(t.facility), `${num(t.facility)}㎡`],
+				: singles
+					? [
+							L('단동 하우스', 'Tunnel houses'),
+							L(`${singles}동`, `${singles}`),
+							L(`폭 7m · 동 사이 ${m1(d.houseGap)}m`, `7 m wide · ${m1(d.houseGap)} m apart`)
+						]
+					: [L('시설', 'Buildings'), py(t.facility), `${num(t.facility)}㎡`],
 			[
 				crop?.greenhouse ? L('재배 면적', 'Under cover') : L('밭 면적', 'Open field'),
 				crop ? py(crop.grow) : py(t.field),
@@ -965,7 +975,15 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 				L('진입로', 'Access road'),
 				L(`폭 ${m1(d.plan.entry.width)}m`, `${m1(d.plan.entry.width)}m wide`)
 			)
-		if (t.houses)
+		if (smart)
+			kv(
+				L('벤로형 유리온실', 'Venlo glasshouse'),
+				L(
+					`${m1(smart.width)} × ${m1(smart.length)}m · 8m ${smart.bays}칸 · 높이 ${m1(smart.height)}m`,
+					`${m1(smart.width)} × ${m1(smart.length)} m · ${smart.bays} × 8 m bays · ${m1(smart.height)} m high`
+				)
+			)
+		if (singles)
 			kv(
 				L('하우스 간격', 'Gap between houses'),
 				L(
@@ -977,10 +995,10 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 		y += 16
 
 		// 작물
-		section(L('작물 (10a당 소득 순)', 'Crops (by income per 10a)'))
+		section(L('작물', 'Crop'))
 		if (crop) {
 			kv(
-				L(`1위 ${crop.name}`, `1. ${crop.name}`),
+				crop.name,
 				crop.income
 					? L(`10a당 ${money(crop.income.won)}`, `${money(crop.income.won)} per 10a`)
 					: '–'
@@ -990,9 +1008,18 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 					L(`이 배치에서 (${py(crop.grow)})`, `With this layout (${py(crop.grow)})`),
 					L(`한 해 약 ${money(yearly)}`, `≈ ${money(yearly)} a year`)
 				)
-			crop.alts.forEach((a, i) =>
+			// 간격 글은 길어서 한 줄 표가 아니라 문단으로
+			if (d.spacing) {
+				room(30)
+				y =
+					para(ctx, L(`심는 간격: ${d.spacing}`, `Planting: ${d.spacing}`), M, y + 14, W, {
+						size: 8.5
+					}) + 2
+				rule(ctx, y, 0.5, LINE)
+			}
+			crop.alts.forEach((a) =>
 				kv(
-					L(`${i + 2}위 ${a.name}`, `${i + 2}. ${a.name}`),
+					L(`다른 방식 · ${a.name}`, `Other · ${a.name}`),
 					a.income ? L(`10a당 ${money(a.income)}`, `${money(a.income)} per 10a`) : '–'
 				)
 			)

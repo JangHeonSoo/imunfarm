@@ -5,6 +5,8 @@
  * 서버(api/farmland)와 브라우저가 같이 쓰므로 시세 데이터(prices.ts)는 여기서 불러오지 않는다.
  */
 
+import type { FarmMode } from './farmland-layout'
+
 /** 지적 지목 중 농사와 관련 있는 것. 그 밖(대·잡종지 등)은 'other' */
 export type Jimok = '전' | '답' | '과수원' | '목장용지' | '임야' | 'other'
 /** 팜맵(농경지 전자지도)의 실제 이용 구분 */
@@ -32,6 +34,10 @@ export type CropRule = {
 	years?: string
 	/** 비닐하우스가 있어야 함 */
 	greenhouse?: boolean
+	/** 스마트팜(유리온실 수경) 작물 */
+	smart?: boolean
+	/** 심는 간격 (농사로 표준 재식거리) */
+	spacing?: Spacing
 	/** 손이 가는 정도 1 적음, 2 보통, 3 많음 */
 	labor: Labor
 	/**
@@ -40,9 +46,41 @@ export type CropRule = {
 	 * 땅콩·녹두·팥·메밀은 조사 대상이 아니라 없다.
 	 * https://nongsaro.go.kr/portal/ps/psb/psbf/agricultIncomeInfoLst.ps
 	 */
-	income?: { won: number; year: number }
+	income?: { won: number; year: number; item?: string }
 	reasonKo: string
 	reasonEn: string
+}
+
+export type { FarmMode }
+export const cropMode = (c: Pick<CropRule, 'greenhouse' | 'smart'>): FarmMode =>
+	c.smart ? 'smart' : c.greenhouse ? 'house' : 'field'
+
+/**
+ * 심는 간격 (cm). 출처 문구는 src 에. 두둑(bed)이 없으면 이랑 없이 줄로 심는 작물(벼·나무 등)
+ */
+export type Spacing = {
+	/** 이랑 간격 = 두둑 + 고랑 (나무는 줄 사이) cm. pitchTo 가 있으면 범위 */
+	pitch: number
+	pitchTo?: number
+	/** 자료가 '이랑 너비'로 적은 작물 (아니면 '줄 사이') */
+	ridge?: boolean
+	/** 두둑 폭 cm */
+	bed?: number
+	/** 한 이랑에 심는 줄 수 */
+	lines: number
+	/** 같은 이랑 안 줄 간격 cm */
+	lineGap?: number
+	/** 포기(나무) 간격 cm. stepTo 가 있으면 범위 */
+	step: number
+	stepTo?: number
+	/** 자료에 적힌 10a당 포기 수 (범위면 per10aTo) */
+	per10a?: number
+	per10aTo?: number
+	/** 자료에 이랑 간격이 없어 그림용으로만 잡은 값이면 true (포기 수를 간격으로 계산하지 않는다) */
+	model?: boolean
+	/** 간격을 숫자 칸으로 못 쓰는 작물의 설명 (자료 문구 그대로) */
+	text?: { ko: string; en: string }
+	src: string
 }
 
 const Z = (north: number, central: number, south: number, jeju: number) => ({
@@ -63,6 +101,15 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [4, 5],
 		harvest: [9, 10],
 		labor: 2,
+		spacing: {
+			pitch: 100,
+			bed: 70,
+			lines: 2,
+			lineGap: 40,
+			step: 25,
+			per10a: 8000,
+			src: '농촌진흥청 보도자료 「밭작물 파종, 이것만 알면 OK!」(2017.5.15), 농사로 농작업일정 땅콩'
+		},
 		reasonKo:
 			'물 빠짐이 좋은 모래 섞인 밭에서 잘 자라고, 비닐 멀칭만 하면 손이 크게 가지 않습니다.',
 		reasonEn: 'Grows well in free-draining sandy fields and needs little work once mulched.'
@@ -78,6 +125,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [10],
 		labor: 1,
 		income: { won: 596862, year: 2024 },
+		spacing: { pitch: 60, lines: 1, step: 25, src: '농사로 농작업일정 들깨' },
 		reasonKo: '병해충이 적고 어느 지역에서나 잘 자라 처음 농사짓는 땅에도 무난합니다.',
 		reasonEn: 'Few pests and grows almost anywhere, so it suits a first season.'
 	},
@@ -92,6 +140,14 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [8, 9],
 		labor: 3,
 		income: { won: 1045564, year: 2024 },
+		spacing: {
+			pitch: 110,
+			bed: 70,
+			lines: 2,
+			lineGap: 30,
+			step: 10,
+			src: '농촌진흥청 보도자료 「밭작물 파종, 이것만 알면 OK!」(2017.5.15) (농사로 농작업일정은 55×15–20cm)'
+		},
 		reasonKo:
 			'값이 좋은 작물이지만 습기에 약해 물 빠짐이 좋은 밭이어야 하고, 베고 터는 일이 많습니다.',
 		reasonEn: 'Pays well but hates wet soil, and cutting and threshing take a lot of work.'
@@ -107,6 +163,15 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [10, 11],
 		labor: 3,
 		income: { won: 4170854, year: 2024 },
+		spacing: {
+			pitch: 160,
+			bed: 110,
+			lines: 4,
+			lineGap: 30,
+			step: 30,
+			per10a: 8333,
+			src: '농업기술길잡이 생강 52쪽'
+		},
 		reasonKo: '따뜻한 곳을 좋아해 충청 이남 밭에 맞고, 서리 오기 전에 캐야 합니다.',
 		reasonEn: 'Likes warmth, so it fits fields from Chungcheong southward; dig it before frost.'
 	},
@@ -120,6 +185,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [6, 7],
 		harvest: [8, 9],
 		labor: 3,
+		spacing: { pitch: 60, lines: 1, step: 10, stepTo: 15, src: '농업기술길잡이 녹두 56쪽' },
 		reasonKo: '척박한 땅에서도 자라지만 꼬투리가 익는 대로 여러 번 따야 해서 손이 갑니다.',
 		reasonEn: 'Copes with poor soil, but pods ripen unevenly and are picked several times.'
 	},
@@ -133,6 +199,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		plant: [6, 7],
 		harvest: [9, 10],
 		labor: 2,
+		spacing: { pitch: 60, lines: 1, step: 10, stepTo: 15, src: '농업기술길잡이 팥 46쪽' },
 		reasonKo: '콩보다 늦게 심어도 되고 전국 어디서나 기를 수 있습니다.',
 		reasonEn: 'Can be sown later than soybean and grows anywhere in Korea.'
 	},
@@ -147,6 +214,12 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [10, 11],
 		labor: 1,
 		income: { won: 454599, year: 2024 },
+		spacing: {
+			pitch: 70,
+			lines: 1,
+			step: 15,
+			src: '농업기술길잡이 콩 136쪽 (한 구멍 2본, 10a당 19,047본)'
+		},
 		reasonKo:
 			'기계로 심고 거두기 쉬워 일손이 적게 들고, 논에 물 빠짐 공사를 하면 논콩으로도 짓습니다.',
 		reasonEn: 'Easy to mechanise, and drained paddies are widely used for soybean too.'
@@ -162,6 +235,16 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [9, 10],
 		labor: 2,
 		income: { won: 1710559, year: 2024 },
+		spacing: {
+			pitch: 70,
+			pitchTo: 75,
+			ridge: true,
+			lines: 1,
+			step: 20,
+			per10a: 6700,
+			per10aTo: 7100,
+			src: '농업기술길잡이 고구마 124쪽'
+		},
 		reasonKo: '모래 섞인 물 빠짐 좋은 밭이 알맞고, 거름이 많지 않아도 잘 듭니다.',
 		reasonEn: 'Suits sandy, free-draining fields and does not need rich soil.'
 	},
@@ -176,6 +259,15 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [6],
 		labor: 2,
 		income: { won: 1249665, year: 2024 },
+		spacing: {
+			pitch: 100,
+			ridge: true,
+			lines: 2,
+			lineGap: 45,
+			step: 20,
+			stepTo: 30,
+			src: '농업기술길잡이 감자 151쪽 (봄 2줄 심기, 줄 사이 40–50cm)'
+		},
 		reasonKo: '봄에 심어 6월에 거두면 같은 밭에 가을 작물을 한 번 더 심을 수 있습니다.',
 		reasonEn: 'Planted in spring and lifted in June, leaving room for an autumn crop.'
 	},
@@ -191,6 +283,15 @@ export const FARMLAND_CROPS: CropRule[] = [
 		nextYear: true,
 		labor: 3,
 		income: { won: 2010609, year: 2024 },
+		spacing: {
+			pitch: 120,
+			bed: 90,
+			lines: 5,
+			lineGap: 20,
+			step: 10,
+			per10a: 40000,
+			src: '농업기술길잡이 마늘 61쪽 (줄 수는 두둑 90cm ÷ 줄 사이 20cm로 계산)'
+		},
 		reasonKo:
 			'가을에 심어 겨울을 나는 작물입니다. 남부는 난지형, 중부·북부는 한지형 품종을 고릅니다.',
 		reasonEn:
@@ -208,6 +309,14 @@ export const FARMLAND_CROPS: CropRule[] = [
 		nextYear: true,
 		labor: 3,
 		income: { won: 1960401, year: 2024 },
+		spacing: {
+			pitch: 120,
+			ridge: true,
+			lines: 6,
+			step: 15,
+			per10a: 33000,
+			src: '농업기술길잡이 양파 56쪽'
+		},
 		reasonKo:
 			'겨울을 나야 해서 따뜻한 남부에 맞고, 남부에서는 벼 거둔 논에 뒷그루로 많이 심습니다.',
 		reasonEn: 'Overwinters, so it fits the warm south, often after rice in paddies.'
@@ -223,6 +332,13 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [11],
 		labor: 2,
 		income: { won: 2603067, year: 2024 },
+		spacing: {
+			pitch: 75,
+			ridge: true,
+			lines: 1,
+			step: 45,
+			src: '농사로 농작업일정 배추 (가을배추)'
+		},
 		reasonKo:
 			'김장용 가을배추는 8월 말에서 9월 초에 심습니다. 서늘한 고랭지에서는 여름배추도 됩니다.',
 		reasonEn: 'Autumn kimchi cabbage goes in late August; cool highlands can grow a summer crop.'
@@ -238,6 +354,12 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [10, 11],
 		labor: 1,
 		income: { won: 1531514, year: 2024 },
+		spacing: {
+			pitch: 60,
+			lines: 1,
+			step: 27,
+			src: '농업기술길잡이 무 39쪽 (가을무 적기, 포기 사이 27cm 이상)'
+		},
 		reasonKo: '씨를 바로 뿌리는 작물이라 손이 적게 가고, 흙이 깊고 부드러운 밭이 좋습니다.',
 		reasonEn: 'Direct-sown with little work; likes deep, loose soil.'
 	},
@@ -252,6 +374,13 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [7, 8, 9, 10],
 		labor: 3,
 		income: { won: 3361880, year: 2024 },
+		spacing: {
+			pitch: 90,
+			lines: 1,
+			step: 40,
+			per10a: 2770,
+			src: '농업기술길잡이 고추 87쪽 (1열 심기, 120×30cm도 같은 포기 수)'
+		},
 		reasonKo: '여름 내내 여러 번 따서 팔 수 있지만 지주 세우기, 방제, 수확에 손이 많이 갑니다.',
 		reasonEn: 'Picked many times through summer, but staking, spraying and picking take work.'
 	},
@@ -266,6 +395,15 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [10, 11],
 		labor: 2,
 		income: { won: 3081534, year: 2024 },
+		spacing: {
+			pitch: 80,
+			pitchTo: 85,
+			ridge: true,
+			lines: 1,
+			step: 7,
+			stepTo: 12,
+			src: '농업기술길잡이 대파 61쪽 (구멍마다 2–3포기)'
+		},
 		reasonKo: '늦여름에 종구를 심으면 김장철에 거둘 수 있어 텃밭이나 작은 밭에 알맞습니다.',
 		reasonEn: 'Bulbs planted in late summer are ready for kimchi season; good for small plots.'
 	},
@@ -280,6 +418,13 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [7, 8],
 		labor: 1,
 		income: { won: 1135449, year: 2024 },
+		spacing: {
+			pitch: 60,
+			lines: 1,
+			step: 25,
+			per10a: 6600,
+			src: '농사로 농작업일정 옥수수 (식용 옥수수)'
+		},
 		reasonKo: '심고 석 달이면 거둘 수 있고 손이 적게 가서 처음 짓는 밭에 많이 심습니다.',
 		reasonEn: 'Ready about three months after sowing with little work.'
 	},
@@ -308,6 +453,16 @@ export const FARMLAND_CROPS: CropRule[] = [
 		years: '2–3',
 		labor: 2,
 		income: { won: 6459798, year: 2024 },
+		spacing: {
+			pitch: 250,
+			pitchTo: 300,
+			lines: 1,
+			step: 100,
+			stepTo: 150,
+			per10a: 170,
+			per10aTo: 260,
+			src: '농업기술길잡이 블루베리 91쪽 (북부 하이부시)'
+		},
 		reasonKo:
 			'산성 흙이 필요해 피트모스로 흙을 바꿔 심는 경우가 많습니다. 나무 작물이라 한 번 심으면 오래 갑니다.',
 		reasonEn: 'Needs acidic soil, often made with peat moss. A long-lived bush crop.'
@@ -324,6 +479,16 @@ export const FARMLAND_CROPS: CropRule[] = [
 		years: '3–4',
 		labor: 3,
 		income: { won: 5114297, year: 2024 },
+		spacing: {
+			pitch: 280,
+			pitchTo: 350,
+			lines: 1,
+			step: 100,
+			stepTo: 150,
+			per10a: 190,
+			per10aTo: 357,
+			src: '농업기술길잡이 사과 102쪽 (M.9 대목)'
+		},
 		reasonKo:
 			'서늘한 곳이 맞아 재배지가 점점 북쪽으로 올라가고 있습니다. 묘목을 심고 몇 년 뒤부터 수확합니다.',
 		reasonEn:
@@ -341,6 +506,14 @@ export const FARMLAND_CROPS: CropRule[] = [
 		years: '4–5',
 		labor: 3,
 		income: { won: 4318622, year: 2024 },
+		spacing: {
+			pitch: 600,
+			pitchTo: 700,
+			lines: 1,
+			step: 500,
+			stepTo: 600,
+			src: '농업기술길잡이 배 131쪽 (나무 세력이 약한 경우)'
+		},
 		reasonKo: '중부와 남부 과수원에 맞고, 봉지 씌우기와 가지치기에 손이 많이 갑니다.',
 		reasonEn: 'Fits central and southern orchards; bagging and pruning take a lot of work.'
 	},
@@ -356,6 +529,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		years: '4–5',
 		labor: 2,
 		income: { won: 2058061, year: 2024 },
+		spacing: { pitch: 600, lines: 1, step: 500, per10a: 33, src: '농사로 농작업일정 단감' },
 		reasonKo: '추위에 약해 경남·전남 같은 따뜻한 남부에서 짓습니다.',
 		reasonEn: 'Frost-tender, so it is grown in the warm south such as Gyeongnam and Jeonnam.'
 	},
@@ -370,6 +544,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [9, 10],
 		labor: 1,
 		income: { won: 571863, year: 2024 },
+		spacing: { pitch: 30, lines: 1, step: 14, src: '농업기술길잡이 벼 154쪽 (기계이앙)' },
 		reasonKo: '논에 가장 기본인 작물이고, 모내기와 수확을 대부분 기계로 맡길 수 있습니다.',
 		reasonEn:
 			'The default paddy crop; planting and harvest can mostly be contracted out by machine.'
@@ -386,6 +561,20 @@ export const FARMLAND_CROPS: CropRule[] = [
 		greenhouse: true,
 		labor: 3,
 		income: { won: 10686223, year: 2024 },
+		spacing: {
+			pitch: 160,
+			model: true,
+			bed: 110,
+			lines: 2,
+			lineGap: 25,
+			step: 18,
+			per10a: 7000,
+			text: {
+				ko: '두둑 110–120cm · 2줄 (줄 사이 25cm) · 포기 사이 18cm',
+				en: 'Beds 110–120 cm · 2 rows 25 cm apart · plants 18 cm apart'
+			},
+			src: '농업기술길잡이 딸기 111쪽 (촉성 토경, 10a당 7,000주는 같은 책 거름 표)'
+		},
 		reasonKo:
 			'비닐하우스에서 겨울부터 봄까지 거두는 작물입니다. 시설비와 일손이 많이 들지만 매출도 큽니다.',
 		reasonEn: 'A greenhouse crop picked from winter to spring; high cost and labour, high sales.'
@@ -402,6 +591,12 @@ export const FARMLAND_CROPS: CropRule[] = [
 		greenhouse: true,
 		labor: 3,
 		income: { won: 10690553, year: 2024 },
+		spacing: {
+			pitch: 100,
+			lines: 1,
+			step: 40,
+			src: '농사로 농작업일정 방울토마토 (보통재배; 길잡이는 3.3㎡당 8–10주)'
+		},
 		reasonKo: '비닐하우스에서 봄·가을 두 번 짓는 경우가 많고, 줄기 유인과 수확이 매일 이어집니다.',
 		reasonEn: 'Usually grown twice a year in a greenhouse, with daily training and picking.'
 	},
@@ -417,9 +612,120 @@ export const FARMLAND_CROPS: CropRule[] = [
 		greenhouse: true,
 		labor: 2,
 		income: { won: 5020401, year: 2024 },
+		spacing: {
+			pitch: 150,
+			pitchTo: 180,
+			ridge: true,
+			lines: 7,
+			lineGap: 20,
+			step: 20,
+			per10a: 20000,
+			src: '농사로 농작업일정 상추 (이랑 안 줄 수는 계산)'
+		},
 		reasonKo:
 			'자라는 기간이 짧아 비닐하우스에서 1년에 여러 번 짓고, 노지에서는 봄·가을에 짓습니다.',
 		reasonEn: 'Short-cycle; several crops a year under plastic, or spring and autumn outdoors.'
+	},
+	{
+		id: 'tomato-hydro',
+		ko: '토마토',
+		en: 'Tomato',
+		priceId: 'tomato',
+		jimok: { 전: 2, 답: 2 },
+		zones: Z(2, 2, 2, 2),
+		// 수경 장기재배: 8–9월 정식, 이듬해 6월까지 수확 (농업기술길잡이 수경재배). 수확 시작은 정식 두 달 뒤로 잡음
+		plant: [8, 9],
+		harvest: [10, 11, 12, 1, 2, 3, 4, 5, 6],
+		smart: true,
+		labor: 3,
+		income: { won: 17645005, year: 2024, item: '시설토마토(수경)' },
+		spacing: {
+			pitch: 160,
+			model: true,
+			lines: 2,
+			lineGap: 40,
+			step: 33,
+			text: { ko: '암면 슬라브(91cm)마다 2–3포기', en: '2–3 plants per 91 cm rockwool slab' },
+			src: '농업기술길잡이 수경재배 155쪽'
+		},
+		reasonKo:
+			'유리온실에서 배양액으로 키워 가을부터 이듬해 초여름까지 길게 거둡니다. 시설비가 가장 큽니다.',
+		reasonEn:
+			'Grown in nutrient solution in a glasshouse and picked from autumn to early summer; the most costly set-up.'
+	},
+	{
+		id: 'strawberry-hydro',
+		ko: '딸기 (고설)',
+		en: 'Strawberry (raised bed)',
+		priceId: 'strawberry',
+		jimok: { 전: 2, 답: 2 },
+		zones: Z(1, 2, 2, 2),
+		plant: [9],
+		harvest: [12, 1, 2, 3, 4],
+		smart: true,
+		labor: 2,
+		income: { won: 14998764, year: 2024, item: '시설딸기(수경)' },
+		spacing: {
+			pitch: 127,
+			lines: 2,
+			lineGap: 15,
+			step: 17,
+			stepTo: 23,
+			text: {
+				ko: '벤치 폭 25–30cm · 벤치 사이 통로 100cm · 2줄 · 포기 사이 17–23cm',
+				en: 'Benches 25–30 cm wide · 100 cm aisles · 2 rows · plants 17–23 cm apart'
+			},
+			src: '농업기술길잡이 수경재배 190·192·201쪽 (벤치 간격 127cm는 계산)'
+		},
+		reasonKo:
+			'허리 높이 벤치에서 배양액으로 키워 서서 땁니다. 흙 딸기보다 수확이 편하고 소득이 높습니다.',
+		reasonEn:
+			'Grown at waist height in benches and picked standing; easier and higher income than soil strawberries.'
+	},
+	{
+		id: 'cucumber-hydro',
+		ko: '오이',
+		en: 'Cucumber',
+		priceId: 'cucumber',
+		jimok: { 전: 2, 답: 2 },
+		zones: Z(2, 2, 2, 2),
+		// 촉성·반촉성·조숙·시설억제 작형 (농업기술길잡이 수경재배 표72)
+		plant: [12, 1, 2, 3, 4, 5, 8, 9],
+		harvest: [2, 3, 4, 5, 6, 7, 9, 10, 11],
+		smart: true,
+		labor: 3,
+		income: { won: 12883641, year: 2024, item: '시설오이 (토경·수경 구분 없음)' },
+		spacing: {
+			pitch: 200,
+			lines: 1,
+			step: 20,
+			per10a: 2500,
+			src: '농업기술길잡이 수경재배 179쪽 (2013)'
+		},
+		reasonKo: '한 작기가 3–4개월로 짧아 1년에 여러 번 짓습니다. 매일 따야 합니다.',
+		reasonEn: 'Each crop takes 3–4 months, so it is grown several times a year; picked daily.'
+	},
+	{
+		id: 'paprika',
+		ko: '파프리카',
+		en: 'Paprika',
+		priceId: 'paprika',
+		jimok: { 전: 2, 답: 2 },
+		zones: Z(1, 2, 2, 2),
+		// 겨울작형: 10월–이듬해 7월 수확 (농업기술길잡이 수경재배). 정식은 수확 두 달 전으로 잡음
+		plant: [8],
+		harvest: [10, 11, 12, 1, 2, 3, 4, 5, 6, 7],
+		smart: true,
+		labor: 3,
+		income: { won: 11940800, year: 2024, item: '시설파프리카(착색단고추)' },
+		spacing: {
+			pitch: 150,
+			lines: 1,
+			step: 33,
+			src: '농사로 농작업일정 파프리카 · 농업기술길잡이 파프리카 48쪽'
+		},
+		reasonKo: '유리온실 수경으로 가을부터 이듬해 여름까지 거둡니다. 수출 작목이라 판로가 넓습니다.',
+		reasonEn: 'Glasshouse hydroponics picked from autumn to the next summer; a major export crop.'
 	}
 ]
 
@@ -475,7 +781,8 @@ export const monthsUntil = (months: number[], now: number) =>
  */
 export const rankCrops = (
 	input: { jimok: Jimok; use: FarmUse; zone: Zone; month: number },
-	limit = 8
+	// 화면의 작물 표가 맞는 작물을 모두 보여 주므로 넉넉히
+	limit = 40
 ): CropPick[] => {
 	const base: Jimok = isFarmJimok(input.jimok) ? input.jimok : '전'
 	const picks: CropPick[] = []
@@ -490,7 +797,7 @@ export const rankCrops = (
 		let score = fit * 3 + zone * 2
 		if (fit >= 3) tags.push('jimok')
 		if (zone >= 2) tags.push('zone')
-		if (c.greenhouse) {
+		if (c.greenhouse || c.smart) {
 			if (input.use === '시설') {
 				score += 3
 				tags.push('use')
