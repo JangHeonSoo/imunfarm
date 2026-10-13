@@ -93,6 +93,14 @@ const SAMPLE = {
 	pnu: '4421038034100010000',
 	jibun: '1전',
 	zoning: isEn ? 'Planned management area' : '계획관리지역',
+	// 토지특성 (브이월드 getLandCharacteristics, 2017 기준 조사)
+	land: {
+		terrain: '완경사',
+		shape: '사다리형',
+		road: '세로한면(가)',
+		roadCode: '08',
+		year: '2017'
+	},
 	jimok: '전',
 	areaM2: 2294,
 	farmUse: '밭',
@@ -515,6 +523,7 @@ const data = {
 		type Site
 	} from '@/data/farmland-layout'
 	import type { CropSpacing, FieldView, Ring } from './farmland-3d'
+	import { BUILD_COST, payback } from '@/data/farmland-cost'
 
 	type Price = {
 		price: number
@@ -540,6 +549,14 @@ const data = {
 		pnu?: string | null
 		jibun?: string | null
 		zoning?: string | null
+		/** 토지특성의 땅 모양·높낮이·도로 (브라우저 조회 값) */
+		land?: {
+			terrain: string | null
+			shape: string | null
+			road: string | null
+			roadCode: string | null
+			year: string | null
+		} | null
 	}
 	type Data = {
 		isEn: boolean
@@ -635,6 +652,10 @@ const data = {
 	const srcEl = $('im-farm-src')
 	/** 심는 간격 한 줄 (PDF 용) */
 	let specLine: string | null = null
+	/** 설치비·땅 조건 안내 문장 (화면 아래·PDF) */
+	let costNotes: string[] = []
+	/** PDF 에 그대로 옮길 표 (설치비·땅 조건) */
+	let specGroups: { title: string; rows: Row[] }[] = []
 	// 나눠 짓기: 하우스·온실 밖 남은 밭(통로 뺀 덩어리)에 노지 작물을 함께 심는다
 	const mixEl = $('im-farm-mix')
 	const mixLabel = $('im-farm-mix-label')
@@ -737,7 +758,15 @@ const data = {
 	const pyeong = (m2: number) => L(`${num(m2 / 3.3058)}평`, `${num(m2)} ㎡`)
 	const m1 = (v: number) => (Math.round(v * 10) / 10).toLocaleString(isEn ? 'en-US' : 'ko-KR')
 	/** 만 원 단위 (EN 은 백만 원) */
-	const money = (won: number) => (isEn ? `₩${(won / 1e6).toFixed(1)}M` : `${num(won / 1e4)}만 원`)
+	/** 만 원 단위, 1억 넘으면 '3억 4,560만 원' (EN 은 백만 원) */
+	const money = (won: number) => {
+		if (isEn) return `₩${(won / 1e6).toFixed(1)}M`
+		const man = Math.round(won / 1e4)
+		if (man < 10000) return `${num(man)}만 원`
+		const eok = Math.floor(man / 10000)
+		const rest = man % 10000
+		return rest ? `${eok}억 ${num(rest)}만 원` : `${eok}억 원`
+	}
 
 	/** 긴 변 방향으로 잰 가로 × 세로 (m, 긴 쪽 먼저) */
 	function dims(r: Ring, theta: number) {
@@ -1196,13 +1225,137 @@ const data = {
 		const space = c ? spacingRows(c, grow) : []
 		specLine = space.length ? space.map(([k, v]) => `${k} ${v}`).join(' · ') : null
 
+		// 설치비·회수 (하우스·온실만)
+		const costRows: Row[] = []
+		costNotes = []
+		const bc = BUILD_COST[mode]
+		if (bc && c?.income && grow > 0) {
+			const won = (v: number) => money(v)
+			// 범위: 둘 다 1억 밑이면 '3,133–4,135만 원'
+			const span = (a: number, b: number) =>
+				Math.round(a / 1e5) === Math.round(b / 1e5)
+					? won(a)
+					: !isEn && b < 1e8
+						? `${num(a / 1e4)}–${num(b / 1e4)}만 원`
+						: `${won(a)}–${won(b)}`
+			const cash = ((c.income.won + (c.income.depr ?? 0)) * grow) / 1000
+			const pb = payback(bc, grow, cash)
+			const yrs = ([a, b]: [number | null, number | null]) =>
+				a === null || b === null
+					? '–'
+					: Math.round(a * 10) === Math.round(b * 10)
+						? `${m1(a)}`
+						: `${m1(a)}–${m1(b)}`
+			costRows.push([L('시설 면적', 'Facility area'), area(grow)])
+			costRows.push([
+				L('설치비 (보조 전)', 'Build cost'),
+				L(`약 ${span(pb.total[0], pb.total[1])}`, `about ${span(pb.total[0], pb.total[1])}`)
+			])
+			costRows.push([
+				bc.loan ? L('보조 뒤 내 몫', 'Your share') : L('보조 뒤 자부담', 'Your share'),
+				L(`약 ${span(pb.mine[0], pb.mine[1])}`, `about ${span(pb.mine[0], pb.mine[1])}`)
+			])
+			costRows.push([L('한 해 현금', 'Cash a year'), L(`약 ${won(cash)}`, `about ${won(cash)}`)])
+			costRows.push([
+				L('회수 기간', 'Payback'),
+				L(
+					`보조 받으면 약 ${yrs(pb.withGrant)}년 · 없으면 약 ${yrs(pb.noGrant)}년`,
+					`${yrs(pb.withGrant)} yrs with grant · ${yrs(pb.noGrant)} without`
+				)
+			])
+			if (!pb.eligible)
+				costRows.push([
+					L('지원 신청 조건', 'Grant condition'),
+					L(
+						`${num(bc.minArea)}㎡ 이상 (이 배치 ${num(grow)}㎡)`,
+						`${num(bc.minArea)} ㎡ or more (this layout ${num(grow)} ㎡)`
+					)
+				])
+			costNotes.push(
+				bc.loan
+					? L(
+							`보조 ${Math.round(bc.grant * 100)}%(국고 20%·지방비 30%) 뒤 내 몫은 자부담 20%와 갚아야 하는 융자 30%입니다.`,
+							`After the ${Math.round(bc.grant * 100)}% grant, your share is 20% own money plus a 30% loan.`
+						)
+					: '',
+				L(
+					'한 해 현금은 소득에 기존 시설 감가상각비를 다시 더한 값입니다 (새 설치비를 따로 나누므로 두 번 빼지 않게).',
+					'Cash a year adds back the depreciation already in operating costs, so the new build cost is not counted twice.'
+				),
+				L(
+					'회수 기간은 이미 짓고 있는 농가의 평균 소득으로 셈한 것이라, 처음 짓는 몇 해는 더 길어질 수 있습니다.',
+					'Payback uses the average income of existing farms; the first years of a new farm are usually lower.'
+				),
+				L(bc.note.ko, bc.note.en),
+				L(`설치비 근거: ${bc.src.ko}`, `Cost source: ${bc.src.en}`)
+			)
+		}
+
+		// 땅 조건: 토지특성(지형높이·형상·도로)과 지적도상 물길
+		const landRows: Row[] = []
+		const ld = current.land
+		const ditch = site.tags.filter((t) => t === 'ditch').length
+		const river = site.tags.filter((t) => t === 'river').length
+		if (ld?.terrain) landRows.push([L('높낮이', 'Terrain'), ld.terrain])
+		if (ld?.shape) landRows.push([L('모양', 'Shape'), ld.shape])
+		if (ld?.road)
+			landRows.push([
+				L('도로', 'Road'),
+				ld.roadCode === '12' ? L('맹지 (길에 닿지 않음)', 'Landlocked') : ld.road
+			])
+		landRows.push([
+			L('물길', 'Water'),
+			river
+				? L('하천에 닿음', 'Touches a river')
+				: ditch
+					? L('구거(물길)에 닿음', 'Touches a ditch')
+					: L('지적도상 닿은 물길 없음', 'No ditch or river on the map')
+		])
+		if (ld?.terrain === '급경사' || ld?.terrain === '고지')
+			costNotes.push(
+				L(
+					`이 땅은 '${ld.terrain}'로 조사되어 하우스·온실은 터를 고르거나 계단식으로 나눠 지어야 할 수 있습니다.`,
+					`Recorded as '${ld.terrain}'; houses may need levelling or terracing.`
+				)
+			)
+		if (ld?.roadCode === '12')
+			costNotes.push(
+				L(
+					'맹지는 시설을 지으려면 들어가는 길(통행로)부터 확보해야 합니다.',
+					'A landlocked plot needs an access right first.'
+				)
+			)
+		if (!ditch && !river)
+			costNotes.push(
+				L(
+					'지적도상 닿은 구거·하천이 없어 관정이나 상수도를 따로 확인해야 합니다.',
+					'No ditch or river touches the plot; check for a well or mains water.'
+				)
+			)
+		if (ld?.year)
+			costNotes.push(
+				L(
+					`높낮이·모양·도로는 토지특성 ${ld.year}년 조사 값입니다.`,
+					`Terrain, shape and road are from the ${ld.year} land survey.`
+				)
+			)
+
 		specEl.replaceChildren(
 			...(money1.length ? [specGroup(L('소득 · 시기', 'Income · season'), money1)] : []),
 			specGroup(L(`배치 · ${modeName(mode)}`, `Layout · ${modeName(mode)}`), lay),
-			...(space.length ? [specGroup(L('심는 간격', 'Planting'), space)] : [])
+			...(space.length ? [specGroup(L('심는 간격', 'Planting'), space)] : []),
+			...(costRows.length ? [specGroup(L('설치비 · 회수', 'Build cost · payback'), costRows)] : []),
+			specGroup(L('땅 조건', 'Plot'), landRows)
 		)
-		srcEl.hidden = !c?.spacing && !c?.income?.item
+		specGroups = [
+			...(costRows.length
+				? [{ title: L('설치비 · 회수', 'Build cost · payback'), rows: costRows }]
+				: []),
+			{ title: L('땅 조건', 'Plot'), rows: landRows }
+		]
+		srcEl.hidden = !c?.spacing && !c?.income?.item && !costNotes.length
 		srcEl.textContent = [
+			...costNotes,
 			c?.income?.item ? L(`소득 항목: ${c.income.item}`, `Income item: ${c.income.item}`) : '',
 			c?.spacing ? L(`간격 출처: ${c.spacing.src}`, `Spacing source: ${c.spacing.src}`) : ''
 		]
@@ -1214,8 +1367,8 @@ const data = {
 		approxEl.textContent = [
 			c?.income
 				? L(
-						`소득은 농촌진흥청 ${c.income.year} 농산물소득자료집의 전국 평균(10a = 약 300평)이며, ${mode === 'field' ? '창고' : mode === 'smart' ? '온실' : '하우스'} 설치비는 들어 있지 않습니다.`,
-						`Income is the national average in the RDA ${c.income.year} farm income data book (10a = 1,000 ㎡) and excludes ${mode === 'field' ? 'building' : mode === 'smart' ? 'glasshouse' : 'greenhouse'} costs.`
+						`소득은 농촌진흥청 ${c.income.year} 농산물소득자료집의 전국 평균(10a = 약 300평)으로, 총수입에서 경영비(비료·농약·인건비·기존 시설의 해마다 감가상각비 등)를 뺀 값입니다. 새로 짓는 시설의 설치비와 대출이자는 따로 셉니다.`,
+						`Income is the national average in the RDA ${c.income.year} farm income data book (10a = 1,000 ㎡): revenue minus operating costs, which include yearly depreciation of existing facilities. New build cost and loan interest are counted separately.`
 					)
 				: '',
 			site.roadFrom === 'parcel'
@@ -1304,6 +1457,11 @@ const data = {
 				houseGap: HOUSE_GAP,
 				spacing: specLine,
 				mix: mixInfo,
+				cropLabel: $('im-farm-best-label').textContent ?? '',
+				groups: specGroups.map((g) => ({
+					title: g.title,
+					rows: g.rows.map(([k, v]) => [k, v] as [string, string])
+				})),
 				crop: c
 					? {
 							name: nameOf(c),
@@ -1429,6 +1587,7 @@ const data = {
 		try {
 			const q = new URLSearchParams()
 			let refined: string | null = null
+			let land: View['land'] = null
 			let r: Ring | null = null
 			let tags: EdgeTag[] = []
 			if (fixture) {
@@ -1448,6 +1607,14 @@ const data = {
 					neighboursOf(parcel.polygon, parcel.pnu).catch(() => []),
 					load().catch(() => null)
 				])
+				if (facts)
+					land = {
+						terrain: facts.terrain,
+						shape: facts.shape,
+						road: facts.road,
+						roadCode: facts.roadCode,
+						year: facts.year
+					}
 				const frame = localFrame(parcel.polygon)
 				r = frame?.ring ?? null
 				if (frame)
@@ -1482,7 +1649,7 @@ const data = {
 			const res = await fetch(`/api/farmland?${q}`)
 			const body = (await res.json()) as View & { error?: string }
 			if (!res.ok || body.error) return fail(body.error ?? 'upstream')
-			render({ ...body, refined }, r ?? ring, false, tags)
+			render({ ...body, refined, land }, r ?? ring, false, tags)
 			stage.scrollIntoView({
 				behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
 				block: 'nearest'

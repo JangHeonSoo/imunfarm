@@ -32,6 +32,10 @@ export type PdfInput = {
 	spacing: string | null
 	/** 나눠 짓기: 남은 밭에 함께 심는 노지 작물 */
 	mix: { name: string; area: number; yearly: number | null; spacing: string | null } | null
+	/** 표지 작물 꼬리표 (화면과 같은 말) */
+	cropLabel: string
+	/** 화면의 설치비·땅 조건 표를 그대로 */
+	groups: { title: string; rows: [string, string][] }[]
 	/** 이 땅에 가장 효율적인 작물 (10a당 소득 1위) */
 	crop: {
 		name: string
@@ -75,7 +79,14 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 	const m1 = (v: number) => (Math.round(v * 10) / 10).toLocaleString(loc)
 	const py = (m2: number) => L(`${num(m2 / 3.3058)}평`, `${num(m2 / 3.3058)} py`)
 	/** 만 원 단위 (EN 은 백만 원) */
-	const money = (won: number) => (d.isEn ? `₩${(won / 1e6).toFixed(1)}M` : `${num(won / 1e4)}만 원`)
+	const money = (won: number) => {
+		if (d.isEn) return `₩${(won / 1e6).toFixed(1)}M`
+		const man = Math.round(won / 1e4)
+		if (man < 10000) return `${num(man)}만 원`
+		const eok = Math.floor(man / 10000)
+		const rest = man % 10000
+		return rest ? `${eok}억 ${num(rest)}만 원` : `${eok}억 원`
+	}
 	const crop = d.crop
 	const smart = d.plan.pieces.find((p) => p.kind === 'smart') ?? null
 	const singles = d.plan.pieces.filter((p) => p.kind === 'single').length
@@ -283,19 +294,10 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 		y += ih + 22
 
 		// 가장 효율적인 작물과 이 배치의 숫자
-		text(
-			ctx,
-			L(
-				'이 땅에 가장 효율적인 작물 (10a당 소득 기준)',
-				'Most profitable crop for this plot (income per 10a)'
-			),
-			M,
-			y,
-			{
-				size: 7.5,
-				color: MUTED
-			}
-		)
+		text(ctx, d.cropLabel, M, y, {
+			size: 7.5,
+			color: MUTED
+		})
 		y += 26
 		text(ctx, crop?.name ?? '–', M, y, { size: 24, weight: 800 })
 		if (crop) text(ctx, crop.season, PW - M, y, { size: 8.5, color: MUTED, align: 'right' })
@@ -310,7 +312,7 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 			[
 				L('이 배치면 한 해', 'This layout, per year'),
 				yearly ? L(`약 ${money(yearly)}`, `≈ ${money(yearly)}`) : '–',
-				L('설치비 제외', 'before building costs')
+				L('새 시설비는 따로', 'new build cost separate')
 			],
 			smart
 				? [
@@ -876,8 +878,9 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 			y = M + 84
 		}
 
+		// 제목만 쪽 끝에 홀로 남지 않게 첫 줄 자리까지 본다
 		const section = (title: string) => {
-			room(48)
+			room(80)
 			text(ctx, title, M, y, { size: 10, weight: 800 })
 			y += 8
 			rule(ctx, y, 0.8)
@@ -941,8 +944,12 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 			[
 				'',
 				L(
-					`합계 · 하우스 ${t.houses}동`,
-					`Total · ${t.houses} greenhouse${t.houses === 1 ? '' : 's'}`
+					singles ? `합계 · 하우스 ${singles}동` : smart ? '합계 · 유리온실 1동' : '합계',
+					singles
+						? `Total · ${singles} house${singles === 1 ? '' : 's'}`
+						: smart
+							? 'Total · 1 glasshouse'
+							: 'Total'
 				),
 				'',
 				'',
@@ -1040,6 +1047,13 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 		} else kv(L('작물', 'Crop'), '–')
 		y += 16
 
+		// 설치비·회수, 땅 조건 (화면 표 그대로)
+		for (const g of d.groups) {
+			section(g.title)
+			for (const [k, v] of g.rows) kv(k, v)
+			y += 16
+		}
+
 		// 확인할 점
 		section(L('확인할 점', 'Before you build'))
 		y += 12
@@ -1066,8 +1080,8 @@ export async function buildPdf(d: PdfInput): Promise<Blob> {
 				'Greenhouse widths and heights: MAFRA disaster-resistant horticultural facility standard (single 7.0m, multi-span 7.0m bays, Venlo 8.0m)'
 			),
 			L(
-				'10a당 소득: 농촌진흥청 「2024 농산물소득자료집」 전국 평균 (하우스·시설 설치비는 들어 있지 않음)',
-				'Income per 10a: RDA 2024 farm income data book, national average (excludes greenhouse and building costs)'
+				'10a당 소득: 농촌진흥청 「2024 농산물소득자료집」 전국 평균 (총수입 − 경영비, 경영비에 기존 시설 감가상각비 포함)',
+				'Income per 10a: RDA 2024 farm income data book, national average (revenue minus operating costs, incl. depreciation of existing facilities)'
 			),
 			L(
 				'동 사이 간격 1.6m: 눈 피해를 막으려면 1.5m 이상 띄우라는 권고 (기장군 농업기술센터, 농촌진흥청 자료 인용). 법정 기준은 없음',

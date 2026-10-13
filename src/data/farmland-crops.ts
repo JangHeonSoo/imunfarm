@@ -44,9 +44,10 @@ export type CropRule = {
 	 * 10a당 소득 (원, 2024년산). 농촌진흥청 「2024 농산물소득자료집」(2025.11, 국가승인통계 제143002호) 11–13쪽,
 	 * 콩·마늘·양파·고추·쌀은 같은 책 별지 1의 국가데이터처 농축산물생산비조사 값. 딸기·방울토마토는 토경, 옥수수는 노지풋옥수수.
 	 * 땅콩·녹두·팥·메밀은 조사 대상이 아니라 없다.
+	 * 소득 = 총수입 − 경영비. 경영비에는 기존 시설의 감가상각비(영농시설상각비)가 들어 있다 → depr (10a당, 같은 책 작목별 표)
 	 * https://nongsaro.go.kr/portal/ps/psb/psbf/agricultIncomeInfoLst.ps
 	 */
-	income?: { won: number; year: number; item?: string }
+	income?: { won: number; year: number; item?: string; depr?: number }
 	reasonKo: string
 	reasonEn: string
 }
@@ -560,7 +561,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [12, 1, 2, 3, 4],
 		greenhouse: true,
 		labor: 3,
-		income: { won: 10686223, year: 2024 },
+		income: { won: 10686223, year: 2024, depr: 1800874 },
 		spacing: {
 			pitch: 160,
 			model: true,
@@ -590,7 +591,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [5, 6, 7, 10, 11],
 		greenhouse: true,
 		labor: 3,
-		income: { won: 10690553, year: 2024 },
+		income: { won: 10690553, year: 2024, depr: 1460602 },
 		spacing: {
 			pitch: 100,
 			lines: 1,
@@ -611,7 +612,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [4, 5, 6, 9, 10, 11],
 		greenhouse: true,
 		labor: 2,
-		income: { won: 5020401, year: 2024 },
+		income: { won: 5020401, year: 2024, depr: 1242530 },
 		spacing: {
 			pitch: 150,
 			pitchTo: 180,
@@ -638,7 +639,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [10, 11, 12, 1, 2, 3, 4, 5, 6],
 		smart: true,
 		labor: 3,
-		income: { won: 17645005, year: 2024, item: '시설토마토(수경)' },
+		income: { won: 17645005, year: 2024, item: '시설토마토(수경)', depr: 5061794 },
 		spacing: {
 			pitch: 160,
 			model: true,
@@ -664,7 +665,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [12, 1, 2, 3, 4],
 		smart: true,
 		labor: 2,
-		income: { won: 14998764, year: 2024, item: '시설딸기(수경)' },
+		income: { won: 14998764, year: 2024, item: '시설딸기(수경)', depr: 3925157 },
 		spacing: {
 			pitch: 127,
 			lines: 2,
@@ -694,7 +695,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [2, 3, 4, 5, 6, 7, 9, 10, 11],
 		smart: true,
 		labor: 3,
-		income: { won: 12883641, year: 2024, item: '시설오이 (토경·수경 구분 없음)' },
+		income: { won: 12883641, year: 2024, item: '시설오이 (토경·수경 구분 없음)', depr: 1641717 },
 		spacing: {
 			pitch: 200,
 			lines: 1,
@@ -717,7 +718,7 @@ export const FARMLAND_CROPS: CropRule[] = [
 		harvest: [10, 11, 12, 1, 2, 3, 4, 5, 6, 7],
 		smart: true,
 		labor: 3,
-		income: { won: 11940800, year: 2024, item: '시설파프리카(착색단고추)' },
+		income: { won: 11940800, year: 2024, item: '시설파프리카(착색단고추)', depr: 3996316 },
 		spacing: {
 			pitch: 150,
 			lines: 1,

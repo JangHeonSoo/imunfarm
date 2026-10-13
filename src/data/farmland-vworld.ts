@@ -32,6 +32,13 @@ export type LandFacts = {
 	/** 토지이용상황 (예: 전, 답, 과수원, 단독) */
 	landUse: string | null
 	year: string | null
+	/** 지형높이 (저지·평지·완경사·급경사·고지) */
+	terrain: string | null
+	/** 지형형상 (정방형·가로장방·세로장방·사다리형·부정형·자루형) */
+	shape: string | null
+	/** 도로접면 (코드 12 = 맹지) */
+	road: string | null
+	roadCode: string | null
 }
 
 let seq = 0
@@ -238,7 +245,11 @@ export async function landFacts(pnu: string): Promise<LandFacts | null> {
 		areaM2: Number.isFinite(area) && area > 0 ? area : null,
 		zoning: s(r.prposArea1Nm),
 		landUse: s(r.ladUseSittnNm),
-		year: s(r.stdrYear)
+		year: s(r.stdrYear),
+		terrain: s(r.tpgrphHgCodeNm),
+		shape: s(r.tpgrphFrmCodeNm),
+		road: s(r.roadSideCodeNm),
+		roadCode: s(r.roadSideCode)
 	}
 }
 
