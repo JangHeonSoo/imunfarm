@@ -3,7 +3,7 @@
  * 상품은 이미 글에 넣은 파트너스 블로그용 태그를 그대로 쓴다 (href·배너 이미지·alt 바꾸지 않음).
  * 근거 글: domestic-perilla-oil-price-2026, domestic-perilla-powder-price-2026, red-bean-harvest-time-2026,
  * raw-peanut-price-boiling-2026, domestic-sesame-price-2026, ginger-new-crop-price-2026
- * 국산 들깨 알곡 태그는 아직 없다 (크롬 연결 Claude로 만들어 추가할 것).
+ * 국산 통들깨 알곡 태그: claw_imunfarm/coupang/2026-10-16-perilla-grain.json (크롬 연결 Claude로 생성)
  */
 
 export type PricePick = {
@@ -20,6 +20,24 @@ export type PricePick = {
 const B = { imageWidth: 120, imageHeight: 240, banner: true }
 
 const P = {
+	perillaGokseong: {
+		name: '전남 곡성 국산 통들깨 1kg',
+		reason: '원산지 국내산, 2025년산 볶지 않은 통들깨입니다. 위 1kg 값과 바로 비교해 보세요.',
+		url: 'https://link.coupang.com/a/hS6MfUao1Y',
+		image:
+			'https://image11.coupangcdn.com/image/affiliate/banner/67746f414ca78a62f7ccc269ec72ce3a@2x.jpg',
+		imageAlt: '전남 곡성 산지직송 25년산 국산 햇 들깨 통들깨 국내산 생들깨, 1kg, 1박스',
+		...B
+	},
+	perillaUiseong: {
+		name: '힘찬농부오달봉 국산 통들깨 1kg (경북 의성)',
+		reason: '원산지가 경북 의성으로 표시된 생들깨 알곡입니다. 1kg 단위로 살 수 있습니다.',
+		url: 'https://link.coupang.com/a/hS6KTKHeEu',
+		image:
+			'https://image10.coupangcdn.com/image/affiliate/banner/70aa5539723bce55a284ab9d6547ee83@2x.jpg',
+		imageAlt: '힘찬농부오달봉 국산 들깨 통들깨 생들깨, 1kg, 1개',
+		...B
+	},
 	perillaOil: {
 		name: '대전기름집 100% 국산 들기름 350ml',
 		reason: '국산 들깨로 짠 볶은 들기름입니다. 방앗간에서 짜는 값과 비교해 보기 좋습니다.',
@@ -105,7 +123,7 @@ const P = {
 
 /** 품목 id → 상자 제목과 상품 */
 export const PRICE_PICKS: Record<string, { title: string; items: PricePick[] }> = {
-	'perilla-seed': { title: '국산 들깨로 만든 상품', items: [P.perillaOil, P.perillaPowder] },
+	'perilla-seed': { title: '국산 통들깨 1kg', items: [P.perillaGokseong, P.perillaUiseong] },
 	'perilla-seed-imported': {
 		title: '국산 들깨로 만든 상품',
 		items: [P.perillaPowder, P.perillaOil]
