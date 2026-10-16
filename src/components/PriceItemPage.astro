@@ -4,6 +4,8 @@ import PriceAnalysis from '@/components/PriceAnalysis'
 import PriceChart from '@/components/PriceChart'
 import PriceSwitcher from '@/components/PriceSwitcher'
 import CoupangDynamic from '@/components/CoupangDynamic'
+import AffiliateBox from '@/components/mdx/AffiliateBox'
+import { PRICE_PICKS } from '@/data/price-picks'
 import kamisItems from '@/data/kamis-items.json'
 import { DEFAULT_LOCALE, getLocalePrefix, getPostUrl, getPosts } from '@/utils'
 import {
@@ -428,6 +430,16 @@ const t = {
 				</dd>
 			</div>
 		</dl>
+
+		{
+			!isEn && PRICE_PICKS[item.id] && (
+				<AffiliateBox
+					title={PRICE_PICKS[item.id].title}
+					items={PRICE_PICKS[item.id].items}
+					compact
+				/>
+			)
+		}
 
 		<PriceChart
 			series={buildItemSeries(item, today)}

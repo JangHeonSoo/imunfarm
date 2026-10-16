@@ -14,18 +14,21 @@ type Props = {
 	title?: string
 	items: AffiliateItem[]
 	note?: string
+	/** 시세 페이지처럼 본문 위쪽에 넣을 때: 여백을 줄이고 넓은 화면에서 두 칸 */
+	compact?: boolean
 }
 
 const {
 	title = '함께 보면 좋은 작업 도구',
 	items = [],
-	note = '이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.'
+	note = '이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.',
+	compact = false
 } = Astro.props
 ---
 
 {
 	items.length > 0 && (
-		<aside class='im-aff' aria-label={title}>
+		<aside class:list={['im-aff', { 'is-compact': compact }]} aria-label={title}>
 			<header class='im-aff-head'>
 				<span class='im-aff-label'>Recommended</span>
 				<span class='im-aff-title'>{title}</span>
@@ -227,8 +230,36 @@ const {
 		}
 
 		.im-aff-item {
-			grid-template-columns: 88px minmax(0, 1fr);
+			grid-template-columns: 72px minmax(0, 1fr);
 			gap: 16px;
+		}
+	}
+
+	/* 시세 페이지 위쪽: 여백을 줄이고 넓은 화면에서 두 칸 */
+	.im-aff.is-compact {
+		margin: clamp(22px, 3vw, 32px) 0;
+	}
+
+	.im-aff.is-compact .im-aff-head {
+		padding: 12px 0;
+	}
+
+	.im-aff.is-compact .im-aff-item {
+		grid-template-columns: 72px minmax(0, 1fr);
+		justify-content: start;
+		gap: 16px;
+		padding: 16px 0;
+	}
+
+	@media (min-width: 720px) {
+		.im-aff.is-compact .im-aff-list {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 0 28px;
+		}
+
+		.im-aff.is-compact .im-aff-list li + li {
+			border-top: 0;
 		}
 	}
 </style>
