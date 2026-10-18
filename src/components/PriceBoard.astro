@@ -1,15 +1,15 @@
 ---
 /**
- * 많이 찾는 시세 목록 (메인 첫 화면, 품목 페이지 아래). 서버에서 그린다.
- * 한 줄: 사진 · 품목 · 오늘 도매가 · 1kg 환산 · 1년 전 같은 달보다.
+ * 많이 찾는 시세 (메인 첫 화면, 전체 시세표, 품목 페이지 아래). 서버에서 그린다.
+ * 메인 글 목록과 같은 사진 카드: 품목 사진 · 이름 · 1kg 환산(또는 오늘 도매가) · 1년 전 같은 달보다.
  */
 import { ITEMS, REGIONS, buildAnalysis, getItemStatus, getPriceAsOfDate } from '@/data/prices'
 import { SEARCH_NAME_KO } from '@/data/prices'
 import { KG_FIRST, perKgOf, unitKgOf } from '@/data/price-popular'
 import pricePhotos from '@/data/price-photos.json'
 
-type Props = { ids: string[]; isEn?: boolean; prefix?: string; exclude?: string }
-const { ids, isEn = false, prefix = '', exclude } = Astro.props
+type Props = { ids: string[]; isEn?: boolean; prefix?: string; exclude?: string; limit?: number }
+const { ids, isEn = false, prefix = '', exclude, limit = 8 } = Astro.props
 
 const today = getPriceAsOfDate()
 const fmt = (v: number | null) =>
@@ -19,6 +19,7 @@ const pct = (v: number | null) =>
 
 const rows = ids
 	.filter((id) => id !== exclude)
+	.slice(0, limit)
 	.map((id) => ITEMS.find((item) => item.id === id))
 	.filter((item): item is (typeof ITEMS)[number] => !!item)
 	.map((item) => {
@@ -33,168 +34,148 @@ const rows = ids
 			price: stale ? null : a.current,
 			kg: !isEn && KG_FIRST.has(item.id) && !stale ? perKgOf(a.current, unitKg) : null,
 			yearAgo: stale ? null : yearAgo,
-			photo: (pricePhotos as string[]).includes(item.id)
-				? `/images/prices/thumb/${item.id}.webp`
-				: null
+			photo: (pricePhotos as string[]).includes(item.id) ? `/images/prices/${item.id}.webp` : null
 		}
 	})
 ---
 
-<ol class='im-board'>
+<ul class='im-pcards'>
 	{
 		rows.map((r) => (
 			<li>
-				<a href={`${prefix}/prices/${r.id}/`}>
+				<a class='im-pcard' href={`${prefix}/prices/${r.id}/`}>
 					{r.photo ? (
-						<img src={r.photo} alt='' width='44' height='44' loading='lazy' decoding='async' />
+						<img
+							src={r.photo}
+							alt={r.name}
+							width='480'
+							height='480'
+							loading='lazy'
+							decoding='async'
+						/>
 					) : (
-						<span class='im-board-ph' />
+						<span class='im-pcard-ph' />
 					)}
-					<span class='im-board-name'>
-						<strong>{r.name}</strong>
-						<small>{r.unit}</small>
-					</span>
-					<span class='im-board-val'>
+					<span class='im-pcard-name'>{r.name}</span>
+					<strong class='im-pcard-price'>
 						{r.kg ? (
 							<>
-								<strong>
-									<small>1kg </small>
-									{fmt(r.kg)}
-								</strong>
-								<small>
-									{r.unit} {fmt(r.price)}
-								</small>
+								<small>1kg </small>
+								{fmt(r.kg)}
 							</>
 						) : (
-							<>
-								<strong>{fmt(r.price)}</strong>
-								<small>
-									{r.price == null ? (isEn ? 'No recent survey' : '최근 조사 없음') : r.unit}
-								</small>
-							</>
+							fmt(r.price)
 						)}
+					</strong>
+					<span class='im-pcard-sub'>
+						{r.price == null
+							? isEn
+								? 'No recent survey'
+								: '최근 조사 없음'
+							: r.kg
+								? `${r.unit} ${fmt(r.price)}`
+								: r.unit}
 					</span>
-					<span
-						class={`im-board-yoy ${r.yearAgo == null ? '' : r.yearAgo > 0 ? 'im-up' : r.yearAgo < 0 ? 'im-down' : ''}`}
-					>
-						<strong>{pct(r.yearAgo) ?? '–'}</strong>
-						<small>{isEn ? 'vs last year' : '1년 전보다'}</small>
-					</span>
+					{r.yearAgo != null && (
+						<span
+							class={`im-pcard-yoy ${r.yearAgo > 0 ? 'im-up' : r.yearAgo < 0 ? 'im-down' : ''}`}
+						>
+							{isEn ? 'vs last year ' : '1년 전보다 '}
+							{pct(r.yearAgo)}
+						</span>
+					)}
 				</a>
 			</li>
 		))
 	}
-</ol>
+</ul>
 
 <style>
-	.im-board {
+	.im-pcards {
 		display: grid;
-		grid-template-columns: 1fr;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: clamp(28px, 3vw, 44px) var(--gap);
 		margin: 0;
 		padding: 0;
 		list-style: none;
-		border-top: 1px solid var(--ink);
 	}
 
-	@media (min-width: 900px) {
-		.im-board {
-			grid-template-columns: 1fr 1fr;
-			column-gap: clamp(24px, 3vw, 48px);
+	@media (max-width: 760px) {
+		.im-pcards {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
 
-	.im-board li {
-		border-bottom: 1px solid var(--line);
-	}
-
-	.im-board a {
-		display: grid;
-		grid-template-columns: 44px minmax(0, 1fr) auto 76px;
-		align-items: center;
-		gap: 14px;
-		padding: 12px 0;
+	.im-pcard {
+		display: block;
 		color: var(--ink);
+		transition: opacity 200ms ease;
 	}
 
-	.im-board a:hover strong {
-		text-decoration: underline;
-		text-underline-offset: 3px;
+	.im-pcard:hover {
+		opacity: 0.82;
 	}
 
-	.im-board img,
-	.im-board-ph {
-		width: 44px;
-		height: 44px;
+	.im-pcard img,
+	.im-pcard-ph {
+		display: block;
+		width: 100%;
+		aspect-ratio: 1 / 1;
 		object-fit: cover;
 		background: var(--line);
 	}
 
-	.im-board span {
-		display: grid;
-		gap: 2px;
-		min-width: 0;
+	:global(html.dark) .im-pcard img {
+		filter: brightness(0.92);
 	}
 
-	.im-board strong {
-		font-size: 17px;
-		font-weight: 700;
-		line-height: 1.25;
+	.im-pcard-name {
+		display: block;
+		padding-top: 12px;
+		font-size: clamp(13px, 1vw, 15px);
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+
+	.im-pcard-price {
+		display: block;
+		padding-top: 4px;
+		font-size: clamp(20px, 2vw, 28px);
+		font-weight: 800;
+		letter-spacing: -0.01em;
+		line-height: 1.2;
 		font-variant-numeric: tabular-nums;
 	}
 
-	.im-board small {
+	.im-pcard-price small {
+		font-size: 0.55em;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+
+	.im-pcard-sub {
+		display: block;
+		padding-top: 5px;
 		color: var(--muted);
 		font-size: 12px;
 		font-weight: 500;
+		line-height: 1.5;
 		font-variant-numeric: tabular-nums;
 	}
 
-	.im-board strong small {
+	.im-pcard-yoy {
+		display: block;
+		padding-top: 1px;
 		font-size: 12px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
 	}
 
-	.im-board-name strong {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.im-board-val,
-	.im-board-yoy {
-		text-align: right;
-		justify-items: end;
-	}
-
-	.im-board-yoy strong {
-		font-size: 15px;
-	}
-
-	.im-board-yoy.im-up strong {
+	.im-pcard-yoy.im-up {
 		color: var(--up);
 	}
 
-	.im-board-yoy.im-down strong {
+	.im-pcard-yoy.im-down {
 		color: var(--down);
-	}
-
-	@media (max-width: 420px) {
-		.im-board a {
-			grid-template-columns: 40px minmax(0, 1fr) auto 62px;
-			gap: 10px;
-		}
-
-		.im-board img,
-		.im-board-ph {
-			width: 40px;
-			height: 40px;
-		}
-
-		.im-board strong {
-			font-size: 16px;
-		}
-
-		.im-board-yoy strong {
-			font-size: 14px;
-		}
 	}
 </style>

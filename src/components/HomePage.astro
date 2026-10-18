@@ -51,12 +51,13 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 <BaseLayout title='Home' locale={locale} active='home'>
 	<section class='im-front im-pad'>
 		<div class='im-front-head'>
-			<h1>{isEn ? 'Today’s prices' : '오늘 농산물 시세'}</h1>
+			<p class='im-front-kicker'>Today’s Prices</p>
+			<h1>{isEn ? 'Korean produce prices today' : '오늘 농산물 시세'}</h1>
 			<p class='im-meta'>
 				{
 					isEn
 						? `KAMIS wholesale, Seoul · surveyed ${priceDate} · ${ITEMS.length} items`
-						: `KAMIS 도매 중도매인 판매가 · 서울 ${priceDate} 조사 · ${ITEMS.length}개 품목`
+						: `서울 도매시장 중도매인 판매가 · ${priceDate} 조사 · ${ITEMS.length}개 품목`
 				}
 			</p>
 		</div>
@@ -77,14 +78,18 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 			<script type='application/json' id='im-price-index' set:html={JSON.stringify(priceIndex)} />
 		</div>
 
-		<h2 class='im-front-sub'>{isEn ? 'Most searched' : '많이 찾는 시세'}</h2>
 		<PriceBoard ids={POPULAR_PRICE_IDS} isEn={isEn} prefix={prefix} />
-		<a class='im-front-all' href={`${prefix}/prices/`}>
-			{isEn ? `All ${ITEMS.length} items →` : `전체 ${ITEMS.length}개 품목 시세 보기 →`}
-		</a>
+		<div class='im-front-more'>
+			<a class='im-front-all' href={`${prefix}/prices/`}>
+				{isEn ? `All ${ITEMS.length} items →` : `전체 ${ITEMS.length}개 품목 시세 보기 →`}
+			</a>
+		</div>
 	</section>
 
-	<h2 class='im-front-sub im-pad im-posts-head'>{isEn ? 'Notes from the farm' : '농사 기록'}</h2>
+	<div class='im-posts-head im-pad'>
+		<p class='im-front-kicker'>Notes</p>
+		<h2>{isEn ? 'Notes from the farm' : '농사 기록'}</h2>
+	</div>
 
 	<nav class='im-filters im-pad'>
 		<a class='im-tab' href={`${prefix}/blog/`} aria-current='true'>{isEn ? 'All' : '전체'}</a>
@@ -178,48 +183,62 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 
 <style>
 	.im-front {
-		padding-top: clamp(20px, 4vw, 56px);
-		padding-bottom: clamp(40px, 6vw, 88px);
+		padding-top: clamp(28px, 4vw, 64px);
+		padding-bottom: clamp(56px, 8vw, 120px);
 	}
 
-	.im-front-head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 6px 24px;
+	.im-front-head,
+	.im-posts-head {
+		display: grid;
+		justify-items: center;
+		gap: 10px;
+		text-align: center;
 	}
 
-	.im-front-head h1 {
+	.im-front-kicker {
 		margin: 0;
-		font-size: clamp(26px, 3.6vw, 44px);
+		font-size: 12px;
+		font-weight: 600;
+		letter-spacing: 0.22em;
+		text-transform: uppercase;
+		color: var(--muted);
+	}
+
+	.im-front-head h1,
+	.im-posts-head h2 {
+		margin: 0;
+		font-size: clamp(30px, 4.6vw, 60px);
 		font-weight: 800;
 		letter-spacing: -0.01em;
-		line-height: 1.15;
+		line-height: 1.1;
 	}
 
-	.im-front-head p {
+	.im-posts-head h2 {
+		font-size: clamp(24px, 3vw, 40px);
+	}
+
+	.im-front-head p.im-meta {
 		margin: 0;
-	}
-
-	.im-front-sub {
-		margin: clamp(18px, 2.4vw, 32px) 0 10px;
-		font-size: 13px;
-		font-weight: 700;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
 	}
 
 	.im-posts-head {
-		margin-top: 0;
+		padding-bottom: clamp(18px, 2.4vw, 32px);
+		border-top: 1px solid var(--line);
+		padding-top: clamp(48px, 6vw, 88px);
+	}
+
+	.im-front-more {
+		display: flex;
+		justify-content: center;
+		margin-top: clamp(32px, 4vw, 56px);
 	}
 
 	.im-front-all {
-		display: inline-block;
-		margin-top: 16px;
 		color: var(--ink);
 		font-size: 14px;
 		font-weight: 600;
+		letter-spacing: 0.02em;
+		padding-bottom: 3px;
 		border-bottom: 1px solid var(--ink);
 	}
 
@@ -230,7 +249,7 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 	.im-search {
 		display: grid;
 		place-items: center;
-		padding: clamp(18px, 3vw, 40px) 0 clamp(4px, 1vw, 12px);
+		padding: clamp(24px, 3vw, 44px) 0 clamp(32px, 4vw, 56px);
 	}
 
 	.im-search-hits {
@@ -284,6 +303,7 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 
 	.im-filters {
 		display: flex;
+		justify-content: center;
 		flex-wrap: wrap;
 		gap: clamp(14px, 2vw, 32px);
 		padding-bottom: clamp(14px, 1.6vw, 22px);
