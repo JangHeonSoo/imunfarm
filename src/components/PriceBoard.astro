@@ -39,7 +39,7 @@ const rows = ids
 	})
 ---
 
-<ul class='im-pcards'>
+<ul class='im-pcards' style={`--cols:${rows.length}`}>
 	{
 		rows.map((r) => (
 			<li>
@@ -91,18 +91,28 @@ const rows = ids
 </ul>
 
 <style>
+	/* 휴대폰 2칸, 태블릿 4칸, PC는 한 줄에 모두 (카드 한 장 최대 약 190px, 사진이 너무 커지지 않게) */
 	.im-pcards {
 		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: clamp(28px, 3vw, 44px) var(--gap);
-		margin: 0;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 28px var(--gap);
+		margin: 0 auto;
 		padding: 0;
 		list-style: none;
 	}
 
-	@media (max-width: 760px) {
+	@media (min-width: 761px) {
 		.im-pcards {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+			max-width: 880px;
+		}
+	}
+
+	@media (min-width: 1100px) {
+		.im-pcards {
+			grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+			max-width: calc(var(--cols) * 200px);
+			gap: 32px clamp(16px, 1.4vw, 24px);
 		}
 	}
 
@@ -131,8 +141,8 @@ const rows = ids
 
 	.im-pcard-name {
 		display: block;
-		padding-top: 12px;
-		font-size: clamp(13px, 1vw, 15px);
+		padding-top: 10px;
+		font-size: 13px;
 		font-weight: 600;
 		letter-spacing: 0.02em;
 	}
@@ -140,7 +150,7 @@ const rows = ids
 	.im-pcard-price {
 		display: block;
 		padding-top: 4px;
-		font-size: clamp(20px, 2vw, 28px);
+		font-size: clamp(19px, 1.5vw, 23px);
 		font-weight: 800;
 		letter-spacing: -0.01em;
 		line-height: 1.2;
