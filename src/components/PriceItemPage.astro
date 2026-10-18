@@ -6,6 +6,8 @@ import PriceSwitcher from '@/components/PriceSwitcher'
 import CoupangDynamic from '@/components/CoupangDynamic'
 import AffiliateBox from '@/components/mdx/AffiliateBox'
 import { PRICE_PICKS } from '@/data/price-picks'
+import { KG_FIRST, POPULAR_PRICE_IDS } from '@/data/price-popular'
+import PriceBoard from '@/components/PriceBoard'
 import kamisItems from '@/data/kamis-items.json'
 import { DEFAULT_LOCALE, getLocalePrefix, getPostUrl, getPosts } from '@/utils'
 import {
@@ -151,26 +153,6 @@ const kgNow = perKg(analysis.current)
 const [yy, mm, dd] = (surveyLabel ?? dateLabel).split('.')
 const koMonth = `${yy}년 ${+mm}월`
 const koDay = surveyLabel ? `${koMonth} ${+dd}일` : null
-// 곡물·깨·생강·깐마늘은 "국산 들깨 가격 1kg"처럼 1kg 값으로 찾는다. 22.5kg 도매가로 시작하면 검색 결과에서 지나친다
-// (서치어드바이저 2026-10-19: 노출 2,557, 클릭률 0.6%). 이 품목들은 제목을 1kg 값으로 시작한다.
-const KG_FIRST = new Set([
-	'perilla-seed',
-	'perilla-seed-imported',
-	'red-bean',
-	'red-bean-red',
-	'sesame',
-	'sesame-india',
-	'sesame-china',
-	'peanut',
-	'mung-bean',
-	'mung-bean-imported',
-	'soybean',
-	'soybean-white',
-	'ginger',
-	'ginger-imported',
-	'garlic',
-	'garlic-2'
-])
 const title = isEn
 	? `${name} price — wholesale market outlook (${dateLabel})`
 	: analysis.current != null && !status.stale
@@ -377,7 +359,11 @@ const t = {
 					<span class='im-item-price' id='im-item-price'>{fmt(analysis.current)}</span>
 					{
 						!isEn && unitKg && (
-							<span class='im-item-key-s' id='im-item-perkg' data-kg={unitKg}>
+							<span
+								class={`im-item-key-s ${KG_FIRST.has(item.id) ? 'im-item-perkg-big' : ''}`}
+								id='im-item-perkg'
+								data-kg={unitKg}
+							>
 								{kgNow ? `1kg 약 ${fmt(kgNow)}` : ''}
 							</span>
 						)
@@ -494,6 +480,9 @@ const t = {
 				}
 			</tbody>
 		</table>
+
+		<h2 class='im-analysis-h'>{isEn ? 'Most searched prices' : '많이 찾는 시세'}</h2>
+		<PriceBoard ids={POPULAR_PRICE_IDS} isEn={isEn} prefix={prefix} exclude={item.id} />
 
 		<PriceAnalysis item={item} analysis={analysis} isEn={isEn} fmt={fmt} />
 
@@ -660,6 +649,13 @@ const t = {
 		display: grid;
 		gap: 6px;
 		margin: 8px 0 0;
+	}
+
+	/* 1kg 값으로 찾는 품목은 1kg 환산을 크게 (KG_FIRST) */
+	.im-item-key-s.im-item-perkg-big {
+		color: var(--ink);
+		font-size: 18px;
+		font-weight: 700;
 	}
 
 	.im-item-price,

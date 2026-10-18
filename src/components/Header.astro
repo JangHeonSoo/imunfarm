@@ -9,11 +9,21 @@ const prefix = getLocalePrefix(locale)
 	<nav class='im-header-left'>
 		<a
 			class='im-header-link'
+			href={`${prefix}/prices/`}
+			aria-current={active === 'prices' ? 'page' : undefined}
+		>
+			시세 <span>Prices</span>
+		</a>
+		<a
+			class='im-header-link'
 			href={`${prefix}/tools/farmland-crop-finder/`}
 			aria-current={active === 'land' ? 'page' : undefined}
 		>
 			농지 분석 <span>Farmland</span>
 		</a>
+	</nav>
+	<a class='im-wordmark' href={`${prefix}/`} aria-label='IMUN.FARM'>IMUN.FARM</a>
+	<nav class='im-header-right'>
 		<a
 			class='im-header-link'
 			href={`${prefix}/tools/`}
@@ -21,15 +31,12 @@ const prefix = getLocalePrefix(locale)
 		>
 			도구 <span>Tools</span>
 		</a>
-	</nav>
-	<a class='im-wordmark' href={`${prefix}/`} aria-label='IMUN.FARM'>IMUN.FARM</a>
-	<nav class='im-header-right'>
 		<a
 			class='im-header-link'
-			href={`${prefix}/prices/`}
-			aria-current={active === 'prices' ? 'page' : undefined}
+			href={`${prefix}/blog/`}
+			aria-current={active === 'blog' ? 'page' : undefined}
 		>
-			시세 <span>Prices</span>
+			기록 <span>Notes</span>
 		</a>
 	</nav>
 </header>

@@ -1,0 +1,200 @@
+---
+/**
+ * 많이 찾는 시세 목록 (메인 첫 화면, 품목 페이지 아래). 서버에서 그린다.
+ * 한 줄: 사진 · 품목 · 오늘 도매가 · 1kg 환산 · 1년 전 같은 달보다.
+ */
+import { ITEMS, REGIONS, buildAnalysis, getItemStatus, getPriceAsOfDate } from '@/data/prices'
+import { SEARCH_NAME_KO } from '@/data/prices'
+import { KG_FIRST, perKgOf, unitKgOf } from '@/data/price-popular'
+import pricePhotos from '@/data/price-photos.json'
+
+type Props = { ids: string[]; isEn?: boolean; prefix?: string; exclude?: string }
+const { ids, isEn = false, prefix = '', exclude } = Astro.props
+
+const today = getPriceAsOfDate()
+const fmt = (v: number | null) =>
+	v == null ? '–' : isEn ? '₩' + v.toLocaleString('en-US') : v.toLocaleString('ko-KR') + '원'
+const pct = (v: number | null) =>
+	v == null ? null : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
+
+const rows = ids
+	.filter((id) => id !== exclude)
+	.map((id) => ITEMS.find((item) => item.id === id))
+	.filter((item): item is (typeof ITEMS)[number] => !!item)
+	.map((item) => {
+		const a = buildAnalysis(item, REGIONS[0], today)
+		const stale = getItemStatus(item, today).stale
+		const unitKg = unitKgOf(item.unitKo)
+		const yearAgo = a.benchmarks.find((b) => b.yearsAgo === 1)?.diffPct ?? null
+		return {
+			id: item.id,
+			name: isEn ? item.en : (SEARCH_NAME_KO[item.id] ?? item.ko),
+			unit: isEn ? item.unitEn : item.unitKo,
+			price: stale ? null : a.current,
+			kg: !isEn && KG_FIRST.has(item.id) && !stale ? perKgOf(a.current, unitKg) : null,
+			yearAgo: stale ? null : yearAgo,
+			photo: (pricePhotos as string[]).includes(item.id)
+				? `/images/prices/thumb/${item.id}.webp`
+				: null
+		}
+	})
+---
+
+<ol class='im-board'>
+	{
+		rows.map((r) => (
+			<li>
+				<a href={`${prefix}/prices/${r.id}/`}>
+					{r.photo ? (
+						<img src={r.photo} alt='' width='44' height='44' loading='lazy' decoding='async' />
+					) : (
+						<span class='im-board-ph' />
+					)}
+					<span class='im-board-name'>
+						<strong>{r.name}</strong>
+						<small>{r.unit}</small>
+					</span>
+					<span class='im-board-val'>
+						{r.kg ? (
+							<>
+								<strong>
+									<small>1kg </small>
+									{fmt(r.kg)}
+								</strong>
+								<small>
+									{r.unit} {fmt(r.price)}
+								</small>
+							</>
+						) : (
+							<>
+								<strong>{fmt(r.price)}</strong>
+								<small>
+									{r.price == null ? (isEn ? 'No recent survey' : '최근 조사 없음') : r.unit}
+								</small>
+							</>
+						)}
+					</span>
+					<span
+						class={`im-board-yoy ${r.yearAgo == null ? '' : r.yearAgo > 0 ? 'im-up' : r.yearAgo < 0 ? 'im-down' : ''}`}
+					>
+						<strong>{pct(r.yearAgo) ?? '–'}</strong>
+						<small>{isEn ? 'vs last year' : '1년 전보다'}</small>
+					</span>
+				</a>
+			</li>
+		))
+	}
+</ol>
+
+<style>
+	.im-board {
+		display: grid;
+		grid-template-columns: 1fr;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		border-top: 1px solid var(--ink);
+	}
+
+	@media (min-width: 900px) {
+		.im-board {
+			grid-template-columns: 1fr 1fr;
+			column-gap: clamp(24px, 3vw, 48px);
+		}
+	}
+
+	.im-board li {
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-board a {
+		display: grid;
+		grid-template-columns: 44px minmax(0, 1fr) auto 76px;
+		align-items: center;
+		gap: 14px;
+		padding: 12px 0;
+		color: var(--ink);
+	}
+
+	.im-board a:hover strong {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.im-board img,
+	.im-board-ph {
+		width: 44px;
+		height: 44px;
+		object-fit: cover;
+		background: var(--line);
+	}
+
+	.im-board span {
+		display: grid;
+		gap: 2px;
+		min-width: 0;
+	}
+
+	.im-board strong {
+		font-size: 17px;
+		font-weight: 700;
+		line-height: 1.25;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-board small {
+		color: var(--muted);
+		font-size: 12px;
+		font-weight: 500;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-board strong small {
+		font-size: 12px;
+	}
+
+	.im-board-name strong {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.im-board-val,
+	.im-board-yoy {
+		text-align: right;
+		justify-items: end;
+	}
+
+	.im-board-yoy strong {
+		font-size: 15px;
+	}
+
+	.im-board-yoy.im-up strong {
+		color: var(--up);
+	}
+
+	.im-board-yoy.im-down strong {
+		color: var(--down);
+	}
+
+	@media (max-width: 420px) {
+		.im-board a {
+			grid-template-columns: 40px minmax(0, 1fr) auto 62px;
+			gap: 10px;
+		}
+
+		.im-board img,
+		.im-board-ph {
+			width: 40px;
+			height: 40px;
+		}
+
+		.im-board strong {
+			font-size: 16px;
+		}
+
+		.im-board-yoy strong {
+			font-size: 14px;
+		}
+	}
+</style>

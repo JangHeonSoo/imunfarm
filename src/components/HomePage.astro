@@ -8,6 +8,9 @@ import {
 	getPostUrl,
 	getPosts
 } from '@/utils'
+import PriceBoard from '@/components/PriceBoard'
+import { ITEMS, formatDate, getPriceAsOfDate, buildPriceData } from '@/data/prices'
+import { POPULAR_PRICE_IDS } from '@/data/price-popular'
 
 const { locale = DEFAULT_LOCALE } = Astro.props
 const isEn = locale === 'en'
@@ -33,20 +36,55 @@ const categories = [...top, ...PINNED.filter((slug) => counts.has(slug))].map((s
 	label: getCategoryTitleFromSlug(slug, locale)
 }))
 
+// 사람들은 시세를 찾아 들어온다 (2026-10-19 서치어드바이저 검색어 TOP 10이 모두 시세). 메인 첫 화면은 시세가 먼저다.
+const { dates } = buildPriceData(getPriceAsOfDate())
+const priceDate = formatDate(dates[dates.length - 1])
+const priceIndex = ITEMS.map((item) => ({
+	id: item.id,
+	n: isEn ? item.en : item.ko,
+	k: (isEn ? item.keywordsEn : item.keywordsKo).join(' ')
+}))
+
 const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2', '4 / 3']
 ---
 
 <BaseLayout title='Home' locale={locale} active='home'>
-	<div class='im-search'>
-		<input
-			id='im-search-input'
-			type='search'
-			autocomplete='off'
-			placeholder='SEARCH'
-			aria-label={isEn ? 'Search posts' : '글 검색'}
-			data-action={`${prefix}/search/`}
-		/>
-	</div>
+	<section class='im-front im-pad'>
+		<div class='im-front-head'>
+			<h1>{isEn ? 'Today’s prices' : '오늘 농산물 시세'}</h1>
+			<p class='im-meta'>
+				{
+					isEn
+						? `KAMIS wholesale, Seoul · surveyed ${priceDate} · ${ITEMS.length} items`
+						: `KAMIS 도매 중도매인 판매가 · 서울 ${priceDate} 조사 · ${ITEMS.length}개 품목`
+				}
+			</p>
+		</div>
+
+		<div class='im-search-wrap'>
+			<div class='im-search'>
+				<input
+					id='im-search-input'
+					type='search'
+					autocomplete='off'
+					placeholder='SEARCH'
+					aria-label={isEn ? 'Search prices and posts' : '시세·글 검색'}
+					data-action={`${prefix}/search/`}
+					data-prefix={prefix}
+				/>
+			</div>
+			<ul id='im-search-hits' class='im-search-hits' hidden></ul>
+			<script type='application/json' id='im-price-index' set:html={JSON.stringify(priceIndex)} />
+		</div>
+
+		<h2 class='im-front-sub'>{isEn ? 'Most searched' : '많이 찾는 시세'}</h2>
+		<PriceBoard ids={POPULAR_PRICE_IDS} isEn={isEn} prefix={prefix} />
+		<a class='im-front-all' href={`${prefix}/prices/`}>
+			{isEn ? `All ${ITEMS.length} items →` : `전체 ${ITEMS.length}개 품목 시세 보기 →`}
+		</a>
+	</section>
+
+	<h2 class='im-front-sub im-pad im-posts-head'>{isEn ? 'Notes from the farm' : '농사 기록'}</h2>
 
 	<nav class='im-filters im-pad'>
 		<a class='im-tab' href={`${prefix}/blog/`} aria-current='true'>{isEn ? 'All' : '전체'}</a>
@@ -85,13 +123,50 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 <script is:inline>
 	function initHomeSearch() {
 		const input = document.getElementById('im-search-input')
+		const hits = document.getElementById('im-search-hits')
 		if (!input || input.dataset.bound === 'true') return
 		input.dataset.bound = 'true'
+		let index = []
+		try {
+			index = JSON.parse(document.getElementById('im-price-index').textContent)
+		} catch {}
+		const norm = (v) => v.toLowerCase().replace(/\s+/g, '')
+		const match = (q) => {
+			const n = norm(q)
+			if (!n) return []
+			return index
+				.filter((it) => norm(it.n).includes(n) || norm(it.k).includes(n))
+				.sort((a, b) => norm(a.n).indexOf(n) - norm(b.n).indexOf(n))
+				.slice(0, 6)
+		}
+		const render = () => {
+			const list = match(input.value.trim())
+			hits.innerHTML = ''
+			list.forEach((it) => {
+				const li = document.createElement('li')
+				const a = document.createElement('a')
+				a.href = input.dataset.prefix + '/prices/' + it.id + '/'
+				a.textContent = it.n
+				const s = document.createElement('span')
+				s.textContent = document.documentElement.lang === 'en' ? 'Price →' : '시세 →'
+				a.append(s)
+				li.append(a)
+				hits.append(li)
+			})
+			hits.hidden = list.length === 0
+		}
+		input.addEventListener('input', render)
 		input.addEventListener('keydown', (event) => {
 			if (event.key !== 'Enter') return
 			event.preventDefault()
 			const query = input.value.trim()
 			if (!query) return
+			const list = match(query)
+			// 품목 이름과 바로 맞으면 시세 페이지로, 아니면 글 검색
+			if (list.length && norm(list[0].n).startsWith(norm(query))) {
+				window.location.href = input.dataset.prefix + '/prices/' + list[0].id + '/'
+				return
+			}
 			window.location.href = input.dataset.action + '?q=' + encodeURIComponent(query)
 		})
 	}
@@ -102,10 +177,90 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 </script>
 
 <style>
+	.im-front {
+		padding-top: clamp(20px, 4vw, 56px);
+		padding-bottom: clamp(40px, 6vw, 88px);
+	}
+
+	.im-front-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 6px 24px;
+	}
+
+	.im-front-head h1 {
+		margin: 0;
+		font-size: clamp(26px, 3.6vw, 44px);
+		font-weight: 800;
+		letter-spacing: -0.01em;
+		line-height: 1.15;
+	}
+
+	.im-front-head p {
+		margin: 0;
+	}
+
+	.im-front-sub {
+		margin: clamp(18px, 2.4vw, 32px) 0 10px;
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.im-posts-head {
+		margin-top: 0;
+	}
+
+	.im-front-all {
+		display: inline-block;
+		margin-top: 16px;
+		color: var(--ink);
+		font-size: 14px;
+		font-weight: 600;
+		border-bottom: 1px solid var(--ink);
+	}
+
+	.im-search-wrap {
+		position: relative;
+	}
+
 	.im-search {
 		display: grid;
 		place-items: center;
-		height: clamp(140px, 24vh, 250px);
+		padding: clamp(18px, 3vw, 40px) 0 clamp(4px, 1vw, 12px);
+	}
+
+	.im-search-hits {
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		z-index: 5;
+		width: min(560px, 100%);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		transform: translateX(-50%);
+		background: var(--bg);
+		border-top: 1px solid var(--ink);
+	}
+
+	.im-search-hits :global(a) {
+		display: flex;
+		justify-content: space-between;
+		padding: 11px 4px;
+		color: var(--ink);
+		font-size: 16px;
+		font-weight: 600;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-search-hits :global(a span) {
+		color: var(--muted);
+		font-size: 13px;
+		font-weight: 500;
 	}
 
 	.im-search input {
@@ -117,7 +272,7 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 		color: var(--ink);
 		font-family: inherit;
 		font-weight: 800;
-		font-size: clamp(26px, 4.2vw, 54px);
+		font-size: clamp(24px, 3.4vw, 44px);
 		letter-spacing: 0.16em;
 		text-align: center;
 		text-transform: uppercase;

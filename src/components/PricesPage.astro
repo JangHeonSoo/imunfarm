@@ -13,6 +13,8 @@ import {
 import { siteConfig } from '@/site-config'
 import PriceSwitcher from '@/components/PriceSwitcher'
 import CoupangDynamic from '@/components/CoupangDynamic'
+import PriceBoard from '@/components/PriceBoard'
+import { POPULAR_PRICE_IDS } from '@/data/price-popular'
 import kamisItems from '@/data/kamis-items.json'
 import pricePhotos from '@/data/price-photos.json'
 import { buildMoversInput } from '@/data/movers-input'
@@ -336,6 +338,9 @@ const t = {
 				</div>
 			</dl>
 		</header>
+
+		<h2 class='im-popular-h'>{isEn ? 'Most searched' : '많이 찾는 시세'}</h2>
+		<PriceBoard ids={POPULAR_PRICE_IDS} isEn={isEn} prefix={prefix} />
 
 		<section
 			class='im-movers'
@@ -1889,6 +1894,13 @@ const t = {
 
 	.im-chart-who :global(.im-switch-open) {
 		margin-top: 10px;
+	}
+
+	.im-popular-h {
+		margin: clamp(20px, 3vw, 36px) 0 10px;
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.08em;
 	}
 
 	.im-movers {
