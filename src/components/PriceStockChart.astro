@@ -1,0 +1,503 @@
+---
+/**
+ * 품목 시세 차트 (주식 페이지처럼). TradingView lightweight-charts(Apache-2.0) 를 쓴다.
+ * - 세로축은 그 기간 값에 맞춘다 (0부터 그리면 도매가 변화가 평평하게 보인다).
+ * - 1·3·6개월·1년은 일별 조사값, 3·5·10년은 월평균. 기간 첫날보다 오르면 빨강, 내리면 파랑.
+ * - "작년 같은 때" 점선: 일별 기간에서 364일(52주) 전 값을 겹쳐 그린다.
+ * - 십자선을 올리면 위쪽 큰 가격·날짜·변동이 그날 값으로 바뀌고, 벗어나면 최신값으로 돌아온다.
+ * - 휠은 페이지 스크롤에 둔다(긴 페이지에서 갇히지 않게). 끌어서 옮기기, 두 손가락 확대는 된다.
+ */
+import type { ItemSeries } from '@/data/prices'
+
+type Props = {
+	series: ItemSeries
+	regions: { id: string; label: string }[]
+	isEn: boolean
+	unitKg: number | null
+}
+const { series, regions, isEn, unitKg } = Astro.props
+
+const periods = isEn
+	? [
+			['1m', '1M'],
+			['3m', '3M'],
+			['6m', '6M'],
+			['1y', '1Y'],
+			['3y', '3Y'],
+			['5y', '5Y'],
+			['10y', '10Y']
+		]
+	: [
+			['1m', '1개월'],
+			['3m', '3개월'],
+			['6m', '6개월'],
+			['1y', '1년'],
+			['3y', '3년'],
+			['5y', '5년'],
+			['10y', '10년']
+		]
+
+const payload = {
+	series,
+	regions,
+	isEn,
+	unitKg,
+	periodLabels: Object.fromEntries(periods)
+}
+---
+
+<section class='im-sc' aria-label={isEn ? 'Price chart' : '가격 차트'} data-sc>
+	<div class='im-sc-top'>
+		<div class='im-sc-tabs' role='tablist'>
+			{
+				periods.map(([id, label]) => (
+					<button type='button' data-sc-period={id} aria-pressed={id === '1y' ? 'true' : 'false'}>
+						{label}
+					</button>
+				))
+			}
+		</div>
+		<label class='im-sc-ly'>
+			<input type='checkbox' data-sc-ly checked />
+			<span>{isEn ? 'Same time last year' : '작년 같은 때'}</span>
+		</label>
+	</div>
+	<p class='im-sc-legend' data-sc-legend></p>
+	<div class='im-sc-plot' data-sc-plot></div>
+	<p class='im-sc-empty im-meta' data-sc-empty hidden>
+		{isEn ? 'No KAMIS survey in this period.' : '이 기간에는 KAMIS 조사 자료가 없습니다.'}
+	</p>
+	<div class='im-sc-regions'>
+		{
+			regions.map((region, index) => (
+				<button
+					type='button'
+					data-sc-region={region.id}
+					aria-pressed={index === 0 ? 'true' : 'false'}
+				>
+					{region.label}
+				</button>
+			))
+		}
+	</div>
+	<script type='application/json' data-sc-data set:html={JSON.stringify(payload)} />
+</section>
+
+<script>
+	import {
+		AreaSeries,
+		ColorType,
+		TickMarkType,
+		CrosshairMode,
+		LineSeries,
+		LineStyle,
+		createChart,
+		type IChartApi,
+		type ISeriesApi,
+		type Time
+	} from 'lightweight-charts'
+
+	type Point = [string, number]
+	type Payload = {
+		series: { daily: Record<string, Point[]>; monthly: Record<string, Point[]> }
+		regions: { id: string; label: string }[]
+		isEn: boolean
+		unitKg: number | null
+		periodLabels: Record<string, string>
+	}
+
+	const DAY = 86400000
+	const isoShift = (iso: string, days: number) =>
+		new Date(Date.parse(iso) + days * DAY).toISOString().slice(0, 10)
+
+	const init = (box: HTMLElement) => {
+		if (box.dataset.bound === 'true') return
+		box.dataset.bound = 'true'
+		const data: Payload = JSON.parse(box.querySelector('[data-sc-data]')!.textContent || '{}')
+		const { isEn } = data
+		const host = box.querySelector<HTMLElement>('[data-sc-plot]')!
+		const legend = box.querySelector<HTMLElement>('[data-sc-legend]')!
+		const empty = box.querySelector<HTMLElement>('[data-sc-empty]')!
+		const lyBox = box.querySelector<HTMLInputElement>('[data-sc-ly]')!
+		const priceEl = document.getElementById('im-q-price')
+		const dateEl = document.getElementById('im-q-date')
+		const changeEl = document.getElementById('im-q-change')
+		const kgEl = document.getElementById('im-q-kg')
+		const regionEl = document.getElementById('im-q-region')
+
+		let period = '1y'
+		let region = data.regions[0].id
+		let chart: IChartApi | null = null
+		let main: ISeriesApi<'Area'> | null = null
+		let ly: ISeriesApi<'Line'> | null = null
+		let pts: Point[] = []
+		const headDefaults = {
+			price: priceEl?.textContent ?? '',
+			date: dateEl?.textContent ?? '',
+			change: changeEl?.innerHTML ?? '',
+			changeClass: changeEl?.className ?? '',
+			kg: kgEl?.textContent ?? '',
+			region: regionEl?.textContent ?? ''
+		}
+
+		const fmt = (v: number) =>
+			isEn
+				? '₩' + Math.round(v).toLocaleString('en-US')
+				: Math.round(v).toLocaleString('ko-KR') + '원'
+		const css = (name: string, fb: string) =>
+			getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fb
+		const dot = (iso: string) => iso.slice(0, 10).replace(/-/g, '.')
+		const monthly = () => ['3y', '5y', '10y'].includes(period)
+
+		const latest = Object.values(data.series.daily).reduce(
+			(m, list) => (list.length && list[list.length - 1][0] > m ? list[list.length - 1][0] : m),
+			''
+		)
+
+		const points = (): Point[] => {
+			if (monthly()) {
+				const years = { '3y': 3, '5y': 5, '10y': 10 }[period as '3y' | '5y' | '10y']
+				const list = (data.series.monthly[region] || []).map(([ym, v]) => [`${ym}-15`, v] as Point)
+				const from = `${+latest.slice(0, 4) - years}-${latest.slice(5, 7)}-01`
+				return list.filter((p) => p[0] >= from)
+			}
+			const days = { '1m': 31, '3m': 92, '6m': 183, '1y': 366 }[period as '1m' | '3m' | '6m' | '1y']
+			const cut = isoShift(latest, -days)
+			return (data.series.daily[region] || []).filter((p) => p[0] >= cut)
+		}
+
+		const lastYear = (): Point[] => {
+			if (monthly() || !pts.length) return []
+			const from = isoShift(pts[0][0], -364)
+			const to = isoShift(pts[pts.length - 1][0], -364)
+			return (data.series.daily[region] || [])
+				.filter((p) => p[0] >= from && p[0] <= to)
+				.map(([d, v]) => [isoShift(d, 364), v] as Point)
+		}
+
+		const setHead = (i: number | null) => {
+			if (!priceEl) return
+			if (i == null || !pts[i]) {
+				priceEl.textContent = headDefaults.price
+				if (dateEl) dateEl.textContent = headDefaults.date
+				if (changeEl) {
+					changeEl.innerHTML = headDefaults.change
+					changeEl.className = headDefaults.changeClass
+				}
+				if (kgEl) kgEl.textContent = headDefaults.kg
+				if (regionEl) regionEl.textContent = headDefaults.region
+				return
+			}
+			const [d, v] = pts[i]
+			const base = pts[0][1]
+			const pct = base ? ((v - base) / base) * 100 : 0
+			priceEl.textContent = fmt(v)
+			if (dateEl)
+				dateEl.textContent = dot(d) + (monthly() ? (isEn ? ' (monthly avg)' : ' 월평균') : '')
+			if (regionEl) regionEl.textContent = data.regions.find((r) => r.id === region)?.label ?? ''
+			if (kgEl && data.unitKg)
+				kgEl.textContent = `1kg ${isEn ? '' : '약 '}${fmt(Math.round(v / data.unitKg / 10) * 10)}`
+			if (changeEl) {
+				const sign = pct > 0.05 ? '▲' : pct < -0.05 ? '▼' : '–'
+				changeEl.textContent = `${sign} ${Math.abs(pct).toFixed(1)}% · ${data.periodLabels[period]} ${isEn ? 'start' : '전보다'}`
+				changeEl.className = 'im-q-change ' + (pct > 0.05 ? 'im-up' : pct < -0.05 ? 'im-down' : '')
+			}
+		}
+
+		const writeLegend = (i: number | null) => {
+			if (!pts.length) {
+				legend.textContent = ''
+				return
+			}
+			const k = i ?? pts.length - 1
+			const [d, v] = pts[k]
+			const base = pts[0][1]
+			const pct = base ? ((v - base) / base) * 100 : 0
+			const lyAll = lyBox.checked ? lastYear() : []
+			const lyPts = lyAll.length >= pts.length * 0.5 ? lyAll : []
+			const lyAt = lyPts.find((p) => p[0] === d)
+			legend.innerHTML = ''
+			const a = document.createElement('b')
+			a.textContent = dot(d)
+			const b = document.createElement('span')
+			b.textContent = fmt(v)
+			const c = document.createElement('span')
+			c.className = pct > 0.05 ? 'im-up' : pct < -0.05 ? 'im-down' : ''
+			c.textContent = `${pct > 0.05 ? '+' : pct < -0.05 ? '−' : ''}${Math.abs(pct).toFixed(1)}% (${isEn ? `vs ${data.periodLabels[period]} start` : `${data.periodLabels[period]} 첫날보다`})`
+			legend.append(a, b, c)
+			if (lyAt) {
+				const e = document.createElement('span')
+				e.className = 'im-sc-legend-ly'
+				e.textContent = `${isEn ? 'last year' : '작년'} ${fmt(lyAt[1])}`
+				legend.append(e)
+			}
+		}
+
+		const build = () => {
+			pts = points()
+			chart?.remove()
+			chart = null
+			empty.hidden = pts.length >= 2
+			lyBox.parentElement!.hidden = monthly()
+			if (pts.length < 2) {
+				legend.textContent = ''
+				return
+			}
+			const ink = css('--ink', '#1d1d1b')
+			const muted = css('--muted', '#8a8a86')
+			const line = css('--line', '#e5e2dd')
+			const bg = css('--bg', '#faf8f6')
+			const up = css('--up', '#b4432c')
+			const down = css('--down', '#2f6ea8')
+			const first = pts[0][1]
+			const lastV = pts[pts.length - 1][1]
+			const color = lastV > first ? up : lastV < first ? down : ink
+			const small = host.clientWidth < 560
+
+			chart = createChart(host, {
+				autoSize: true,
+				layout: {
+					background: { type: ColorType.Solid, color: bg },
+					textColor: muted,
+					fontFamily: getComputedStyle(document.body).fontFamily,
+					fontSize: small ? 11 : 12,
+					attributionLogo: true
+				},
+				grid: { vertLines: { visible: false }, horzLines: { color: line } },
+				rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.12, bottom: 0.08 } },
+				timeScale: {
+					borderVisible: false,
+					fixLeftEdge: true,
+					fixRightEdge: true,
+					lockVisibleTimeRangeOnResize: true,
+					// 눈금은 해·달 위주로 ("5일" 같은 날짜 눈금이 달 사이에 끼면 헷갈린다)
+					tickMarkFormatter: (time: Time, type: TickMarkType) => {
+						const s = typeof time === 'string' ? time : ''
+						const y = s.slice(0, 4)
+						const m = +s.slice(5, 7)
+						const d = +s.slice(8, 10)
+						if (type === TickMarkType.Year) return isEn ? y : `${y}년`
+						if (type === TickMarkType.Month)
+							return isEn ? new Date(s).toLocaleString('en-US', { month: 'short' }) : `${m}월`
+						return isEn ? `${m}/${d}` : `${m}.${d}`
+					}
+				},
+				crosshair: {
+					mode: CrosshairMode.Magnet,
+					vertLine: { color: muted, labelBackgroundColor: ink },
+					horzLine: { color: muted, labelBackgroundColor: ink }
+				},
+				handleScroll: {
+					mouseWheel: false,
+					pressedMouseMove: true,
+					horzTouchDrag: true,
+					vertTouchDrag: false
+				},
+				handleScale: {
+					mouseWheel: false,
+					pinch: true,
+					axisPressedMouseMove: true,
+					axisDoubleClickReset: true
+				},
+				localization: {
+					locale: isEn ? 'en-US' : 'ko-KR',
+					priceFormatter: (v: number) => Math.round(v).toLocaleString(isEn ? 'en-US' : 'ko-KR'),
+					timeFormatter: (t: Time) => {
+						const s = typeof t === 'string' ? t : ''
+						return monthly() ? s.slice(0, 7).replace('-', '.') : dot(s)
+					}
+				}
+			})
+
+			if (lyBox.checked && !monthly()) {
+				const lyPts = lastYear()
+				// 일별 자료는 400일치뿐이라 작년 값이 기간의 절반도 안 되면 그리지 않는다 (끝에 짧게만 보여 헷갈림)
+				if (lyPts.length > 1 && lyPts.length >= pts.length * 0.5) {
+					ly = chart.addSeries(LineSeries, {
+						color: muted,
+						lineWidth: 1,
+						lineStyle: LineStyle.Dashed,
+						priceLineVisible: false,
+						lastValueVisible: false,
+						crosshairMarkerVisible: false
+					})
+					ly.setData(lyPts.map(([d, v]) => ({ time: d as Time, value: v })))
+				}
+			}
+			main = chart.addSeries(AreaSeries, {
+				lineColor: color,
+				lineWidth: 2,
+				topColor: color + '38',
+				bottomColor: color + '05',
+				priceLineVisible: true,
+				priceLineStyle: LineStyle.Dotted,
+				priceLineColor: color,
+				lastValueVisible: true,
+				crosshairMarkerRadius: 5
+			})
+			main.setData(pts.map(([d, v]) => ({ time: d as Time, value: v })))
+			// 기간 시작가 점선
+			main.createPriceLine({
+				price: first,
+				color: muted,
+				lineWidth: 1,
+				lineStyle: LineStyle.Dashed,
+				axisLabelVisible: false,
+				title: isEn ? 'start' : '시작'
+			})
+			chart.timeScale().fitContent()
+
+			const index = new Map(pts.map((p, i) => [p[0], i]))
+			chart.subscribeCrosshairMove((param) => {
+				const i = param.time ? (index.get(String(param.time)) ?? null) : null
+				writeLegend(i)
+				setHead(i)
+			})
+			writeLegend(null)
+		}
+
+		box.querySelectorAll<HTMLButtonElement>('[data-sc-period]').forEach((b) =>
+			b.addEventListener('click', () => {
+				period = b.dataset.scPeriod!
+				box
+					.querySelectorAll('[data-sc-period]')
+					.forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+				build()
+			})
+		)
+		box.querySelectorAll<HTMLButtonElement>('[data-sc-region]').forEach((b) =>
+			b.addEventListener('click', () => {
+				region = b.dataset.scRegion!
+				box
+					.querySelectorAll('[data-sc-region]')
+					.forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+				build()
+			})
+		)
+		lyBox.addEventListener('change', build)
+		new MutationObserver(build).observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['class']
+		})
+		build()
+	}
+
+	const initAll = () => document.querySelectorAll<HTMLElement>('[data-sc]').forEach(init)
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAll)
+	else initAll()
+	document.addEventListener('astro:page-load', initAll)
+</script>
+
+<style>
+	.im-sc-top {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px 16px;
+		margin-bottom: 8px;
+	}
+
+	.im-sc-tabs,
+	.im-sc-regions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+	}
+
+	.im-sc-tabs button,
+	.im-sc-regions button {
+		min-height: 36px;
+		padding: 0 12px;
+		border: 1px solid var(--line);
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 14px;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.im-sc-tabs button[aria-pressed='true'],
+	.im-sc-regions button[aria-pressed='true'] {
+		border-color: var(--ink);
+		background: var(--ink);
+		color: var(--bg);
+	}
+
+	.im-sc-ly {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		color: var(--muted);
+		font-size: 14px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.im-sc-ly[hidden] {
+		display: none;
+	}
+
+	.im-sc-ly input {
+		width: 16px;
+		height: 16px;
+		accent-color: var(--ink);
+	}
+
+	.im-sc-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 12px;
+		min-height: 22px;
+		margin: 6px 0 4px;
+		font-size: 14px;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-sc-legend :global(b) {
+		font-weight: 700;
+	}
+
+	.im-sc-legend :global(span) {
+		font-weight: 600;
+	}
+
+	.im-sc-legend :global(.im-up) {
+		color: var(--up);
+	}
+
+	.im-sc-legend :global(.im-down) {
+		color: var(--down);
+	}
+
+	.im-sc-legend :global(.im-sc-legend-ly) {
+		color: var(--muted);
+	}
+
+	.im-sc-plot {
+		height: 420px;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	@media (max-width: 760px) {
+		.im-sc-plot {
+			height: 300px;
+		}
+
+		.im-sc-tabs button,
+		.im-sc-regions button {
+			padding: 0 10px;
+			font-size: 13px;
+		}
+	}
+
+	.im-sc-empty {
+		margin: 12px 0 0;
+	}
+
+	.im-sc-regions {
+		margin-top: 10px;
+	}
+</style>

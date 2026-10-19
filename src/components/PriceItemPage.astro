@@ -1,7 +1,8 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout'
 import PriceAnalysis from '@/components/PriceAnalysis'
-import PriceChart from '@/components/PriceChart'
+import PriceStockChart from '@/components/PriceStockChart'
+import { buildQuote } from '@/data/price-quote'
 import PriceSwitcher from '@/components/PriceSwitcher'
 import CoupangDynamic from '@/components/CoupangDynamic'
 import AffiliateBox from '@/components/mdx/AffiliateBox'
@@ -270,6 +271,176 @@ const jsonLd = [
 	}
 ]
 
+// 주식 페이지처럼: 위쪽 큰 가격·변동, 차트, 숫자 표 (finviz 종목 페이지 참고)
+const itemSeries = buildItemSeries(item, today)
+const quote = buildQuote(itemSeries, REGIONS[0].id, analysis)
+const CAT_LABEL: Record<string, [string, string]> = {
+	'100': ['쌀·콩·감자', 'Grains and beans'],
+	'200': ['채소', 'Vegetables'],
+	'300': ['깨·땅콩·버섯', 'Seeds and mushrooms'],
+	'400': ['과일', 'Fruit']
+}
+const catLabel = (CAT_LABEL[codeOf(item.id)[0] ?? ''] ?? ['', ''])[isEn ? 1 : 0]
+const short = (iso: string) => iso.slice(2).replace(/-/g, '.')
+const changeText =
+	quote.change == null
+		? '–'
+		: quote.change === 0
+			? isEn
+				? `Unchanged · same price for ${quote.sinceDays} days`
+				: `변동 없음 · ${quote.sinceDays}일째 같은 값`
+			: `${quote.change > 0 ? '▲' : '▼'} ${fmt(Math.abs(quote.change))} (${Math.abs(quote.changePct ?? 0).toFixed(1)}%) · ${isEn ? 'vs previous survey' : '직전 조사 대비'}`
+const PERF_LABEL: Record<string, [string, string]> = {
+	w1: ['1주 전보다', 'vs 1 week'],
+	m1: ['1개월 전보다', 'vs 1 month'],
+	m3: ['3개월 전보다', 'vs 3 months'],
+	m6: ['6개월 전보다', 'vs 6 months'],
+	ytd: ['올해 1월보다', 'Year to date'],
+	y1: ['1년 전보다', 'vs 1 year']
+}
+const MONTHS = isEn
+	? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+	: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
+const seasonVals = analysis.seasonality.filter((v): v is number => v != null)
+const peakM = seasonVals.length ? analysis.seasonality.indexOf(Math.max(...seasonVals)) : -1
+const lowM = seasonVals.length ? analysis.seasonality.indexOf(Math.min(...seasonVals)) : -1
+const seasonDelta =
+	analysis.nextMonthIndex != null && analysis.monthIndex != null
+		? analysis.nextMonthIndex - analysis.monthIndex
+		: null
+const cheapRegion = priced.length ? priced[priced.length - 1] : null
+const fromCurrent = (v: number | null | undefined) =>
+	v && quote.current ? Math.round(((quote.current - v) / v) * 1000) / 10 : null
+type Cell = { label: string; value: string; note?: string; cls?: string }
+const snapshot: Cell[] = [
+	{ label: isEn ? 'Latest price' : '오늘 도매가', value: fmt(quote.current), note: unit },
+	...(!isEn && kgNow ? [{ label: '1kg 환산', value: fmt(kgNow) }] : []),
+	{
+		label: isEn ? 'Previous survey' : '직전 조사',
+		value: fmt(quote.prev?.price ?? null),
+		note: quote.prev ? short(quote.prev.date) : undefined
+	},
+	{
+		label: isEn ? 'Same price since' : '같은 값 이어짐',
+		value: quote.since ? (isEn ? `${quote.sinceDays} days` : `${quote.sinceDays}일째`) : '–',
+		note: quote.since
+			? isEn
+				? `from ${short(quote.since)}`
+				: `${short(quote.since)}부터`
+			: undefined
+	},
+	...quote.perf.map((p) => ({
+		label: PERF_LABEL[p.key][isEn ? 1 : 0],
+		value: pct(p.pct),
+		cls: dir(p.pct)
+	})),
+	{
+		label: isEn ? '52-week high' : '1년 최고',
+		value: fmt(quote.high52?.price ?? null),
+		note: quote.high52
+			? `${short(quote.high52.date)} · ${pct(fromCurrent(quote.high52.price))}`
+			: undefined
+	},
+	{
+		label: isEn ? '52-week low' : '1년 최저',
+		value: fmt(quote.low52?.price ?? null),
+		note: quote.low52
+			? `${short(quote.low52.date)} · ${pct(fromCurrent(quote.low52.price))}`
+			: undefined
+	},
+	{
+		label: isEn ? 'Position in 12 months' : '1년 중 위치',
+		value:
+			analysis.percentile == null
+				? '–'
+				: analysis.percentile >= 75
+					? isEn
+						? 'High'
+						: '비싼 편'
+					: analysis.percentile <= 25
+						? isEn
+							? 'Low'
+							: '싼 편'
+						: isEn
+							? 'Middle'
+							: '보통',
+		note:
+			analysis.percentile == null
+				? undefined
+				: isEn
+					? `${analysis.percentile}th percentile`
+					: `1년 값 중 ${analysis.percentile}%보다 비쌈`
+	},
+	{ label: isEn ? '30-survey average' : '최근 30회 평균', value: fmt(analysis.windowAvg) },
+	{
+		label: isEn ? 'Volatility (30)' : '변동 폭(최근 30회)',
+		value: `${analysis.volatility.toFixed(1)}%`
+	},
+	...analysis.benchmarks.map((b) => ({
+		label: isEn ? `Same month ${b.yearsAgo}Y ago` : `${b.yearsAgo}년 전 같은 달`,
+		value: pct(b.diffPct),
+		note: b.avg != null ? fmt(b.avg) : undefined,
+		cls: dir(b.diffPct)
+	})),
+	{
+		label: isEn ? '10-year yearly change' : '10년 연평균',
+		value: analysis.cagr == null ? '–' : `${pct(analysis.cagr)}${isEn ? '/yr' : '/년'}`,
+		cls: dir(analysis.cagr)
+	},
+	{
+		label: isEn ? 'Priciest month' : '보통 가장 비싼 달',
+		value: peakM >= 0 ? MONTHS[peakM] : '–',
+		note:
+			peakM >= 0
+				? isEn
+					? `index ${analysis.seasonality[peakM]}`
+					: `10년 평균의 ${analysis.seasonality[peakM]}%`
+				: undefined
+	},
+	{
+		label: isEn ? 'Cheapest month' : '보통 가장 싼 달',
+		value: lowM >= 0 ? MONTHS[lowM] : '–',
+		note:
+			lowM >= 0
+				? isEn
+					? `index ${analysis.seasonality[lowM]}`
+					: `10년 평균의 ${analysis.seasonality[lowM]}%`
+				: undefined
+	},
+	{
+		label: isEn ? 'Next month, usually' : '다음 달은 보통',
+		value:
+			seasonDelta == null
+				? '–'
+				: seasonDelta > 2
+					? isEn
+						? 'Rises'
+						: '오릅니다'
+					: seasonDelta < -2
+						? isEn
+							? 'Falls'
+							: '내립니다'
+						: isEn
+							? 'Flat'
+							: '비슷합니다',
+		note:
+			seasonDelta == null
+				? undefined
+				: isEn
+					? `index ${analysis.monthIndex} → ${analysis.nextMonthIndex}`
+					: `10년 평균의 ${analysis.monthIndex}% → ${analysis.nextMonthIndex}%`,
+		cls: seasonDelta == null || Math.abs(seasonDelta) <= 2 ? '' : dir(seasonDelta)
+	},
+	{
+		label: isEn ? 'Priciest market' : '가장 비싼 지역',
+		value: topRegion ? `${topRegion.label} ${fmt(topRegion.price)}` : '–'
+	},
+	{
+		label: isEn ? 'Cheapest market' : '가장 싼 지역',
+		value: cheapRegion ? `${cheapRegion.label} ${fmt(cheapRegion.price)}` : '–'
+	}
+]
+
 const t = {
 	byRegion: isEn ? 'By market · ' + dateLabel : '지역별 시세 · ' + dateLabel,
 	market: isEn ? 'City' : '지역',
@@ -298,32 +469,53 @@ const t = {
 			<PriceSwitcher items={switchItems} currentId={item.id} prefix={prefix} isEn={isEn} />
 		</nav>
 
-		<div class={`im-item-top ${photo ? 'has-photo' : ''}`}>
-			{
-				photo && (
-					<img
-						class='im-item-photo'
-						src={photo}
-						alt={name}
-						width='480'
-						height='480'
-						decoding='async'
-						fetchpriority='high'
-					/>
-				)
-			}
-			<div>
-				<h1 class='im-item-title'>
-					{nameMain}
-					{isEn ? ' price' : ' 가격·시세'}
-					{nameVariety && <span class='im-item-variety'> {nameVariety}</span>}
-				</h1>
-				<p class='im-item-sub'>
-					{grade} · {unit} · {isEn ? 'KAMIS wholesale intermediary price' : 'KAMIS 중도매인 판매가'}
-				</p>
-				{staleNote && <p class='im-meta'>{staleNote}</p>}
+		<header class='im-q'>
+			<div class='im-q-id'>
+				{
+					photo && (
+						<img
+							class='im-q-photo'
+							src={photo}
+							alt={name}
+							width='480'
+							height='480'
+							decoding='async'
+							fetchpriority='high'
+						/>
+					)
+				}
+				<div>
+					<h1 class='im-item-title'>
+						{nameMain}
+						{isEn ? ' price' : ' 가격·시세'}
+						{nameVariety && <span class='im-item-variety'> {nameVariety}</span>}
+					</h1>
+					<p class='im-item-sub'>
+						{catLabel} · {grade} · {unit} ·{' '}
+						{isEn ? 'KAMIS wholesale intermediary price' : 'KAMIS 도매 중도매인 판매가'}
+					</p>
+					{staleNote && <p class='im-meta'>{staleNote}</p>}
+				</div>
 			</div>
-		</div>
+			<div class='im-q-quote'>
+				<strong class='im-q-price' id='im-q-price'>{fmt(quote.current)}</strong>
+				<span class={`im-q-change ${dir(quote.changePct)}`} id='im-q-change'>{changeText}</span>
+				<span class='im-q-meta'>
+					<span id='im-q-region'>{isEn ? 'Seoul' : '서울'}</span> ·{' '}
+					<span id='im-q-date'>{quote.date ? formatDate(quote.date) : dateLabel}</span>
+					{
+						!isEn && kgNow && (
+							<>
+								{' · '}
+								<span id='im-q-kg' class={KG_FIRST.has(item.id) ? 'im-q-kg-big' : ''}>
+									1kg 약 {fmt(kgNow)}
+								</span>
+							</>
+						)
+					}
+				</span>
+			</div>
+		</header>
 
 		{
 			inSeason.length > 0 && (
@@ -349,94 +541,26 @@ const t = {
 			)
 		}
 
-		<dl class='im-item-key'>
-			<div>
-				<dt>
-					<span id='im-item-region'>{isEn ? 'Seoul' : '서울'}</span> ·{' '}
-					<span id='im-item-date'>{surveyLabel ?? dateLabel}</span>
-				</dt>
-				<dd>
-					<span class='im-item-price' id='im-item-price'>{fmt(analysis.current)}</span>
-					{
-						!isEn && unitKg && (
-							<span
-								class={`im-item-key-s ${KG_FIRST.has(item.id) ? 'im-item-perkg-big' : ''}`}
-								id='im-item-perkg'
-								data-kg={unitKg}
-							>
-								{kgNow ? `1kg 약 ${fmt(kgNow)}` : ''}
-							</span>
-						)
-					}
-					<span class={`im-item-change ${dir(analysis.trend30)}`} id='im-item-change'>
-						{isEn ? '30 survey days' : '30개 조사일'}
-						{pct(analysis.trend30)}
-					</span>
-				</dd>
-			</div>
-			<div>
-				<dt>{isEn ? 'Highest market today' : '가장 비싼 곳'}</dt>
-				<dd>
-					<span class='im-item-key-v'>
-						{topRegion ? `${topRegion.label} ${fmt(topRegion.price)}` : '–'}
-					</span>
-					<span class='im-item-key-s'>
-						{
-							!topRegion
-								? isEn
-									? 'No market surveyed on the latest day'
-									: '최근 조사일에 조사된 시장이 없습니다'
-								: priced.length === 1
-									? isEn
-										? 'Only one market surveyed'
-										: '조사된 시장이 한 곳입니다'
-									: seoulPrice != null && topRegion.price !== seoulPrice
-										? isEn
-											? `${fmt(topRegion.price! - seoulPrice)} above Seoul`
-											: `서울보다 ${fmt(topRegion.price! - seoulPrice)} 높습니다`
-										: isEn
-											? 'Seoul is the highest'
-											: '서울이 가장 높습니다'
-						}
-					</span>
-				</dd>
-			</div>
-			<div>
-				<dt>{isEn ? '30-survey-day average' : '최근 30개 조사일 평균'}</dt>
-				<dd>
-					<span class='im-item-key-v'>{fmt(analysis.windowAvg)}</span>
-					<span class='im-item-key-s'>
-						{
-							vsAvg == null
-								? '–'
-								: vsAvg === 0
-									? isEn
-										? 'Today equals the average'
-										: '오늘 값이 평균과 같습니다'
-									: isEn
-										? `Today is ${Math.abs(vsAvg).toFixed(1)}% ${vsAvg > 0 ? 'above' : 'below'}`
-										: `오늘은 평균보다 ${Math.abs(vsAvg).toFixed(1)}% ${vsAvg > 0 ? '높습니다' : '낮습니다'}`
-						}
-					</span>
-				</dd>
-			</div>
-			<div>
-				<dt>{isEn ? 'vs same month last year' : '1년 전 같은 달보다'}</dt>
-				<dd>
-					<span class={`im-item-key-v ${dir(yearAgo.diffPct)}`}>{pct(yearAgo.diffPct)}</span>
-					<span class='im-item-key-s'>
-						{
-							yearAgo.avg != null
-								? isEn
-									? `${yearAgo.year} average ${fmt(yearAgo.avg)}`
-									: `${yearAgo.year}년 같은 달 평균 ${fmt(yearAgo.avg)}`
-								: isEn
-									? 'No survey last year'
-									: '작년 같은 달 조사 없음'
-						}
-					</span>
-				</dd>
-			</div>
+		<PriceStockChart
+			series={itemSeries}
+			regions={REGIONS.map((r) => ({ id: r.id, label: isEn ? r.en : r.ko }))}
+			isEn={isEn}
+			unitKg={isEn ? null : unitKg}
+		/>
+
+		<h2 class='im-q-h'>{isEn ? 'Snapshot' : '한눈에 보는 숫자'}</h2>
+		<dl class='im-snap'>
+			{
+				snapshot.map((cell) => (
+					<div>
+						<dt>{cell.label}</dt>
+						<dd class={cell.cls ?? ''}>
+							{cell.value}
+							{cell.note && <small>{cell.note}</small>}
+						</dd>
+					</div>
+				))
+			}
 		</dl>
 
 		{
@@ -449,114 +573,279 @@ const t = {
 			)
 		}
 
-		<PriceChart
-			series={buildItemSeries(item, today)}
-			regions={REGIONS.map((r) => ({ id: r.id, label: isEn ? r.en : r.ko }))}
-			isEn={isEn}
-		/>
+		<div class='im-item-body'>
+			{!isEn && <CoupangDynamic />}
 
-		{!isEn && <CoupangDynamic />}
+			<p class='im-item-lead'>{description}</p>
 
-		<p class='im-item-lead'>{description}</p>
+			<h2 class='im-analysis-h'>{t.byRegion}</h2>
+			<table class='im-region-table'>
+				<thead>
+					<tr>
+						<th>{t.market}</th>
+						<th class='im-num'>{t.price}</th>
+						<th class='im-num'>{t.change}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{
+						regionRows.map((row) => (
+							<tr>
+								<th scope='row'>{row.label}</th>
+								<td class='im-num'>{fmt(row.price)}</td>
+								<td class={`im-num ${dir(row.delta)}`}>{pct(row.delta)}</td>
+							</tr>
+						))
+					}
+				</tbody>
+			</table>
 
-		<h2 class='im-analysis-h'>{t.byRegion}</h2>
-		<table class='im-region-table'>
-			<thead>
-				<tr>
-					<th>{t.market}</th>
-					<th class='im-num'>{t.price}</th>
-					<th class='im-num'>{t.change}</th>
-				</tr>
-			</thead>
-			<tbody>
+			<h2 class='im-analysis-h'>{isEn ? 'Most searched prices' : '많이 찾는 시세'}</h2>
+			<PriceBoard
+				ids={POPULAR_PRICE_IDS}
+				isEn={isEn}
+				prefix={prefix}
+				exclude={item.id}
+				limit={4}
+				oneRow
+			/>
+
+			<PriceAnalysis item={item} analysis={analysis} isEn={isEn} fmt={fmt} />
+
+			<h2 class='im-analysis-h'>{t.faq}</h2>
+			<div class='im-faq'>
 				{
-					regionRows.map((row) => (
-						<tr>
-							<th scope='row'>{row.label}</th>
-							<td class='im-num'>{fmt(row.price)}</td>
-							<td class={`im-num ${dir(row.delta)}`}>{pct(row.delta)}</td>
-						</tr>
+					faq.map((entry) => (
+						<details>
+							<summary>{entry.q}</summary>
+							<p>{entry.a}</p>
+						</details>
 					))
 				}
-			</tbody>
-		</table>
+			</div>
 
-		<h2 class='im-analysis-h'>{isEn ? 'Most searched prices' : '많이 찾는 시세'}</h2>
-		<PriceBoard
-			ids={POPULAR_PRICE_IDS}
-			isEn={isEn}
-			prefix={prefix}
-			exclude={item.id}
-			limit={4}
-			oneRow
-		/>
+			<p class='im-meta im-source'>{t.source}</p>
 
-		<PriceAnalysis item={item} analysis={analysis} isEn={isEn} fmt={fmt} />
-
-		<h2 class='im-analysis-h'>{t.faq}</h2>
-		<div class='im-faq'>
 			{
-				faq.map((entry) => (
-					<details>
-						<summary>{entry.q}</summary>
-						<p>{entry.a}</p>
-					</details>
-				))
+				related.length > 0 && (
+					<>
+						<h2 class='im-analysis-h'>{t.related}</h2>
+						<div class='im-related-rows'>
+							{related.map((post) => (
+								<a class='im-row' href={getPostUrl(post.slug, locale, post.data.category)}>
+									<span class='im-row-title'>{post.data.title}</span>
+									<span class='im-meta'>→</span>
+								</a>
+							))}
+						</div>
+					</>
+				)
 			}
+
+			<h2 class='im-analysis-h'>{t.otherItems}</h2>
+			<div class='im-near'>
+				{
+					related6.map((entry) => (
+						<a class='im-near-row' href={`${prefix}/prices/${entry.id}/`}>
+							<span class='im-near-thumb'>
+								{entry.photo ? (
+									<img
+										src={entry.photo}
+										alt=''
+										width='40'
+										height='40'
+										loading='lazy'
+										decoding='async'
+									/>
+								) : (
+									<span aria-hidden='true'>{entry.label.slice(0, 1)}</span>
+								)}
+							</span>
+							<span class='im-near-name'>{entry.label}</span>
+							<span class='im-near-price'>{fmt(entry.price)}</span>
+						</a>
+					))
+				}
+			</div>
+			<a class='im-near-all im-menu' href={`${prefix}/prices/`}>{t.backToPrices} →</a>
 		</div>
-
-		<p class='im-meta im-source'>{t.source}</p>
-
-		{
-			related.length > 0 && (
-				<>
-					<h2 class='im-analysis-h'>{t.related}</h2>
-					<div class='im-related-rows'>
-						{related.map((post) => (
-							<a class='im-row' href={getPostUrl(post.slug, locale, post.data.category)}>
-								<span class='im-row-title'>{post.data.title}</span>
-								<span class='im-meta'>→</span>
-							</a>
-						))}
-					</div>
-				</>
-			)
-		}
-
-		<h2 class='im-analysis-h'>{t.otherItems}</h2>
-		<div class='im-near'>
-			{
-				related6.map((entry) => (
-					<a class='im-near-row' href={`${prefix}/prices/${entry.id}/`}>
-						<span class='im-near-thumb'>
-							{entry.photo ? (
-								<img
-									src={entry.photo}
-									alt=''
-									width='40'
-									height='40'
-									loading='lazy'
-									decoding='async'
-								/>
-							) : (
-								<span aria-hidden='true'>{entry.label.slice(0, 1)}</span>
-							)}
-						</span>
-						<span class='im-near-name'>{entry.label}</span>
-						<span class='im-near-price'>{fmt(entry.price)}</span>
-					</a>
-				))
-			}
-		</div>
-		<a class='im-near-all im-menu' href={`${prefix}/prices/`}>{t.backToPrices} →</a>
 	</div>
 </BaseLayout>
 
 <style>
+	/* 위쪽(가격·차트·숫자 표)은 주식 페이지처럼 넓게 1120px, 아래 글·표는 읽기 좋게 760px */
 	.im-item {
-		/* 본문 760px: 차트·표·문단·목록을 같은 폭으로 맞춘다 */
-		width: min(calc(760px + 2 * var(--gutter)), 100%);
+		width: min(calc(1120px + 2 * var(--gutter)), 100%);
 		margin-inline: auto;
+	}
+
+	.im-item-body {
+		max-width: 760px;
+		margin-inline: auto;
+	}
+
+	.im-q {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 16px 32px;
+		padding-bottom: 18px;
+		margin-bottom: 18px;
+		border-bottom: 1px solid var(--ink);
+	}
+
+	.im-q-id {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		min-width: 0;
+	}
+
+	.im-q-photo {
+		width: 76px;
+		height: 76px;
+		flex: none;
+		object-fit: cover;
+	}
+
+	.im-q .im-item-title {
+		margin: 0;
+	}
+
+	.im-q .im-item-sub {
+		margin: 6px 0 0;
+	}
+
+	.im-q-quote {
+		display: grid;
+		justify-items: end;
+		gap: 4px;
+		text-align: right;
+	}
+
+	.im-q-price {
+		font-size: clamp(34px, 4.4vw, 52px);
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-q-change {
+		font-size: 15px;
+		font-weight: 700;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-q-change.im-up {
+		color: var(--up);
+	}
+
+	.im-q-change.im-down {
+		color: var(--down);
+	}
+
+	.im-q-meta {
+		color: var(--muted);
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	.im-q-meta .im-q-kg-big {
+		color: var(--ink);
+		font-size: 17px;
+		font-weight: 800;
+	}
+
+	@media (max-width: 640px) {
+		.im-q-quote {
+			justify-items: start;
+			text-align: left;
+		}
+
+		.im-q-photo {
+			width: 56px;
+			height: 56px;
+		}
+	}
+
+	.im-q-h {
+		margin: clamp(28px, 3.4vw, 44px) 0 10px;
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+	}
+
+	/* finviz 종목 페이지 숫자 표처럼 촘촘한 칸 */
+	.im-snap {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		margin: 0;
+		border-top: 1px solid var(--ink);
+	}
+
+	.im-snap div {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 9px 12px 9px 0;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-snap dt {
+		color: var(--muted);
+		font-size: 13px;
+		font-weight: 600;
+		white-space: nowrap;
+	}
+
+	.im-snap dd {
+		margin: 0;
+		font-size: 15px;
+		font-weight: 800;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-snap dd small {
+		display: block;
+		color: var(--muted);
+		font-size: 11px;
+		font-weight: 500;
+	}
+
+	.im-snap dd.im-up {
+		color: var(--up);
+	}
+
+	.im-snap dd.im-down {
+		color: var(--down);
+	}
+
+	@media (min-width: 761px) {
+		.im-snap div {
+			padding-left: 12px;
+			border-left: 1px solid var(--line);
+		}
+
+		.im-snap div:nth-child(4n + 1) {
+			padding-left: 0;
+			border-left: 0;
+		}
+	}
+
+	@media (max-width: 760px) {
+		.im-snap {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			column-gap: 16px;
+		}
+
+		.im-snap div {
+			padding-right: 0;
+		}
 	}
 
 	.im-crumb {

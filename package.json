@@ -54,6 +54,7 @@
 		"d3-transition": "3.0.1",
 		"d3-zoom": "3.0.0",
 		"katex": "^0.16.11",
+		"lightweight-charts": "5.2.1",
 		"mathjs": "^13.2.0",
 		"nanostores": "^0.11.3",
 		"plotly.js": "^2.35.2",
