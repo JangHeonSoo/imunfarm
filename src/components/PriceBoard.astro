@@ -1,21 +1,38 @@
 ---
 /**
- * 많이 찾는 시세 (메인 첫 화면, 전체 시세표, 품목 페이지 아래). 서버에서 그린다.
- * 메인 글 목록과 같은 사진 카드: 품목 사진 · 이름 · 1kg 환산(또는 오늘 도매가) · 1년 전 같은 달보다.
+ * 시세 사진 카드 (메인 첫 화면, 전체 시세표, 품목 페이지 아래). 서버에서 그린다.
+ * 어르신도 한눈에 보게: 품목 사진 · 큰 이름 · 큰 가격(곡물·깨는 1kg 값) · "작년보다 10% 비쌉니다"처럼 말로 쓴 비교.
+ * oneRow: PC에서 한 줄에 모두 (많이 찾는 8개). 아니면 PC 6칸·태블릿 4칸·휴대폰 2칸.
  */
 import { ITEMS, REGIONS, buildAnalysis, getItemStatus, getPriceAsOfDate } from '@/data/prices'
 import { SEARCH_NAME_KO } from '@/data/prices'
 import { KG_FIRST, perKgOf, unitKgOf } from '@/data/price-popular'
 import pricePhotos from '@/data/price-photos.json'
 
-type Props = { ids: string[]; isEn?: boolean; prefix?: string; exclude?: string; limit?: number }
-const { ids, isEn = false, prefix = '', exclude, limit = 8 } = Astro.props
+type Props = {
+	ids: string[]
+	isEn?: boolean
+	prefix?: string
+	exclude?: string
+	limit?: number
+	oneRow?: boolean
+}
+const { ids, isEn = false, prefix = '', exclude, limit = 999, oneRow = false } = Astro.props
 
 const today = getPriceAsOfDate()
 const fmt = (v: number | null) =>
 	v == null ? '–' : isEn ? '₩' + v.toLocaleString('en-US') : v.toLocaleString('ko-KR') + '원'
-const pct = (v: number | null) =>
-	v == null ? null : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
+
+// 1년 전 같은 달 평균과 비교를 말로. 1% 미만은 "비슷합니다".
+const yoyText = (v: number | null) => {
+	if (v == null) return null
+	const n = Math.round(Math.abs(v))
+	if (isEn)
+		return n < 1
+			? 'About the same as last year'
+			: `${n}% ${v > 0 ? 'higher' : 'lower'} than last year`
+	return n < 1 ? '작년과 비슷합니다' : `작년보다 ${n}% ${v > 0 ? '비쌉니다' : '쌉니다'}`
+}
 
 const rows = ids
 	.filter((id) => id !== exclude)
@@ -24,65 +41,64 @@ const rows = ids
 	.filter((item): item is (typeof ITEMS)[number] => !!item)
 	.map((item) => {
 		const a = buildAnalysis(item, REGIONS[0], today)
-		const stale = getItemStatus(item, today).stale
-		const unitKg = unitKgOf(item.unitKo)
+		const stale = getItemStatus(item, today).stale || a.current == null
 		const yearAgo = a.benchmarks.find((b) => b.yearsAgo === 1)?.diffPct ?? null
 		return {
 			id: item.id,
 			name: isEn ? item.en : (SEARCH_NAME_KO[item.id] ?? item.ko),
 			unit: isEn ? item.unitEn : item.unitKo,
 			price: stale ? null : a.current,
-			kg: !isEn && KG_FIRST.has(item.id) && !stale ? perKgOf(a.current, unitKg) : null,
+			kg:
+				!isEn && KG_FIRST.has(item.id) && !stale ? perKgOf(a.current, unitKgOf(item.unitKo)) : null,
 			yearAgo: stale ? null : yearAgo,
 			photo: (pricePhotos as string[]).includes(item.id) ? `/images/prices/${item.id}.webp` : null
 		}
 	})
 ---
 
-<ul class='im-pcards' style={`--cols:${rows.length}`}>
+<ul class={`im-pcards ${oneRow ? 'is-row' : ''}`} style={`--cols:${rows.length}`}>
 	{
 		rows.map((r) => (
 			<li>
-				<a class='im-pcard' href={`${prefix}/prices/${r.id}/`}>
+				<a
+					class={`im-pcard ${r.price == null ? 'is-stale' : ''}`}
+					href={`${prefix}/prices/${r.id}/`}
+				>
 					{r.photo ? (
-						<img
-							src={r.photo}
-							alt={r.name}
-							width='480'
-							height='480'
-							loading='lazy'
-							decoding='async'
-						/>
+						<img src={r.photo} alt='' width='480' height='480' loading='lazy' decoding='async' />
 					) : (
 						<span class='im-pcard-ph' />
 					)}
 					<span class='im-pcard-name'>{r.name}</span>
-					<strong class='im-pcard-price'>
-						{r.kg ? (
-							<>
-								<small>1kg </small>
-								{fmt(r.kg)}
-							</>
-						) : (
-							fmt(r.price)
-						)}
-					</strong>
-					<span class='im-pcard-sub'>
-						{r.price == null
-							? isEn
-								? 'No recent survey'
-								: '최근 조사 없음'
-							: r.kg
-								? `${r.unit} ${fmt(r.price)}`
-								: r.unit}
-					</span>
-					{r.yearAgo != null && (
-						<span
-							class={`im-pcard-yoy ${r.yearAgo > 0 ? 'im-up' : r.yearAgo < 0 ? 'im-down' : ''}`}
-						>
-							{isEn ? 'vs last year ' : '1년 전보다 '}
-							{pct(r.yearAgo)}
+					{r.price == null ? (
+						<span class='im-pcard-none'>
+							{isEn ? 'Not surveyed now' : '지금은 조사하지 않습니다'}
 						</span>
+					) : (
+						<>
+							<strong class='im-pcard-price'>
+								{r.kg ? (
+									<>
+										<small>1kg </small>
+										{fmt(r.kg)}
+									</>
+								) : (
+									fmt(r.price)
+								)}
+							</strong>
+							<span class='im-pcard-sub'>
+								{r.kg
+									? `${isEn ? '' : '도매 '}${r.unit} ${fmt(r.price)}`
+									: `${r.unit} ${isEn ? 'wholesale' : '도매가'}`}
+							</span>
+							{r.yearAgo != null && (
+								<span
+									class={`im-pcard-yoy ${Math.round(Math.abs(r.yearAgo)) < 1 ? '' : r.yearAgo > 0 ? 'im-up' : 'im-down'}`}
+								>
+									{yoyText(r.yearAgo)}
+								</span>
+							)}
+						</>
 					)}
 				</a>
 			</li>
@@ -91,11 +107,10 @@ const rows = ids
 </ul>
 
 <style>
-	/* 휴대폰 2칸, 태블릿 4칸, PC는 한 줄에 모두 (카드 한 장 최대 약 190px, 사진이 너무 커지지 않게) */
 	.im-pcards {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 28px var(--gap);
+		gap: 32px var(--gap);
 		margin: 0 auto;
 		padding: 0;
 		list-style: none;
@@ -104,15 +119,23 @@ const rows = ids
 	@media (min-width: 761px) {
 		.im-pcards {
 			grid-template-columns: repeat(4, minmax(0, 1fr));
-			max-width: 880px;
+		}
+
+		.im-pcards.is-row {
+			max-width: 920px;
 		}
 	}
 
 	@media (min-width: 1100px) {
 		.im-pcards {
+			grid-template-columns: repeat(6, minmax(0, 1fr));
+			gap: 40px clamp(16px, 1.6vw, 28px);
+		}
+
+		/* 많이 찾는 품목은 한 줄에 모두 (카드 한 장 최대 약 200px) */
+		.im-pcards.is-row {
 			grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-			max-width: calc(var(--cols) * 200px);
-			gap: 32px clamp(16px, 1.4vw, 24px);
+			max-width: calc(var(--cols) * 210px);
 		}
 	}
 
@@ -135,22 +158,26 @@ const rows = ids
 		background: var(--line);
 	}
 
+	.im-pcard.is-stale img {
+		opacity: 0.45;
+	}
+
 	:global(html.dark) .im-pcard img {
 		filter: brightness(0.92);
 	}
 
 	.im-pcard-name {
 		display: block;
-		padding-top: 10px;
-		font-size: 13px;
-		font-weight: 600;
-		letter-spacing: 0.02em;
+		padding-top: 12px;
+		font-size: 16px;
+		font-weight: 700;
+		line-height: 1.35;
 	}
 
 	.im-pcard-price {
 		display: block;
 		padding-top: 4px;
-		font-size: clamp(19px, 1.5vw, 23px);
+		font-size: clamp(22px, 1.8vw, 26px);
 		font-weight: 800;
 		letter-spacing: -0.01em;
 		line-height: 1.2;
@@ -158,27 +185,31 @@ const rows = ids
 	}
 
 	.im-pcard-price small {
-		font-size: 0.55em;
-		font-weight: 600;
-		letter-spacing: 0.02em;
+		font-size: 0.6em;
+		font-weight: 700;
 	}
 
-	.im-pcard-sub {
+	.im-pcard-sub,
+	.im-pcard-none {
 		display: block;
-		padding-top: 5px;
+		padding-top: 6px;
 		color: var(--muted);
-		font-size: 12px;
+		font-size: 13px;
 		font-weight: 500;
-		line-height: 1.5;
+		line-height: 1.45;
 		font-variant-numeric: tabular-nums;
+	}
+
+	.im-pcard-none {
+		font-size: 14px;
 	}
 
 	.im-pcard-yoy {
 		display: block;
-		padding-top: 1px;
-		font-size: 12px;
-		font-weight: 600;
-		font-variant-numeric: tabular-nums;
+		padding-top: 3px;
+		font-size: 14px;
+		font-weight: 700;
+		line-height: 1.4;
 	}
 
 	.im-pcard-yoy.im-up {

@@ -482,7 +482,14 @@ const t = {
 		</table>
 
 		<h2 class='im-analysis-h'>{isEn ? 'Most searched prices' : '많이 찾는 시세'}</h2>
-		<PriceBoard ids={POPULAR_PRICE_IDS} isEn={isEn} prefix={prefix} exclude={item.id} limit={4} />
+		<PriceBoard
+			ids={POPULAR_PRICE_IDS}
+			isEn={isEn}
+			prefix={prefix}
+			exclude={item.id}
+			limit={4}
+			oneRow
+		/>
 
 		<PriceAnalysis item={item} analysis={analysis} isEn={isEn} fmt={fmt} />
 
