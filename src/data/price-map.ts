@@ -16,6 +16,8 @@ type Crop = {
 	ko: string
 	en: string
 	group: 'veg' | 'fruit' | 'grain' | 'seed'
+	sub: string
+	subEn: string
 	items: string[]
 	trade: Rule[]
 	kgPerUnit?: number
@@ -31,7 +33,8 @@ export type MapTile = {
 	unit: string
 	kg: number | null
 }
-export type MapGroup = { key: string; label: string; tiles: MapTile[] }
+export type MapSub = { label: string; tiles: MapTile[] }
+export type MapGroup = { key: string; label: string; subs: MapSub[] }
 
 const MIN_SHARE = 0.006
 
@@ -83,6 +86,7 @@ export const buildPriceMap = (
 						: 0
 		return {
 			group: crop.group,
+			sub: isEn ? crop.subEn : crop.sub,
 			tile: {
 				id: main.item.id,
 				name: isEn ? crop.en : crop.ko,
@@ -105,14 +109,17 @@ export const buildPriceMap = (
 	for (const t of tiles) t.tile.value = Math.max(t.tile.value, floor)
 
 	const labels = GROUP_LABELS[isEn ? 'en' : 'ko']
-	const groups = (['veg', 'fruit', 'grain', 'seed'] as const).map((key) => ({
-		key,
-		label: labels[key],
-		tiles: tiles
-			.filter((t) => t.group === key)
-			.map((t) => t.tile)
-			.sort((a, b) => b.value - a.value)
-	}))
+	const groups = (['veg', 'fruit', 'grain', 'seed'] as const).map((key) => {
+		const inGroup = tiles.filter((t) => t.group === key)
+		const subs = [...new Set(inGroup.map((t) => t.sub))].map((label) => ({
+			label,
+			tiles: inGroup
+				.filter((t) => t.sub === label)
+				.map((t) => t.tile)
+				.sort((a, b) => b.value - a.value)
+		}))
+		return { key, label: labels[key], subs }
+	})
 	const dates = Object.keys(trade.dates).sort()
 	return { groups, days: dates.length, lastDate: dates[dates.length - 1] ?? '' }
 }

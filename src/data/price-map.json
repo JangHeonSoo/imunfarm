@@ -1,19 +1,39 @@
 {
-	"_comment": "시세 지도 칸 (작물 하나에 한 칸). items 첫 번째가 칸을 누르면 가는 시세 페이지이고 색·가격도 이 품목 기준. trade: aT 출하량(반입량) API의 [품목 중분류, 소분류 목록 또는 null(전체), 뺄 소분류 목록(선택)]. 칸 크기 = 최근 7일 전국 공영도매시장 반입량 × 이 품목 kg당 도매가. kgPerUnit: 개 단위 품목의 대략 무게(칸 크기 계산에만 씀, 화면에 숫자로 쓰지 않음). group: veg 채소, fruit 과일(수박·참외·딸기·멜론 포함), grain 쌀·콩·감자, seed 깨·땅콩·버섯",
+	"_comment": "시세 지도 칸 (작물 하나에 한 칸). items 첫 번째가 칸을 누르면 가는 시세 페이지이고 색·가격도 이 품목 기준. trade: aT 출하량(반입량) API의 [품목 중분류, 소분류 목록 또는 null(전체), 뺄 소분류 목록(선택)]. 칸 크기 = 최근 7일 전국 공영도매시장 반입량 × 이 품목 kg당 도매가. kgPerUnit: 개 단위 품목의 대략 무게(칸 크기 계산에만 씀, 화면에 숫자로 쓰지 않음). sub: 분류 안 작은 묶음(finviz의 업종 띠처럼). group: veg 채소, fruit 과일(수박·참외·딸기·멜론 포함), grain 쌀·콩·감자, seed 깨·땅콩·버섯",
 	"crops": [
 		{
 			"ko": "배추",
 			"en": "Napa cabbage",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["cabbage"],
 			"trade": [["배추", null, ["쌈배추"]]]
 		},
-		{ "ko": "무", "en": "Radish", "group": "veg", "items": ["radish"], "trade": [["무", null]] },
-		{ "ko": "양파", "en": "Onion", "group": "veg", "items": ["onion"], "trade": [["양파", null]] },
+		{
+			"ko": "무",
+			"en": "Radish",
+			"group": "veg",
+			"sub": "뿌리채소",
+			"subEn": "Root",
+			"items": ["radish"],
+			"trade": [["무", null]]
+		},
+		{
+			"ko": "양파",
+			"en": "Onion",
+			"group": "veg",
+			"sub": "양념채소",
+			"subEn": "Seasoning",
+			"items": ["onion"],
+			"trade": [["양파", null]]
+		},
 		{
 			"ko": "양배추",
 			"en": "Cabbage",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["cabbage-round"],
 			"trade": [["양배추", null]]
 		},
@@ -21,6 +41,8 @@
 			"ko": "당근",
 			"en": "Carrot",
 			"group": "veg",
+			"sub": "뿌리채소",
+			"subEn": "Root",
 			"items": ["carrot", "carrot-2"],
 			"trade": [["당근", null]]
 		},
@@ -28,6 +50,8 @@
 			"ko": "대파",
 			"en": "Green onion",
 			"group": "veg",
+			"sub": "양념채소",
+			"subEn": "Seasoning",
 			"items": ["greenonion"],
 			"trade": [["대파", null]]
 		},
@@ -35,6 +59,8 @@
 			"ko": "쪽파",
 			"en": "Scallion",
 			"group": "veg",
+			"sub": "양념채소",
+			"subEn": "Seasoning",
 			"items": ["greenonion-2"],
 			"trade": [["쪽파", null]]
 		},
@@ -42,6 +68,8 @@
 			"ko": "얼갈이배추",
 			"en": "Eolgari cabbage",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["eolgari-cabbage"],
 			"trade": [["얼갈이배추", null]]
 		},
@@ -49,6 +77,8 @@
 			"ko": "알배기배추",
 			"en": "Baby napa cabbage",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["baby-napa-cabbage"],
 			"trade": [["배추", ["쌈배추"]]]
 		},
@@ -56,6 +86,8 @@
 			"ko": "열무",
 			"en": "Young radish",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["young-radish-greens"],
 			"trade": [["열무", null]]
 		},
@@ -63,6 +95,8 @@
 			"ko": "호박",
 			"en": "Squash",
 			"group": "veg",
+			"sub": "열매채소",
+			"subEn": "Fruiting",
 			"items": ["squash", "squash-zucchini"],
 			"trade": [["호박", null]],
 			"kgPerUnit": 0.3
@@ -71,6 +105,8 @@
 			"ko": "오이",
 			"en": "Cucumber",
 			"group": "veg",
+			"sub": "열매채소",
+			"subEn": "Fruiting",
 			"items": ["cucumber", "cucumber-cheong"],
 			"trade": [["오이", null]],
 			"kgPerUnit": 0.15
@@ -79,6 +115,8 @@
 			"ko": "상추",
 			"en": "Lettuce",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["lettuce", "lettuce-green"],
 			"trade": [["상추", null]]
 		},
@@ -86,6 +124,8 @@
 			"ko": "파프리카",
 			"en": "Paprika",
 			"group": "veg",
+			"sub": "열매채소",
+			"subEn": "Fruiting",
 			"items": ["paprika"],
 			"trade": [["파프리카", null]]
 		},
@@ -93,6 +133,8 @@
 			"ko": "토마토",
 			"en": "Tomato",
 			"group": "veg",
+			"sub": "열매채소",
+			"subEn": "Fruiting",
 			"items": ["tomato"],
 			"trade": [["토마토", null]]
 		},
@@ -100,6 +142,8 @@
 			"ko": "방울토마토",
 			"en": "Cherry tomato",
 			"group": "veg",
+			"sub": "열매채소",
+			"subEn": "Fruiting",
 			"items": ["cherry-tomato"],
 			"trade": [["방울토마토", null]]
 		},
@@ -107,6 +151,8 @@
 			"ko": "생강",
 			"en": "Ginger",
 			"group": "veg",
+			"sub": "양념채소",
+			"subEn": "Seasoning",
 			"items": ["ginger", "ginger-imported"],
 			"trade": [["생강", null]]
 		},
@@ -114,6 +160,8 @@
 			"ko": "마늘",
 			"en": "Garlic",
 			"group": "veg",
+			"sub": "양념채소",
+			"subEn": "Seasoning",
 			"items": ["garlic", "garlic-2", "garlic-whole", "garlic-whole-2"],
 			"trade": [["마늘", null]]
 		},
@@ -121,6 +169,8 @@
 			"ko": "풋고추",
 			"en": "Green chili",
 			"group": "veg",
+			"sub": "열매채소",
+			"subEn": "Fruiting",
 			"items": [
 				"green-chili-pepper-cheongyang",
 				"green-chili-pepper-4",
@@ -132,6 +182,8 @@
 			"ko": "꽈리고추",
 			"en": "Shishito pepper",
 			"group": "veg",
+			"sub": "열매채소",
+			"subEn": "Fruiting",
 			"items": ["green-chili-pepper"],
 			"trade": [["꽈리고추", null]]
 		},
@@ -139,6 +191,8 @@
 			"ko": "붉은고추",
 			"en": "Red chili",
 			"group": "veg",
+			"sub": "열매채소",
+			"subEn": "Fruiting",
 			"items": ["red-chili-pepper"],
 			"trade": [["홍고추", null]]
 		},
@@ -146,6 +200,8 @@
 			"ko": "건고추",
 			"en": "Dried red pepper",
 			"group": "veg",
+			"sub": "양념채소",
+			"subEn": "Seasoning",
 			"items": ["dried-red-pepper"],
 			"trade": [["건고추", null]]
 		},
@@ -153,6 +209,8 @@
 			"ko": "피망",
 			"en": "Bell pepper",
 			"group": "veg",
+			"sub": "열매채소",
+			"subEn": "Fruiting",
 			"items": ["bell-pepper"],
 			"trade": [["피망(단고추)", null]]
 		},
@@ -160,6 +218,8 @@
 			"ko": "브로콜리",
 			"en": "Broccoli",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["broccoli"],
 			"trade": [["브로콜리(녹색꽃양배추)", null]]
 		},
@@ -167,6 +227,8 @@
 			"ko": "시금치",
 			"en": "Spinach",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["spinach"],
 			"trade": [["시금치", null]]
 		},
@@ -174,6 +236,8 @@
 			"ko": "깻잎",
 			"en": "Perilla leaf",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["perilla-leaf"],
 			"trade": [["깻잎", null]]
 		},
@@ -181,6 +245,8 @@
 			"ko": "부추",
 			"en": "Garlic chives",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["garlic-chives"],
 			"trade": [["부추", null]]
 		},
@@ -188,6 +254,8 @@
 			"ko": "미나리",
 			"en": "Water parsley",
 			"group": "veg",
+			"sub": "잎채소",
+			"subEn": "Leafy",
 			"items": ["water-parsley"],
 			"trade": [["미나리", null]]
 		},
@@ -195,6 +263,8 @@
 			"ko": "가지",
 			"en": "Eggplant",
 			"group": "veg",
+			"sub": "열매채소",
+			"subEn": "Fruiting",
 			"items": ["eggplant"],
 			"trade": [["가지", null]]
 		},
@@ -202,6 +272,8 @@
 			"ko": "감귤",
 			"en": "Mandarin",
 			"group": "fruit",
+			"sub": "국산 과일",
+			"subEn": "Domestic fruit",
 			"items": ["mandarin"],
 			"trade": [["감귤", null]]
 		},
@@ -209,14 +281,26 @@
 			"ko": "사과",
 			"en": "Apple",
 			"group": "fruit",
+			"sub": "국산 과일",
+			"subEn": "Domestic fruit",
 			"items": ["apple-hongro", "apple"],
 			"trade": [["사과", null]]
 		},
-		{ "ko": "배", "en": "Pear", "group": "fruit", "items": ["pear"], "trade": [["배", null]] },
+		{
+			"ko": "배",
+			"en": "Pear",
+			"group": "fruit",
+			"sub": "국산 과일",
+			"subEn": "Domestic fruit",
+			"items": ["pear"],
+			"trade": [["배", null]]
+		},
 		{
 			"ko": "포도",
 			"en": "Grape",
 			"group": "fruit",
+			"sub": "국산 과일",
+			"subEn": "Domestic fruit",
 			"items": ["grape-shine-muscat", "grape", "grape-campbell-early"],
 			"trade": [["포도", null]]
 		},
@@ -224,6 +308,8 @@
 			"ko": "단감",
 			"en": "Sweet persimmon",
 			"group": "fruit",
+			"sub": "국산 과일",
+			"subEn": "Domestic fruit",
 			"items": ["sweet-persimmon"],
 			"trade": [["단감", null]]
 		},
@@ -231,6 +317,8 @@
 			"ko": "바나나",
 			"en": "Banana",
 			"group": "fruit",
+			"sub": "수입 과일",
+			"subEn": "Imported fruit",
 			"items": ["banana"],
 			"trade": [["바나나", null]]
 		},
@@ -238,6 +326,8 @@
 			"ko": "키위",
 			"en": "Kiwi",
 			"group": "fruit",
+			"sub": "국산 과일",
+			"subEn": "Domestic fruit",
 			"items": ["kiwi", "kiwi-gold"],
 			"trade": [["참다래(키위)", null]]
 		},
@@ -245,6 +335,8 @@
 			"ko": "복숭아",
 			"en": "Peach",
 			"group": "fruit",
+			"sub": "국산 과일",
+			"subEn": "Domestic fruit",
 			"items": ["peach"],
 			"trade": [["복숭아", null]]
 		},
@@ -252,6 +344,8 @@
 			"ko": "오렌지",
 			"en": "Orange",
 			"group": "fruit",
+			"sub": "수입 과일",
+			"subEn": "Imported fruit",
 			"items": ["orange"],
 			"trade": [["오렌지", null]]
 		},
@@ -259,6 +353,8 @@
 			"ko": "레몬",
 			"en": "Lemon",
 			"group": "fruit",
+			"sub": "수입 과일",
+			"subEn": "Imported fruit",
 			"items": ["lemon"],
 			"trade": [["레몬", null]]
 		},
@@ -266,6 +362,8 @@
 			"ko": "파인애플",
 			"en": "Pineapple",
 			"group": "fruit",
+			"sub": "수입 과일",
+			"subEn": "Imported fruit",
 			"items": ["pineapple"],
 			"trade": [["파인애플", null]]
 		},
@@ -273,6 +371,8 @@
 			"ko": "망고",
 			"en": "Mango",
 			"group": "fruit",
+			"sub": "수입 과일",
+			"subEn": "Imported fruit",
 			"items": ["mango"],
 			"trade": [["망고", null]]
 		},
@@ -280,6 +380,8 @@
 			"ko": "체리",
 			"en": "Cherry",
 			"group": "fruit",
+			"sub": "수입 과일",
+			"subEn": "Imported fruit",
 			"items": ["cherry"],
 			"trade": [["체리", null]]
 		},
@@ -287,6 +389,8 @@
 			"ko": "수박",
 			"en": "Watermelon",
 			"group": "fruit",
+			"sub": "수박·참외·딸기",
+			"subEn": "Melons and berries",
 			"items": ["watermelon"],
 			"trade": [["수박", null]],
 			"kgPerUnit": 7
@@ -295,6 +399,8 @@
 			"ko": "멜론",
 			"en": "Melon",
 			"group": "fruit",
+			"sub": "수박·참외·딸기",
+			"subEn": "Melons and berries",
 			"items": ["melon"],
 			"trade": [["멜론", null]]
 		},
@@ -302,6 +408,8 @@
 			"ko": "참외",
 			"en": "Korean melon",
 			"group": "fruit",
+			"sub": "수박·참외·딸기",
+			"subEn": "Melons and berries",
 			"items": ["korean-melon"],
 			"trade": [["참외", null]]
 		},
@@ -309,6 +417,8 @@
 			"ko": "딸기",
 			"en": "Strawberry",
 			"group": "fruit",
+			"sub": "수박·참외·딸기",
+			"subEn": "Melons and berries",
 			"items": ["strawberry"],
 			"trade": [["딸기", null]]
 		},
@@ -316,6 +426,8 @@
 			"ko": "감자",
 			"en": "Potato",
 			"group": "grain",
+			"sub": "감자·고구마",
+			"subEn": "Potatoes",
 			"items": ["potato"],
 			"trade": [["감자", null]]
 		},
@@ -323,6 +435,8 @@
 			"ko": "고구마",
 			"en": "Sweet potato",
 			"group": "grain",
+			"sub": "감자·고구마",
+			"subEn": "Potatoes",
 			"items": ["sweet-potato"],
 			"trade": [["고구마", null]]
 		},
@@ -330,6 +444,8 @@
 			"ko": "쌀",
 			"en": "Rice",
 			"group": "grain",
+			"sub": "쌀·보리",
+			"subEn": "Rice and barley",
 			"items": ["rice", "new-crop-rice", "glutinous-rice", "brown-glutinous-rice"],
 			"trade": []
 		},
@@ -337,6 +453,8 @@
 			"ko": "찰보리쌀",
 			"en": "Glutinous barley",
 			"group": "grain",
+			"sub": "쌀·보리",
+			"subEn": "Rice and barley",
 			"items": ["glutinous-barley"],
 			"trade": []
 		},
@@ -344,6 +462,8 @@
 			"ko": "콩",
 			"en": "Soybean",
 			"group": "grain",
+			"sub": "콩·팥",
+			"subEn": "Beans",
 			"items": ["soybean", "soybean-white"],
 			"trade": [["콩", null]]
 		},
@@ -351,6 +471,8 @@
 			"ko": "팥",
 			"en": "Red bean",
 			"group": "grain",
+			"sub": "콩·팥",
+			"subEn": "Beans",
 			"items": ["red-bean", "red-bean-red"],
 			"trade": [["팥", null]]
 		},
@@ -358,14 +480,26 @@
 			"ko": "녹두",
 			"en": "Mung bean",
 			"group": "grain",
+			"sub": "콩·팥",
+			"subEn": "Beans",
 			"items": ["mung-bean", "mung-bean-imported"],
 			"trade": [["녹두", null]]
 		},
-		{ "ko": "메밀", "en": "Buckwheat", "group": "grain", "items": ["buckwheat"], "trade": [] },
+		{
+			"ko": "메밀",
+			"en": "Buckwheat",
+			"group": "grain",
+			"sub": "쌀·보리",
+			"subEn": "Rice and barley",
+			"items": ["buckwheat"],
+			"trade": []
+		},
 		{
 			"ko": "들깨",
 			"en": "Perilla seed",
 			"group": "seed",
+			"sub": "깨·땅콩",
+			"subEn": "Seeds and nuts",
 			"items": ["perilla-seed", "perilla-seed-imported"],
 			"trade": [["들깨", null]]
 		},
@@ -373,6 +507,8 @@
 			"ko": "참깨",
 			"en": "Sesame",
 			"group": "seed",
+			"sub": "깨·땅콩",
+			"subEn": "Seeds and nuts",
 			"items": ["sesame", "sesame-china", "sesame-india"],
 			"trade": [["참깨", null]]
 		},
@@ -380,6 +516,8 @@
 			"ko": "땅콩",
 			"en": "Peanut",
 			"group": "seed",
+			"sub": "깨·땅콩",
+			"subEn": "Seeds and nuts",
 			"items": ["peanut"],
 			"trade": [["땅콩", null]]
 		},
@@ -387,6 +525,8 @@
 			"ko": "느타리버섯",
 			"en": "Oyster mushroom",
 			"group": "seed",
+			"sub": "버섯",
+			"subEn": "Mushrooms",
 			"items": ["oyster-mushroom", "oyster-mushroom-2"],
 			"trade": [
 				["느타리버섯", null],
@@ -397,6 +537,8 @@
 			"ko": "새송이버섯",
 			"en": "King oyster mushroom",
 			"group": "seed",
+			"sub": "버섯",
+			"subEn": "Mushrooms",
 			"items": ["king-oyster-mushroom"],
 			"trade": [["새송이버섯", null]]
 		},
@@ -404,6 +546,8 @@
 			"ko": "팽이버섯",
 			"en": "Enoki mushroom",
 			"group": "seed",
+			"sub": "버섯",
+			"subEn": "Mushrooms",
 			"items": ["enoki-mushroom"],
 			"trade": [["팽이버섯", null]]
 		}
