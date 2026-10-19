@@ -14,6 +14,7 @@ import {
 import { siteConfig } from '@/site-config'
 import PriceSwitcher from '@/components/PriceSwitcher'
 import CoupangDynamic from '@/components/CoupangDynamic'
+import PriceMap from '@/components/PriceMap'
 import kamisItems from '@/data/kamis-items.json'
 import pricePhotos from '@/data/price-photos.json'
 import { buildMoversInput } from '@/data/movers-input'
@@ -175,6 +176,12 @@ const rankBase = ITEMS.map((i) => ({
 	m1: m1Of(i.id),
 	yoy: yoyBy[i.id][seoul.id]
 })).filter((r) => r.price != null)
+// 맨 위 요약: 한 달 전(서울)보다 오른·내린 품목 수. 직전 조사일 대비는 KAMIS 값이 며칠씩 그대로라 늘 "그대로 78"이었다.
+const month = {
+	up: rankBase.filter((r) => r.m1 != null && r.m1 > 0).length,
+	down: rankBase.filter((r) => r.m1 != null && r.m1 < 0).length,
+	flat: rankBase.filter((r) => r.m1 === 0).length
+}
 const top = (key: 'm1' | 'yoy', dirn: 1 | -1) =>
 	rankBase
 		.filter((r) => r[key] != null && dirn * (r[key] as number) > 0)
@@ -450,24 +457,33 @@ const t = {
 					{isEn ? ' crops' : '개 품목'}
 				</p>
 			</div>
-			<dl
-				class='im-prices-sum'
-				aria-label={isEn ? 'Change vs previous survey' : '직전 조사일 대비'}
-			>
+			<dl class='im-prices-sum' aria-label={isEn ? 'Change in a month' : '한 달 전 대비'}>
 				<div>
-					<dt>{isEn ? 'Down' : '내린 품목'}</dt>
-					<dd class='im-down' data-count='down'>{initialCounts.down}</dd>
+					<dt>{isEn ? 'Up in a month' : '한 달 새 오른 품목'}</dt>
+					<dd class='im-up'>{month.up}</dd>
 				</div>
 				<div>
-					<dt>{isEn ? 'Up' : '오른 품목'}</dt>
-					<dd class='im-up' data-count='up'>{initialCounts.up}</dd>
+					<dt>{isEn ? 'Down in a month' : '한 달 새 내린 품목'}</dt>
+					<dd class='im-down'>{month.down}</dd>
 				</div>
 				<div>
 					<dt>{isEn ? 'Unchanged' : '그대로'}</dt>
-					<dd data-count='flat'>{initialCounts.flat}</dd>
+					<dd>{month.flat}</dd>
 				</div>
 			</dl>
 		</header>
+
+		<h2 class='im-sec-h'>
+			{isEn ? 'Price map' : '시세 지도'}
+			<small
+				>{
+					isEn
+						? 'Size = wholesale trade, color = vs last year'
+						: '칸 크기 = 도매 거래금액 · 색 = 작년 대비'
+				}</small
+			>
+		</h2>
+		<PriceMap isEn={isEn} prefix={prefix} />
 
 		<h2 class='im-sec-h'>
 			{isEn ? 'Category index' : '분류별 지수'}
