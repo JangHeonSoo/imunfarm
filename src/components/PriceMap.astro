@@ -5,7 +5,7 @@
  *   참고: Observable @d3/nested-treemap
  * - 확대·이동: d3-zoom 을 canvas 에 건다. 그림 전체를 변환하므로 글자·사진도 함께 커진다 (finviz 처럼).
  *   참고: Observable @d3/zoom-canvas, d3-zoom README
- * - 휠은 바로 확대된다. 다만 처음 크기에서 휠을 아래로 굴리면(축소) 페이지가 내려가게 둔다.
+ * - 휠은 지도 위에서 바로 확대·축소된다 (finviz 처럼). 페이지는 지도 밖에서 내린다.
  *   휴대폰은 처음 크기에서 한 손가락이면 페이지 스크롤, 두 손가락이면 확대.
  * - 칸이 화면에서 작으면 누를 때 먼저 그 소분류로 확대하고, 크면 시세 페이지로 간다.
  */
@@ -346,9 +346,18 @@ const payload = { groups, prefix, isEn }
 		// d3-zoom: 휠·끌기·두 손가락 확대
 		const z = zoom<HTMLCanvasElement, unknown>()
 			.scaleExtent([1, 16])
+			// d3 기본값(-deltaY × 0.002)은 맥 마우스처럼 한 칸에 deltaY 가 4–16 정도로 작게 오면 거의 안 커진다
+			// ("줌인이 안 된다", "너무 느리다" 지적 2026-10-19). 마우스 휠 한 칸은 1.4배로 고정하고, 트랙패드는 이동량에 비례.
+			.wheelDelta((event: WheelEvent) => {
+				const legacy = (event as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY ?? 0
+				const notch = event.deltaMode === 1 || (legacy !== 0 && legacy % 120 === 0)
+				if (notch) return -Math.sign(event.deltaY) * Math.log2(1.4)
+				return -event.deltaY * (event.ctrlKey ? 0.02 : 0.008)
+			})
 			.filter((event: any) => {
-				// 처음 크기에서 축소 방향 휠은 페이지 스크롤로 넘긴다
-				if (event.type === 'wheel') return !(t.k <= 1.001 && event.deltaY > 0)
+				// 휠은 방향과 상관없이 지도 확대·축소 (finviz 처럼). 맥 '자연스러운 스크롤'에서는 휠을 앞으로 밀면
+				// deltaY > 0 이라, 처음 크기에서 이 방향을 페이지 스크롤로 넘겼더니 확대가 안 된다는 지적을 받았다 (2026-10-19)
+				if (event.type === 'wheel') return true
 				if (event.type === 'touchstart') return event.touches.length > 1 || t.k > 1.001
 				if (event.type === 'mousedown') return !event.button && t.k > 1.001
 				return !event.ctrlKey && !event.button
