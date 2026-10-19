@@ -46,7 +46,6 @@ const isEn = locale === 'en'
 	</nav>
 	<!-- 휴대폰: 메뉴 줄에 자리가 없어서 글자 로고 아래 가운데에 둔다 -->
 	<button type='button' class='im-install-mobile' data-install-open>
-		<img src='/icons/icon-192.png' alt='' width='20' height='20' />
 		{isEn ? 'Add app to home screen' : '홈 화면에 앱 설치'}
 	</button>
 </header>
@@ -129,8 +128,6 @@ const isEn = locale === 'en'
 	.im-install-mobile {
 		grid-column: 1 / -1;
 		justify-self: center;
-		align-items: center;
-		gap: 7px;
 		margin-top: 2px;
 		padding: 6px 4px;
 		color: var(--ink);
@@ -138,10 +135,6 @@ const isEn = locale === 'en'
 		font-weight: 700;
 		border: 0;
 		border-bottom: 1px solid var(--ink);
-	}
-
-	.im-install-mobile img {
-		border-radius: 5px;
 	}
 
 	@media (max-width: 600px) {
