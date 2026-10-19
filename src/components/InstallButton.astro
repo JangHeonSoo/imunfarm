@@ -1,5 +1,6 @@
 ---
-// 휴대폰 화면 아래에 늘 떠 있는 "홈 화면에 앱 추가" 버튼 (2026-10-19)
+// "앱 설치" 단추를 누르면 여는 안내와 설치 처리 (2026-10-19)
+// 단추 자체는 Header 에 있다 ([data-install-open]). 떠 있는 버튼은 광고처럼 보여서 쓰지 않는다.
 // - 안드로이드 크롬·삼성 인터넷: beforeinstallprompt 로 설치 창을 바로 띄운다.
 // - 아이폰: 사이트에서 바로 설치할 수 없어서 누를 곳을 그림으로 크게 보여 준다.
 // - 카카오톡·네이버 앱 안 브라우저: 설치가 안 되므로 크롬·사파리로 옮겨 연다.
@@ -13,9 +14,6 @@ const { isEn = false } = Astro.props
 
 const t = isEn
 	? {
-			button: 'Add app to home screen',
-			buttonPc: 'Install app on this computer',
-			close: 'Hide',
 			title: 'Add IMUN.FARM to your home screen',
 			iosStep1: 'Tap the Share button at the bottom of the screen.',
 			iosStep1b: 'If you cannot see it, tap ⋯ first.',
@@ -35,9 +33,6 @@ const t = isEn
 			done: 'Close'
 		}
 	: {
-			button: '홈 화면에 앱 추가',
-			buttonPc: '컴퓨터에 앱 설치',
-			close: '숨기기',
 			title: '홈 화면에 IMUN.FARM 추가하기',
 			iosStep1: '화면 아래 공유 단추를 누릅니다.',
 			iosStep1b: '안 보이면 아래 ⋯ 단추를 먼저 누릅니다.',
@@ -60,15 +55,6 @@ const t = isEn
 const shareIcon = `<svg viewBox='0 0 24 24' width='30' height='30' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 3v12'/><path d='M7.5 7.5 12 3l4.5 4.5'/><path d='M6 11H5v10h14V11h-1'/></svg>`
 const addIcon = `<svg viewBox='0 0 24 24' width='30' height='30' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' aria-hidden='true'><rect x='3.5' y='3.5' width='17' height='17' rx='4'/><path d='M12 8v8M8 12h8'/></svg>`
 ---
-
-<div class='im-install' data-install hidden>
-	<button type='button' class='im-install-btn' data-install-open>
-		<img src='/icons/icon-192.png' alt='' width='30' height='30' />
-		<span data-label-mobile>{t.button}</span>
-		<span data-label-pc hidden>{t.buttonPc}</span>
-	</button>
-	<button type='button' class='im-install-x' data-install-hide aria-label={t.close}>×</button>
-</div>
 
 <div
 	class='im-install-sheet'
@@ -142,7 +128,7 @@ const addIcon = `<svg viewBox='0 0 24 24' width='30' height='30' fill='none' str
 		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 	}
 
-	const root = document.querySelector<HTMLElement>('[data-install]')
+	const buttons = document.querySelectorAll<HTMLElement>('[data-install-open]')
 	const sheet = document.querySelector<HTMLElement>('[data-install-sheet]')
 
 	const ua = navigator.userAgent
@@ -168,14 +154,6 @@ const addIcon = `<svg viewBox='0 0 24 24' width='30' height='30' fill='none' str
 		if (g) g('event', name, { method })
 	}
 
-	const hiddenThisVisit = () => {
-		try {
-			return sessionStorage.getItem('im-install-hide') === '1'
-		} catch {
-			return false
-		}
-	}
-
 	let deferred: PromptEvent | null = null
 	addEventListener('beforeinstallprompt', (e) => {
 		e.preventDefault()
@@ -187,39 +165,17 @@ const addIcon = `<svg viewBox='0 0 24 24' width='30' height='30' fill='none' str
 		track('pwa_installed', 'appinstalled')
 	})
 
-	// PC 는 설치 창을 띄울 수 있을 때(크롬·엣지)나 맥 사파리일 때만 버튼을 보인다
+	// 휴대폰은 늘, PC 는 설치 창을 띄울 수 있을 때(크롬·엣지)나 맥 사파리일 때만 단추를 보인다
 	function show() {
-		if (!root || standalone || hiddenThisVisit()) return
-		root.hidden = false
-		// 휴대폰에서 맨 아래 글이 버튼에 가리지 않게
-		if (mobile) document.body.style.paddingBottom = '76px'
+		if (standalone) return
+		document.documentElement.classList.add('im-can-install')
 	}
 	function hide() {
-		if (!root) return
-		root.hidden = true
-		document.body.style.paddingBottom = ''
+		document.documentElement.classList.remove('im-can-install')
 	}
 
-	if (root && sheet && !standalone) {
-		if (!mobile) {
-			root.classList.add('is-pc')
-			root.querySelector<HTMLElement>('[data-label-mobile]')!.hidden = true
-			root.querySelector<HTMLElement>('[data-label-pc]')!.hidden = false
-		}
+	if (sheet && !standalone) {
 		if (mobile || isMacSafari) show()
-
-		// 애드센스 아래쪽 고정 광고가 뜨면 그 위로 올린다
-		const lift = () => {
-			let h = 0
-			document
-				.querySelectorAll<HTMLElement>('ins[data-anchor-status="displayed"]')
-				.forEach((el) => {
-					const r = el.getBoundingClientRect()
-					if (r.height && r.bottom >= innerHeight - 2) h = Math.max(h, r.height)
-				})
-			root.style.setProperty('--im-install-lift', `${h}px`)
-		}
-		setInterval(lift, 1500)
 
 		const openSheet = (kind: 'ios' | 'android' | 'inapp' | 'mac') => {
 			sheet.querySelectorAll<HTMLElement>('[data-steps]').forEach((el) => {
@@ -235,7 +191,7 @@ const addIcon = `<svg viewBox='0 0 24 24' width='30' height='30' fill='none' str
 			document.documentElement.style.overflow = ''
 		}
 
-		root.querySelector('[data-install-open]')?.addEventListener('click', async () => {
+		const onOpen = async () => {
 			if (deferred) {
 				track('pwa_install_click', 'prompt')
 				await deferred.prompt()
@@ -269,16 +225,8 @@ const addIcon = `<svg viewBox='0 0 24 24' width='30' height='30' fill='none' str
 			if (!mobile) return
 			track('pwa_install_click', isIOS ? 'ios-guide' : 'android-guide')
 			openSheet(isIOS ? 'ios' : 'android')
-		})
-
-		root.querySelector('[data-install-hide]')?.addEventListener('click', () => {
-			hide()
-			try {
-				sessionStorage.setItem('im-install-hide', '1')
-			} catch {
-				/* 저장이 막혀 있으면 이번 화면에서만 숨긴다 */
-			}
-		})
+		}
+		buttons.forEach((b) => b.addEventListener('click', onOpen))
 
 		sheet.querySelector('[data-install-close]')?.addEventListener('click', closeSheet)
 		sheet.addEventListener('click', (e) => {
@@ -298,62 +246,10 @@ const addIcon = `<svg viewBox='0 0 24 24' width='30' height='30' fill='none' str
 </script>
 
 <style>
-	.im-install {
-		position: fixed;
-		left: 50%;
-		bottom: calc(14px + env(safe-area-inset-bottom) + var(--im-install-lift, 0px));
-		z-index: 60;
-		display: flex;
-		align-items: center;
-		transform: translateX(-50%);
-		background: var(--ink);
-		border-radius: 999px;
-	}
-
-	.im-install.is-pc {
-		left: auto;
-		right: 24px;
-		bottom: 24px;
-		transform: none;
-	}
-
-	.im-install [hidden],
 	.im-install-panel h2[hidden],
-	.im-install[hidden],
 	.im-install-sheet[hidden],
 	[data-steps][hidden] {
 		display: none;
-	}
-
-	.im-install-btn {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 9px 6px 9px 10px;
-		color: var(--bg);
-		font-size: 17px;
-		font-weight: 800;
-		white-space: nowrap;
-		background: none;
-		border: 0;
-		cursor: pointer;
-	}
-
-	.im-install-btn img {
-		border-radius: 8px;
-		outline: 1px solid color-mix(in srgb, var(--bg) 30%, transparent);
-	}
-
-	.im-install-x {
-		width: 40px;
-		height: 44px;
-		padding: 0 12px 0 4px;
-		color: color-mix(in srgb, var(--bg) 60%, transparent);
-		font-size: 24px;
-		line-height: 1;
-		background: none;
-		border: 0;
-		cursor: pointer;
 	}
 
 	.im-install-sheet {

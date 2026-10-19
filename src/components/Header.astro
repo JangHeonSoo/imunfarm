@@ -3,6 +3,7 @@ import { DEFAULT_LOCALE, getLocalePrefix } from '@/utils'
 
 const { locale = DEFAULT_LOCALE, active = '' } = Astro.props
 const prefix = getLocalePrefix(locale)
+const isEn = locale === 'en'
 ---
 
 <header class='im-header'>
@@ -38,7 +39,16 @@ const prefix = getLocalePrefix(locale)
 		>
 			기록 <span>Notes</span>
 		</a>
+		<button type='button' class='im-header-link im-install-pc' data-install-open>
+			{isEn ? 'Install app' : '앱 설치'}
+			<span>{isEn ? '' : 'App'}</span>
+		</button>
 	</nav>
+	<!-- 휴대폰: 메뉴 줄에 자리가 없어서 글자 로고 아래 가운데에 둔다 -->
+	<button type='button' class='im-install-mobile' data-install-open>
+		<img src='/icons/icon-192.png' alt='' width='20' height='20' />
+		{isEn ? 'Add app to home screen' : '홈 화면에 앱 설치'}
+	</button>
 </header>
 
 <style>
@@ -97,9 +107,54 @@ const prefix = getLocalePrefix(locale)
 		color: var(--muted);
 	}
 
+	/* 앱 설치 단추: 설치할 수 있을 때만 InstallButton 이 html 에 im-can-install 을 붙인다 */
+	.im-install-pc,
+	.im-install-mobile {
+		display: none;
+		font-family: inherit;
+		background: none;
+		cursor: pointer;
+	}
+
+	.im-install-pc {
+		border-top: 0;
+		border-right: 0;
+		border-left: 0;
+	}
+
+	:global(html.im-can-install) .im-install-pc {
+		display: block;
+	}
+
+	.im-install-mobile {
+		grid-column: 1 / -1;
+		justify-self: center;
+		align-items: center;
+		gap: 7px;
+		margin-top: 2px;
+		padding: 6px 4px;
+		color: var(--ink);
+		font-size: 15px;
+		font-weight: 700;
+		border: 0;
+		border-bottom: 1px solid var(--ink);
+	}
+
+	.im-install-mobile img {
+		border-radius: 5px;
+	}
+
 	@media (max-width: 600px) {
 		.im-header-link span {
 			display: none;
+		}
+
+		:global(html.im-can-install) .im-install-pc {
+			display: none;
+		}
+
+		:global(html.im-can-install) .im-install-mobile {
+			display: flex;
 		}
 	}
 
