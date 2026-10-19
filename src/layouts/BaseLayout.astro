@@ -2,6 +2,7 @@
 import BaseHead from '@/components/BaseHead'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import InstallButton from '@/components/InstallButton'
 import ProviderTheme from '@/components/ProviderTheme'
 import {
 	DEFAULT_LOCALE,
@@ -82,6 +83,7 @@ const resolvedAltPath =
 			</main>
 			<Footer locale={locale} otherLocale={otherLocale} altPath={resolvedAltPath} active={active} />
 		</div>
+		<InstallButton isEn={locale === 'en'} />
 		<script>
 			// 큰 검색창의 SEARCH 안내를 한국어 페이지에서는 SEARCH ↔ 검색 으로 천천히 번갈아 보여 준다 (2026-10-09)
 			if (document.documentElement.lang.startsWith('ko')) {

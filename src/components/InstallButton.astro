@@ -1,0 +1,495 @@
+---
+// 휴대폰 화면 아래에 늘 떠 있는 "홈 화면에 앱 추가" 버튼 (2026-10-19)
+// - 안드로이드 크롬·삼성 인터넷: beforeinstallprompt 로 설치 창을 바로 띄운다.
+// - 아이폰: 사이트에서 바로 설치할 수 없어서 누를 곳을 그림으로 크게 보여 준다.
+// - 카카오톡·네이버 앱 안 브라우저: 설치가 안 되므로 크롬·사파리로 옮겨 연다.
+// - PC 크롬·엣지: 설치 창을 바로 띄운다. 맥 사파리: "Dock에 추가" 방법을 보여 준다. 설치가 안 되는 브라우저에서는 나오지 않는다.
+// - 이미 앱으로 연 경우(standalone)에는 나오지 않는다.
+export interface Props {
+	isEn?: boolean
+}
+
+const { isEn = false } = Astro.props
+
+const t = isEn
+	? {
+			button: 'Add app to home screen',
+			buttonPc: 'Install app on this computer',
+			close: 'Hide',
+			title: 'Add IMUN.FARM to your home screen',
+			iosStep1: 'Tap the Share button at the bottom of the screen.',
+			iosStep1b: 'If you cannot see it, tap ⋯ first.',
+			iosStep2: 'Scroll down and tap “Add to Home Screen”.',
+			iosStep3: 'Tap “Add” at the top right.',
+			andStep1: 'Tap the browser menu (⋮ or ≡).',
+			andStep2: 'Tap “Add to Home screen” or “Install app”.',
+			macTitle: 'Add IMUN.FARM to your Dock',
+			macStep1: 'Click “File” in the menu bar at the top of the screen.',
+			macStep2: 'Click “Add to Dock”.',
+			macStep3: 'Click “Add”.',
+			inAppTitle: 'Please open this page in Safari',
+			inAppText:
+				'Apps cannot be added from inside this app. Copy the address and paste it into Safari.',
+			copy: 'Copy address',
+			copied: 'Copied',
+			done: 'Close'
+		}
+	: {
+			button: '홈 화면에 앱 추가',
+			buttonPc: '컴퓨터에 앱 설치',
+			close: '숨기기',
+			title: '홈 화면에 IMUN.FARM 추가하기',
+			iosStep1: '화면 아래 공유 단추를 누릅니다.',
+			iosStep1b: '안 보이면 아래 ⋯ 단추를 먼저 누릅니다.',
+			iosStep2: '아래로 내려 “홈 화면에 추가”를 누릅니다.',
+			iosStep3: '오른쪽 위 “추가”를 누릅니다.',
+			andStep1: '브라우저 메뉴(⋮ 또는 ≡)를 누릅니다.',
+			andStep2: '“홈 화면에 추가” 또는 “앱 설치”를 누릅니다.',
+			macTitle: 'Dock에 IMUN.FARM 추가하기',
+			macStep1: '화면 맨 위 메뉴에서 “파일”을 누릅니다.',
+			macStep2: '“Dock에 추가”를 누릅니다.',
+			macStep3: '“추가”를 누릅니다.',
+			inAppTitle: '사파리에서 열어 주세요',
+			inAppText:
+				'이 앱 안에서는 홈 화면에 추가할 수 없습니다. 주소를 복사해 사파리에 붙여 넣어 주세요.',
+			copy: '주소 복사하기',
+			copied: '복사했습니다',
+			done: '닫기'
+		}
+
+const shareIcon = `<svg viewBox='0 0 24 24' width='30' height='30' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 3v12'/><path d='M7.5 7.5 12 3l4.5 4.5'/><path d='M6 11H5v10h14V11h-1'/></svg>`
+const addIcon = `<svg viewBox='0 0 24 24' width='30' height='30' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' aria-hidden='true'><rect x='3.5' y='3.5' width='17' height='17' rx='4'/><path d='M12 8v8M8 12h8'/></svg>`
+---
+
+<div class='im-install' data-install hidden>
+	<button type='button' class='im-install-btn' data-install-open>
+		<img src='/icons/icon-192.png' alt='' width='30' height='30' />
+		<span data-label-mobile>{t.button}</span>
+		<span data-label-pc hidden>{t.buttonPc}</span>
+	</button>
+	<button type='button' class='im-install-x' data-install-hide aria-label={t.close}>×</button>
+</div>
+
+<div
+	class='im-install-sheet'
+	data-install-sheet
+	hidden
+	role='dialog'
+	aria-modal='true'
+	aria-labelledby='im-install-title'
+>
+	<div class='im-install-panel'>
+		<img class='im-install-app' src='/icons/icon-192.png' alt='' width='64' height='64' />
+		<h2 id='im-install-title' data-title-default>{t.title}</h2>
+		<h2 data-title-mac hidden>{t.macTitle}</h2>
+
+		<ol class='im-install-steps' data-steps='ios' hidden>
+			<li>
+				<span class='im-install-ico' set:html={shareIcon} />
+				<span>{t.iosStep1}<small>{t.iosStep1b}</small></span>
+			</li>
+			<li>
+				<span class='im-install-ico' set:html={addIcon} />
+				<span>{t.iosStep2}</span>
+			</li>
+			<li>
+				<span class='im-install-ico im-install-txt'>{isEn ? 'Add' : '추가'}</span>
+				<span>{t.iosStep3}</span>
+			</li>
+		</ol>
+
+		<ol class='im-install-steps' data-steps='android' hidden>
+			<li>
+				<span class='im-install-ico im-install-txt'>⋮</span>
+				<span>{t.andStep1}</span>
+			</li>
+			<li>
+				<span class='im-install-ico' set:html={addIcon} />
+				<span>{t.andStep2}</span>
+			</li>
+		</ol>
+
+		<ol class='im-install-steps' data-steps='mac' hidden>
+			<li>
+				<span class='im-install-ico im-install-txt'>{isEn ? 'File' : '파일'}</span>
+				<span>{t.macStep1}</span>
+			</li>
+			<li>
+				<span class='im-install-ico' set:html={addIcon} />
+				<span>{t.macStep2}</span>
+			</li>
+			<li>
+				<span class='im-install-ico im-install-txt'>{isEn ? 'Add' : '추가'}</span>
+				<span>{t.macStep3}</span>
+			</li>
+		</ol>
+
+		<div class='im-install-inapp' data-steps='inapp' hidden>
+			<p class='im-install-lead'>{t.inAppTitle}</p>
+			<p>{t.inAppText}</p>
+			<button type='button' class='im-install-copy' data-install-copy data-done={t.copied}
+				>{t.copy}</button
+			>
+		</div>
+
+		<button type='button' class='im-install-done' data-install-close>{t.done}</button>
+	</div>
+</div>
+
+<script>
+	type PromptEvent = Event & {
+		prompt: () => Promise<void>
+		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+	}
+
+	const root = document.querySelector<HTMLElement>('[data-install]')
+	const sheet = document.querySelector<HTMLElement>('[data-install-sheet]')
+
+	const ua = navigator.userAgent
+	const isIOS =
+		/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
+	const isAndroid = /Android/.test(ua)
+	const isKakao = /KAKAOTALK/i.test(ua)
+	const isInApp =
+		isKakao || /NAVER\(inapp|DaumApps|Instagram|FBAN|FBAV|Line\/|everytimeApp|; wv\)/i.test(ua)
+	const standalone =
+		matchMedia('(display-mode: standalone)').matches ||
+		(navigator as Navigator & { standalone?: boolean }).standalone === true
+	const mobile = isIOS || isAndroid
+	// 맥 사파리 17 이상은 파일 → Dock에 추가 로 웹 앱을 만들 수 있다
+	const isMacSafari =
+		!mobile &&
+		/Macintosh/.test(ua) &&
+		/Version\/(1[7-9]|[2-9]\d)[.\d]* Safari/.test(ua) &&
+		!/Chrome|Chromium|Edg|Firefox|OPR/.test(ua)
+
+	const track = (name: string, method: string) => {
+		const g = (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag
+		if (g) g('event', name, { method })
+	}
+
+	const hiddenThisVisit = () => {
+		try {
+			return sessionStorage.getItem('im-install-hide') === '1'
+		} catch {
+			return false
+		}
+	}
+
+	let deferred: PromptEvent | null = null
+	addEventListener('beforeinstallprompt', (e) => {
+		e.preventDefault()
+		deferred = e as PromptEvent
+		if (!mobile) show()
+	})
+	addEventListener('appinstalled', () => {
+		hide()
+		track('pwa_installed', 'appinstalled')
+	})
+
+	// PC 는 설치 창을 띄울 수 있을 때(크롬·엣지)나 맥 사파리일 때만 버튼을 보인다
+	function show() {
+		if (!root || standalone || hiddenThisVisit()) return
+		root.hidden = false
+		// 휴대폰에서 맨 아래 글이 버튼에 가리지 않게
+		if (mobile) document.body.style.paddingBottom = '76px'
+	}
+	function hide() {
+		if (!root) return
+		root.hidden = true
+		document.body.style.paddingBottom = ''
+	}
+
+	if (root && sheet && !standalone) {
+		if (!mobile) {
+			root.classList.add('is-pc')
+			root.querySelector<HTMLElement>('[data-label-mobile]')!.hidden = true
+			root.querySelector<HTMLElement>('[data-label-pc]')!.hidden = false
+		}
+		if (mobile || isMacSafari) show()
+
+		// 애드센스 아래쪽 고정 광고가 뜨면 그 위로 올린다
+		const lift = () => {
+			let h = 0
+			document
+				.querySelectorAll<HTMLElement>('ins[data-anchor-status="displayed"]')
+				.forEach((el) => {
+					const r = el.getBoundingClientRect()
+					if (r.height && r.bottom >= innerHeight - 2) h = Math.max(h, r.height)
+				})
+			root.style.setProperty('--im-install-lift', `${h}px`)
+		}
+		setInterval(lift, 1500)
+
+		const openSheet = (kind: 'ios' | 'android' | 'inapp' | 'mac') => {
+			sheet.querySelectorAll<HTMLElement>('[data-steps]').forEach((el) => {
+				el.hidden = el.dataset.steps !== kind
+			})
+			sheet.querySelector<HTMLElement>('[data-title-default]')!.hidden = kind === 'mac'
+			sheet.querySelector<HTMLElement>('[data-title-mac]')!.hidden = kind !== 'mac'
+			sheet.hidden = false
+			document.documentElement.style.overflow = 'hidden'
+		}
+		const closeSheet = () => {
+			sheet.hidden = true
+			document.documentElement.style.overflow = ''
+		}
+
+		root.querySelector('[data-install-open]')?.addEventListener('click', async () => {
+			if (deferred) {
+				track('pwa_install_click', 'prompt')
+				await deferred.prompt()
+				const { outcome } = await deferred.userChoice
+				deferred = null
+				if (outcome === 'accepted') hide()
+				return
+			}
+			const here = location.href
+			if (isInApp && isAndroid) {
+				// 안드로이드 앱 안 브라우저 → 크롬으로 연다
+				track('pwa_install_click', 'to-chrome')
+				location.href = `intent://${here.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`
+				return
+			}
+			if (isKakao && isIOS) {
+				track('pwa_install_click', 'kakao-to-safari')
+				location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(here)}`
+				return
+			}
+			if (isInApp && isIOS) {
+				track('pwa_install_click', 'inapp-guide')
+				openSheet('inapp')
+				return
+			}
+			if (isMacSafari) {
+				track('pwa_install_click', 'mac-safari-guide')
+				openSheet('mac')
+				return
+			}
+			if (!mobile) return
+			track('pwa_install_click', isIOS ? 'ios-guide' : 'android-guide')
+			openSheet(isIOS ? 'ios' : 'android')
+		})
+
+		root.querySelector('[data-install-hide]')?.addEventListener('click', () => {
+			hide()
+			try {
+				sessionStorage.setItem('im-install-hide', '1')
+			} catch {
+				/* 저장이 막혀 있으면 이번 화면에서만 숨긴다 */
+			}
+		})
+
+		sheet.querySelector('[data-install-close]')?.addEventListener('click', closeSheet)
+		sheet.addEventListener('click', (e) => {
+			if (e.target === sheet) closeSheet()
+		})
+
+		const copyBtn = sheet.querySelector<HTMLButtonElement>('[data-install-copy]')
+		copyBtn?.addEventListener('click', async () => {
+			try {
+				await navigator.clipboard.writeText(location.origin + location.pathname)
+				copyBtn.textContent = copyBtn.dataset.done ?? ''
+			} catch {
+				prompt('', location.origin + location.pathname)
+			}
+		})
+	}
+</script>
+
+<style>
+	.im-install {
+		position: fixed;
+		left: 50%;
+		bottom: calc(14px + env(safe-area-inset-bottom) + var(--im-install-lift, 0px));
+		z-index: 60;
+		display: flex;
+		align-items: center;
+		transform: translateX(-50%);
+		background: var(--ink);
+		border-radius: 999px;
+	}
+
+	.im-install.is-pc {
+		left: auto;
+		right: 24px;
+		bottom: 24px;
+		transform: none;
+	}
+
+	.im-install [hidden],
+	.im-install-panel h2[hidden],
+	.im-install[hidden],
+	.im-install-sheet[hidden],
+	[data-steps][hidden] {
+		display: none;
+	}
+
+	.im-install-btn {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 9px 6px 9px 10px;
+		color: var(--bg);
+		font-size: 17px;
+		font-weight: 800;
+		white-space: nowrap;
+		background: none;
+		border: 0;
+		cursor: pointer;
+	}
+
+	.im-install-btn img {
+		border-radius: 8px;
+		outline: 1px solid color-mix(in srgb, var(--bg) 30%, transparent);
+	}
+
+	.im-install-x {
+		width: 40px;
+		height: 44px;
+		padding: 0 12px 0 4px;
+		color: color-mix(in srgb, var(--bg) 60%, transparent);
+		font-size: 24px;
+		line-height: 1;
+		background: none;
+		border: 0;
+		cursor: pointer;
+	}
+
+	.im-install-sheet {
+		position: fixed;
+		inset: 0;
+		z-index: 70;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		background: rgb(0 0 0 / 0.45);
+	}
+
+	@media (min-width: 720px) {
+		.im-install-sheet {
+			align-items: center;
+		}
+
+		.im-install-panel {
+			border-radius: 18px;
+		}
+	}
+
+	.im-install-panel {
+		width: 100%;
+		max-width: 520px;
+		max-height: 90vh;
+		overflow-y: auto;
+		padding: 24px 20px calc(20px + env(safe-area-inset-bottom));
+		color: var(--ink);
+		text-align: center;
+		word-break: keep-all;
+		background: var(--bg);
+		border-radius: 18px 18px 0 0;
+	}
+
+	.im-install-app {
+		margin: 0 auto 12px;
+		border-radius: 14px;
+	}
+
+	.im-install-panel h2 {
+		margin: 0 0 18px;
+		font-size: 22px;
+		font-weight: 800;
+		line-height: 1.35;
+	}
+
+	.im-install-steps {
+		margin: 0 0 20px;
+		padding: 0;
+		list-style: none;
+		counter-reset: step;
+		text-align: left;
+	}
+
+	.im-install-steps li {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		padding: 14px 0;
+		font-size: 19px;
+		font-weight: 700;
+		line-height: 1.45;
+		border-top: 1px solid var(--line, #e3dfd8);
+		counter-increment: step;
+	}
+
+	.im-install-steps li::before {
+		content: counter(step);
+		flex: none;
+		width: 30px;
+		height: 30px;
+		color: var(--bg);
+		font-size: 17px;
+		line-height: 30px;
+		text-align: center;
+		background: var(--ink);
+		border-radius: 50%;
+	}
+
+	.im-install-steps small {
+		display: block;
+		margin-top: 2px;
+		font-size: 16px;
+		font-weight: 600;
+		opacity: 0.7;
+	}
+
+	.im-install-ico {
+		display: grid;
+		flex: none;
+		place-items: center;
+		width: 48px;
+		height: 48px;
+		border: 1.5px solid var(--ink);
+		border-radius: 12px;
+	}
+
+	.im-install-txt {
+		font-size: 18px;
+		font-weight: 800;
+	}
+
+	.im-install-inapp {
+		margin-bottom: 20px;
+		font-size: 18px;
+		line-height: 1.55;
+	}
+
+	.im-install-lead {
+		margin: 0 0 6px;
+		font-size: 20px;
+		font-weight: 800;
+	}
+
+	.im-install-copy,
+	.im-install-done {
+		display: block;
+		width: 100%;
+		padding: 15px;
+		font-size: 18px;
+		font-weight: 800;
+		border-radius: 12px;
+		cursor: pointer;
+	}
+
+	.im-install-copy {
+		margin-top: 14px;
+		color: var(--bg);
+		background: var(--ink);
+		border: 0;
+	}
+
+	.im-install-done {
+		color: var(--ink);
+		background: none;
+		border: 1.5px solid var(--ink);
+	}
+</style>
