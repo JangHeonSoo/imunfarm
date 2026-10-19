@@ -5,6 +5,7 @@ import {
 	ITEMS,
 	REGIONS,
 	buildAnalysis,
+	buildItemSeries,
 	buildPriceData,
 	formatDate,
 	getItemStatus,
@@ -13,8 +14,6 @@ import {
 import { siteConfig } from '@/site-config'
 import PriceSwitcher from '@/components/PriceSwitcher'
 import CoupangDynamic from '@/components/CoupangDynamic'
-import PriceBoard from '@/components/PriceBoard'
-import { POPULAR_PRICE_IDS } from '@/data/price-popular'
 import kamisItems from '@/data/kamis-items.json'
 import pricePhotos from '@/data/price-photos.json'
 import { buildMoversInput } from '@/data/movers-input'
@@ -87,6 +86,136 @@ const initialCounts = {
 	down: initialRows.filter((r) => r.price != null && r.delta != null && r.delta < 0).length,
 	up: initialRows.filter((r) => r.price != null && r.delta != null && r.delta > 0).length,
 	flat: initialRows.filter((r) => r.price != null && (r.delta == null || r.delta === 0)).length
+}
+// ---------- 주식 시장 첫 화면처럼: 분류 지수, 오른·내린 순위, 표의 작년 대비·미니 차트 ----------
+const seoul = REGIONS[0]
+const seriesOf = new Map(ITEMS.map((i) => [i.id, buildItemSeries(i, today).daily[seoul.id] ?? []]))
+const valueAt = (list: [string, number][], iso: string) => {
+	let v: number | null = null
+	for (const p of list) {
+		if (p[0] > iso) break
+		v = p[1]
+	}
+	return v
+}
+const isoShift = (iso: string, days: number) =>
+	new Date(Date.parse(iso) + days * 86400000).toISOString().slice(0, 10)
+const lastIso = latest
+
+// 작년 이맘때 = 100 으로 놓은 분류별 평균 지수 (주 1회 점, 52주)
+const CAT_ORDER = ['200', '400', '100', '300']
+const CAT_SHORT: Record<string, string> = isEn
+	? { '200': 'Vegetables', '400': 'Fruit', '100': 'Grains & beans', '300': 'Seeds & mushrooms' }
+	: { '200': '채소', '400': '과일', '100': '쌀·콩·감자', '300': '깨·땅콩·버섯' }
+const weeks = Array.from({ length: 53 }, (_, k) => isoShift(lastIso, -7 * (52 - k)))
+const indexCards = CAT_ORDER.map((cat) => {
+	const members = ITEMS.filter((i) => categoryOf(i.id) === cat)
+		.map((i) => seriesOf.get(i.id)!)
+		.filter((list) => valueAt(list, weeks[0]) && valueAt(list, lastIso))
+	const line = weeks.map((d) => {
+		const ratios = members
+			.map((list) => {
+				const base = valueAt(list, weeks[0])
+				const v = valueAt(list, d)
+				return base && v ? v / base : null
+			})
+			.filter((r): r is number => r != null)
+		return ratios.length ? (ratios.reduce((a, b) => a + b, 0) / ratios.length) * 100 : null
+	})
+	const nowIdx = line[line.length - 1]
+	const monthAgo = line[line.length - 5]
+	return {
+		cat,
+		label: CAT_SHORT[cat],
+		count: members.length,
+		yoy: nowIdx != null ? Math.round((nowIdx - 100) * 10) / 10 : null,
+		m1: nowIdx != null && monthAgo ? Math.round((nowIdx / monthAgo - 1) * 1000) / 10 : null,
+		line
+	}
+})
+// SVG 꺾은선 (viewBox 0 0 100 32)
+const sparkPoints = (values: (number | null)[]) => {
+	const known = values.filter((v): v is number => v != null)
+	if (known.length < 2) return ''
+	const lo = Math.min(...known)
+	const hi = Math.max(...known)
+	return values
+		.map((v, k) =>
+			v == null
+				? null
+				: `${((k / (values.length - 1)) * 100).toFixed(1)},${(hi === lo ? 16 : 29 - ((v - lo) / (hi - lo)) * 26).toFixed(1)}`
+		)
+		.filter(Boolean)
+		.join(' ')
+}
+
+// 품목별 1개월 변화(서울)와 작년 같은 달 대비(지역별)
+const m1Of = (id: string) => {
+	const list = seriesOf.get(id)!
+	const now = valueAt(list, lastIso)
+	const then = valueAt(list, isoShift(lastIso, -30))
+	return now && then ? Math.round(((now - then) / then) * 1000) / 10 : null
+}
+const yoyBy: Record<string, Record<string, number | null>> = Object.fromEntries(
+	ITEMS.map((i) => [
+		i.id,
+		Object.fromEntries(
+			REGIONS.map((r) => {
+				const st = getItemStatus(i, today)
+				return [r.id, st.stale ? null : (buildAnalysis(i, r, today).benchmarks[0]?.diffPct ?? null)]
+			})
+		)
+	])
+)
+const rankBase = ITEMS.map((i) => ({
+	id: i.id,
+	label: isEn ? i.en : i.ko,
+	photo: thumbOf(i.id),
+	price: table[latest][seoul.id][i.id]?.price ?? null,
+	m1: m1Of(i.id),
+	yoy: yoyBy[i.id][seoul.id]
+})).filter((r) => r.price != null)
+const top = (key: 'm1' | 'yoy', dirn: 1 | -1) =>
+	rankBase
+		.filter((r) => r[key] != null && dirn * (r[key] as number) > 0)
+		.sort((a, b) => dirn * ((b[key] as number) - (a[key] as number)))
+		.slice(0, 6)
+const rankings = [
+	{
+		key: 'm1-up',
+		label: isEn ? 'Up in a month' : '한 달 새 오른',
+		rows: top('m1', 1),
+		metric: 'm1' as const
+	},
+	{
+		key: 'm1-down',
+		label: isEn ? 'Down in a month' : '한 달 새 내린',
+		rows: top('m1', -1),
+		metric: 'm1' as const
+	},
+	{
+		key: 'yoy-up',
+		label: isEn ? 'Pricier than last year' : '작년보다 비싼',
+		rows: top('yoy', 1),
+		metric: 'yoy' as const
+	},
+	{
+		key: 'yoy-down',
+		label: isEn ? 'Cheaper than last year' : '작년보다 싼',
+		rows: top('yoy', -1),
+		metric: 'yoy' as const
+	}
+]
+const sparkOf = (id: string, regionId: string) => sparkPoints(moversInput.series[id][regionId])
+const sparkDir = (id: string, regionId: string) => {
+	const v = moversInput.series[id][regionId].filter((x): x is number => x != null)
+	return v.length < 2
+		? ''
+		: v[v.length - 1] > v[0]
+			? 'im-up'
+			: v[v.length - 1] < v[0]
+				? 'im-down'
+				: ''
 }
 const catCount = (cat: string) => initialRows.filter((r) => r.cat === cat).length
 
@@ -162,6 +291,7 @@ const payload = {
 	why: moversInput.why,
 	dates,
 	series: moversInput.series,
+	yoy: yoyBy,
 	regions: REGIONS.map((r) => ({ id: r.id, label: isEn ? r.en : r.ko })),
 	catLabels: CAT_LABELS,
 	items: ITEMS.map((i) => ({
@@ -339,8 +469,97 @@ const t = {
 			</dl>
 		</header>
 
-		<h2 class='im-popular-h'>{isEn ? 'Most searched' : '많이 찾는 시세'}</h2>
-		<PriceBoard ids={POPULAR_PRICE_IDS} isEn={isEn} prefix={prefix} oneRow />
+		<h2 class='im-sec-h'>
+			{isEn ? 'Category index' : '분류별 지수'}
+			<small>{isEn ? 'Same week last year = 100, Seoul' : '작년 이맘때 = 100 · 서울 도매'}</small>
+		</h2>
+		<div class='im-idx'>
+			{
+				indexCards.map((c) => (
+					<a class='im-idx-card' href={`#im-cat-${c.cat}`}>
+						<span class='im-idx-name'>
+							{c.label}
+							<small>
+								{c.count}
+								{isEn ? ' items' : '개 품목'}
+							</small>
+						</span>
+						<strong class={c.yoy == null ? '' : c.yoy > 0 ? 'im-up' : c.yoy < 0 ? 'im-down' : ''}>
+							{c.yoy == null
+								? '–'
+								: `${c.yoy > 0 ? '+' : c.yoy < 0 ? '−' : ''}${Math.abs(c.yoy).toFixed(1)}%`}
+						</strong>
+						<span class='im-idx-sub'>
+							{isEn ? 'vs last year' : '작년보다'}
+							{c.m1 != null && (
+								<span class={c.m1 > 0 ? 'im-up' : c.m1 < 0 ? 'im-down' : ''}>
+									{' · '}
+									{isEn ? '1M ' : '한 달 '}
+									{`${c.m1 > 0 ? '+' : c.m1 < 0 ? '−' : ''}${Math.abs(c.m1).toFixed(1)}%`}
+								</span>
+							)}
+						</span>
+						<svg
+							class={`im-spark ${c.yoy == null ? '' : c.yoy > 0 ? 'im-up' : c.yoy < 0 ? 'im-down' : ''}`}
+							viewBox='0 0 100 32'
+							preserveAspectRatio='none'
+							aria-hidden='true'
+						>
+							<polyline points={sparkPoints(c.line)} />
+						</svg>
+					</a>
+				))
+			}
+		</div>
+
+		<h2 class='im-sec-h'>
+			{isEn ? 'Rankings' : '오르고 내린 품목'}
+			<small>{isEn ? 'Seoul wholesale' : '서울 도매'}</small>
+		</h2>
+		<div class='im-rank' data-rank>
+			<div class='im-rank-tabs' role='tablist'>
+				{
+					rankings.map((r, k) => (
+						<button type='button' data-rank-tab={r.key} aria-pressed={k === 0 ? 'true' : 'false'}>
+							{r.label}
+						</button>
+					))
+				}
+			</div>
+			{
+				rankings.map((r, k) => (
+					<ol class='im-rank-list' data-rank-list={r.key} hidden={k !== 0}>
+						{r.rows.map((row, n) => (
+							<li>
+								<a href={`${prefix}/prices/${row.id}/`}>
+									<span class='im-rank-no'>{n + 1}</span>
+									{row.photo ? (
+										<img
+											src={row.photo}
+											alt=''
+											width='36'
+											height='36'
+											loading='lazy'
+											decoding='async'
+										/>
+									) : (
+										<span class='im-rank-ph' />
+									)}
+									<span class='im-rank-name'>{row.label}</span>
+									<span class='im-rank-price'>{fmtServer(row.price)}</span>
+									<span class={`im-rank-pct ${(row[r.metric] ?? 0) > 0 ? 'im-up' : 'im-down'}`}>
+										{`${(row[r.metric] ?? 0) > 0 ? '▲' : '▼'} ${Math.abs(row[r.metric] ?? 0).toFixed(1)}%`}
+									</span>
+								</a>
+							</li>
+						))}
+						{r.rows.length === 0 && (
+							<li class='im-rank-empty'>{isEn ? 'None' : '해당 품목이 없습니다.'}</li>
+						)}
+					</ol>
+				))
+			}
+		</div>
 
 		<section
 			class='im-movers'
@@ -473,19 +692,35 @@ const t = {
 			/>
 		</div>
 
+		<div class='im-sort' role='group' aria-label={isEn ? 'Sort' : '정렬'}>
+			<button type='button' data-sort='cat' aria-pressed='true'
+				>{isEn ? 'By category' : '분류별'}</button
+			>
+			<button type='button' data-sort='yoy-up' aria-pressed='false'
+				>{isEn ? 'Pricier vs last year' : '작년보다 비싼 순'}</button
+			>
+			<button type='button' data-sort='yoy-down' aria-pressed='false'
+				>{isEn ? 'Cheaper vs last year' : '작년보다 싼 순'}</button
+			>
+			<button type='button' data-sort='trend' aria-pressed='false'
+				>{isEn ? 'Most up in 30 surveys' : '최근 많이 오른 순'}</button
+			>
+		</div>
+
 		<div class='im-price-table'>
 			<div class='im-price-head'>
 				<span>{t.item}</span>
 				<span class='im-num'>{t.price}</span>
-				<span class='im-num'>{t.delta}</span>
-				<span class='im-price-range-h'>{t.range}</span>
+				<span class='im-num im-price-delta-h'>{t.delta}</span>
+				<span class='im-num'>{isEn ? 'vs last year' : '작년보다'}</span>
+				<span class='im-price-range-h'>{isEn ? 'Last 30 surveys' : '최근 30회 추이'}</span>
 			</div>
 			<div id='im-price-rows'>
 				{
 					initialRows.map((row, k) => (
 						<Fragment>
 							{(k === 0 || initialRows[k - 1].cat !== row.cat) && CAT_LABELS[row.cat] && (
-								<div class='im-price-cat'>
+								<div class='im-price-cat' id={`im-cat-${row.cat}`}>
 									<h2>{CAT_LABELS[row.cat]}</h2>
 									<span>
 										{catCount(row.cat)}
@@ -529,25 +764,21 @@ const t = {
 								<span class={`im-num im-price-delta ${dir(row.delta)}`}>
 									{!row.delta ? '–' : `${mark(row.delta)}${Math.abs(row.delta).toFixed(1)}%`}
 								</span>
+								<span class={`im-num im-price-yoy ${dir(yoyBy[row.id][defaultRegion.id])}`}>
+									{yoyBy[row.id][defaultRegion.id] == null
+										? '–'
+										: `${mark(yoyBy[row.id][defaultRegion.id]!)}${Math.abs(yoyBy[row.id][defaultRegion.id]!).toFixed(1)}%`}
+								</span>
 								<span class='im-price-range'>
-									{row.range && row.range.hi === row.range.lo && (
-										<span class='im-range-same'>
-											{isEn ? 'Same price on every recent survey' : '최근 조사일 내내 같은 값'}
-										</span>
-									)}
-									{row.range && row.range.hi > row.range.lo && (
-										<Fragment>
-											<span>{row.range.lo.toLocaleString(isEn ? 'en-US' : 'ko-KR')}</span>
-											<span class='im-range-bar'>
-												<i
-													class={
-														row.range.pos >= 0.8 ? 'is-hi' : row.range.pos <= 0.2 ? 'is-lo' : ''
-													}
-													style={`left:${(row.range.pos * 100).toFixed(1)}%`}
-												/>
-											</span>
-											<span>{row.range.hi.toLocaleString(isEn ? 'en-US' : 'ko-KR')}</span>
-										</Fragment>
+									{sparkOf(row.id, defaultRegion.id) && (
+										<svg
+											class={`im-spark ${sparkDir(row.id, defaultRegion.id)}`}
+											viewBox='0 0 100 32'
+											preserveAspectRatio='none'
+											aria-hidden='true'
+										>
+											<polyline points={sparkOf(row.id, defaultRegion.id)} />
+										</svg>
 									)}
 								</span>
 							</a>
@@ -952,43 +1183,83 @@ const t = {
 		/* ---------- 표 ---------- */
 		const whenEl = document.getElementById('im-prices-when')
 		const countEls = Array.from(document.querySelectorAll('[data-count]'))
-		const num = (v) => v.toLocaleString(data.locale)
-		// 최근 조사일 최저–최고 사이에서 오늘 값의 위치
+		// 최근 30개 조사일 꺾은선 (기간 첫값보다 오르면 빨강, 내리면 파랑)
+		const SVGNS = 'http://www.w3.org/2000/svg'
 		function rangeEl(itemId, i) {
 			const wrap = document.createElement('span')
 			wrap.className = 'im-price-range'
-			const values = data.series[itemId][region]
-			const cur = values[i]
-			const known = values.slice(0, i + 1).filter((v) => v != null)
-			if (cur == null || known.length < 5) return wrap
+			const values = data.series[itemId][region].slice(0, i + 1)
+			const known = values.filter((v) => v != null)
+			if (known.length < 2) return wrap
 			const lo = Math.min(...known)
 			const hi = Math.max(...known)
-			if (hi === lo) {
-				const same = document.createElement('span')
-				same.className = 'im-range-same'
-				same.textContent = EN ? 'Same price on every recent survey' : '최근 조사일 내내 같은 값'
-				wrap.appendChild(same)
-				return wrap
-			}
-			const pos = (cur - lo) / (hi - lo)
-			const a = document.createElement('span')
-			a.textContent = num(lo)
-			const bar = document.createElement('span')
-			bar.className = 'im-range-bar'
-			const dotEl = document.createElement('i')
-			if (pos >= 0.8) dotEl.className = 'is-hi'
-			else if (pos <= 0.2) dotEl.className = 'is-lo'
-			dotEl.style.left = (pos * 100).toFixed(1) + '%'
-			bar.appendChild(dotEl)
-			const b = document.createElement('span')
-			b.textContent = num(hi)
-			wrap.append(a, bar, b)
+			const pts = values
+				.map((v, k) =>
+					v == null
+						? null
+						: ((k / (values.length - 1)) * 100).toFixed(1) +
+							',' +
+							(hi === lo ? 16 : 29 - ((v - lo) / (hi - lo)) * 26).toFixed(1)
+				)
+				.filter(Boolean)
+				.join(' ')
+			const svg = document.createElementNS(SVGNS, 'svg')
+			svg.setAttribute('viewBox', '0 0 100 32')
+			svg.setAttribute('preserveAspectRatio', 'none')
+			const first = known[0]
+			const last = known[known.length - 1]
+			svg.setAttribute(
+				'class',
+				'im-spark ' + (last > first ? 'im-up' : last < first ? 'im-down' : '')
+			)
+			const line = document.createElementNS(SVGNS, 'polyline')
+			line.setAttribute('points', pts)
+			svg.appendChild(line)
+			wrap.appendChild(svg)
 			return wrap
 		}
+		const trendOf = (itemId, i) => {
+			const known = data.series[itemId][region].slice(0, i + 1).filter((v) => v != null)
+			return known.length < 2 ? null : ((known[known.length - 1] - known[0]) / known[0]) * 100
+		}
+		let sortMode = 'cat'
+		document.querySelectorAll('[data-sort]').forEach((b) =>
+			b.addEventListener('click', () => {
+				sortMode = b.dataset.sort
+				document
+					.querySelectorAll('[data-sort]')
+					.forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+				renderTable()
+			})
+		)
+		// 순위 탭
+		document.querySelectorAll('[data-rank-tab]').forEach((b) =>
+			b.addEventListener('click', () => {
+				document
+					.querySelectorAll('[data-rank-tab]')
+					.forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+				document
+					.querySelectorAll('[data-rank-list]')
+					.forEach((l) => (l.hidden = l.dataset.rankList !== b.dataset.rankTab))
+			})
+		)
 		function renderTable() {
 			const i = data.dates.indexOf(date)
 			const favs = getFavs()
-			const all = visibleItems()
+			let all = visibleItems()
+			if (sortMode !== 'cat') {
+				const key = (e) =>
+					sortMode === 'trend' ? trendOf(e.id, i) : (data.yoy[e.id] || {})[region]
+				const dirn = sortMode === 'yoy-down' ? 1 : -1
+				all = [...all].sort((a, b) => {
+					const ka = key(a)
+					const kb = key(b)
+					if (ka == null && kb == null) return 0
+					if (ka == null) return 1
+					if (kb == null) return -1
+					return dirn * (ka - kb)
+				})
+			}
 			const mine = all.filter((e) => favs.includes(e.id))
 			// 전체 목록에는 즐겨찾기한 품목도 제자리에 그대로 둔다 (별만 채워진다)
 			const visible = mine.length ? [...mine, ...all] : all
@@ -1016,6 +1287,7 @@ const t = {
 			const catHead = (cat) => {
 				const h = document.createElement('div')
 				h.className = 'im-price-cat'
+				h.id = 'im-cat-' + cat
 				const name = document.createElement('h2')
 				name.textContent = data.catLabels[cat]
 				const n = document.createElement('span')
@@ -1090,8 +1362,13 @@ const t = {
 					span.textContent = value
 					row.appendChild(span)
 				})
+				const yoy = (data.yoy[entry.id] || {})[region]
+				const yoyEl = document.createElement('span')
+				yoyEl.className = 'im-num im-price-yoy ' + cls(yoy)
+				yoyEl.textContent = yoy == null ? '–' : mark(yoy) + Math.abs(yoy).toFixed(1) + '%'
+				row.appendChild(yoyEl)
 				row.appendChild(rangeEl(entry.id, i))
-				if (row.dataset.section === 'all' && entry.cat !== lastCat) {
+				if (sortMode === 'cat' && row.dataset.section === 'all' && entry.cat !== lastCat) {
 					lastCat = entry.cat
 					if (data.catLabels[entry.cat]) catHead(entry.cat)
 				}
@@ -2256,5 +2533,185 @@ const t = {
 	}
 	.im-prices :global(.im-meta) {
 		font-size: 13px;
+	}
+
+	/* ---------- 분류 지수 카드 (주식 지수 카드처럼) ---------- */
+	.im-sec-h {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 4px 12px;
+		margin: clamp(28px, 4vw, 52px) 0 12px;
+		font-size: 18px;
+		font-weight: 800;
+	}
+
+	.im-sec-h small {
+		color: var(--muted);
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	.im-idx {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 12px;
+	}
+
+	@media (max-width: 900px) {
+		.im-idx {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	.im-idx-card {
+		display: grid;
+		gap: 4px;
+		padding: 14px 16px 12px;
+		border: 1px solid var(--line);
+		color: var(--ink);
+	}
+
+	.im-idx-card:hover {
+		border-color: var(--ink);
+	}
+
+	.im-idx-name {
+		display: flex;
+		justify-content: space-between;
+		gap: 8px;
+		font-size: 15px;
+		font-weight: 700;
+	}
+
+	.im-idx-name small {
+		color: var(--muted);
+		font-size: 12px;
+		font-weight: 500;
+	}
+
+	.im-idx-card strong {
+		font-size: clamp(24px, 2.6vw, 32px);
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-idx-sub {
+		color: var(--muted);
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	.im-idx-card .im-spark {
+		height: 40px;
+		margin-top: 6px;
+	}
+
+	/* ---------- 오르고 내린 품목 순위 ---------- */
+	.im-rank-tabs,
+	.im-sort {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 10px;
+	}
+
+	.im-rank-tabs button,
+	.im-sort button {
+		min-height: 38px;
+		padding: 0 14px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 14px;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.im-rank-tabs button[aria-pressed='true'],
+	.im-sort button[aria-pressed='true'] {
+		border-color: var(--ink);
+		background: var(--ink);
+		color: var(--bg);
+	}
+
+	.im-rank-list {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		column-gap: clamp(20px, 3vw, 48px);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		border-top: 1px solid var(--ink);
+	}
+
+	.im-rank-list[hidden] {
+		display: none;
+	}
+
+	@media (max-width: 760px) {
+		.im-rank-list {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	.im-rank-list li {
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-rank-list a {
+		display: grid;
+		grid-template-columns: 22px 36px minmax(0, 1fr) auto 80px;
+		align-items: center;
+		gap: 10px;
+		padding: 10px 0;
+		color: var(--ink);
+	}
+
+	.im-rank-no {
+		color: var(--muted);
+		font-weight: 800;
+		text-align: center;
+	}
+
+	.im-rank-list img,
+	.im-rank-ph {
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		object-fit: cover;
+		background: var(--line);
+	}
+
+	.im-rank-name {
+		overflow: hidden;
+		font-size: 16px;
+		font-weight: 700;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.im-rank-price {
+		font-size: 15px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-rank-pct {
+		font-size: 15px;
+		font-weight: 800;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-rank-empty {
+		padding: 14px 0;
+		color: var(--muted);
+	}
+
+	.im-sort {
+		margin-top: 14px;
 	}
 </style>
