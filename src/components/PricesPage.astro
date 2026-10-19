@@ -475,19 +475,15 @@ const t = {
 
 		<h2 class='im-sec-h'>
 			{isEn ? 'Price map' : '시세 지도'}
-			<small
-				>{
-					isEn
-						? 'Size = wholesale trade, color = vs last year'
-						: '칸 크기 = 도매 거래금액 · 색 = 작년 대비'
-				}</small
-			>
+			<small>{isEn ? 'Bigger tiles sell more' : '큰 칸일수록 많이 팔린 품목입니다'}</small>
 		</h2>
 		<PriceMap isEn={isEn} prefix={prefix} />
 
 		<h2 class='im-sec-h'>
 			{isEn ? 'Category index' : '분류별 지수'}
-			<small>{isEn ? 'Same week last year = 100, Seoul' : '작년 이맘때 = 100 · 서울 도매'}</small>
+			<small
+				>{isEn ? 'Above 100 means pricier than last year' : '100보다 크면 작년보다 비쌉니다'}</small
+			>
 		</h2>
 		<div class='im-idx'>
 			{

@@ -56,24 +56,19 @@ const payload = { groups, prefix, isEn }
 	</ul>
 
 	<div class='im-map-legend'>
+		<span>{isEn ? 'vs last year' : '작년보다'}</span>
+		<span class='im-map-end'>{isEn ? 'Cheaper' : '쌉니다'}</span>
 		<span class='im-map-scale' aria-hidden='true'>
-			<i class='d3'>−30%</i><i class='d2'>−15%</i><i class='d1'>−5%</i><i class='n'>0</i><i
-				class='u1'>+5%</i
-			><i class='u2'>+15%</i><i class='u3'>+30%</i>
+			<i class='d3'></i><i class='d2'></i><i class='d1'></i><i class='n'></i><i class='u1'></i><i
+				class='u2'></i><i class='u3'></i>
 		</span>
-		<span>
-			{
-				isEn
-					? 'Color: price vs the same month last year (blue cheaper, red pricier)'
-					: '색: 작년 같은 달보다 쌉니다(파랑) · 비쌉니다(빨강)'
-			}
-		</span>
+		<span class='im-map-end'>{isEn ? 'Pricier' : '비쌉니다'}</span>
 	</div>
 	<p class='im-meta im-map-note'>
 		{
 			isEn
 				? `Tile size: national public wholesale market trade value (average of the last ${days} survey days). Grains and seeds trade mostly outside these markets, so their tiles look small.`
-				: `칸 크기는 전국 공영도매시장 거래금액(최근 ${days}개 조사일 평균)입니다. 곡식·깨는 도매시장 밖 거래가 많아 작게 보입니다.`
+				: '큰 칸일수록 요즘 도매시장에서 많이 팔린 품목입니다. 곡식과 깨는 도매시장 밖에서 많이 팔려 작게 보입니다.'
 		}
 	</p>
 	<script type='application/json' data-map-data set:html={JSON.stringify(payload)} />
@@ -730,13 +725,17 @@ const payload = { groups, prefix, isEn }
 
 	.im-map-legend {
 		display: flex;
-		flex-wrap: wrap;
 		align-items: center;
 		justify-content: center;
-		gap: 8px 14px;
+		gap: 8px;
 		margin-top: 14px;
-		font-size: 14px;
-		font-weight: 600;
+		font-size: 16px;
+		font-weight: 700;
+		white-space: nowrap;
+	}
+
+	.im-map-end {
+		font-weight: 800;
 	}
 
 	.im-map-scale {
@@ -744,13 +743,19 @@ const payload = { groups, prefix, isEn }
 	}
 
 	.im-map-scale i {
-		min-width: 44px;
-		padding: 3px 4px;
-		color: #fff;
-		font-size: 11px;
-		font-style: normal;
-		font-weight: 700;
-		text-align: center;
+		width: 26px;
+		height: 18px;
+	}
+
+	@media (max-width: 480px) {
+		.im-map-legend {
+			gap: 6px;
+			font-size: 15px;
+		}
+
+		.im-map-scale i {
+			width: 18px;
+		}
 	}
 
 	.im-map-scale .d3 {
