@@ -9,7 +9,7 @@ import {
 	getPosts
 } from '@/utils'
 import PriceBoard from '@/components/PriceBoard'
-import PriceIndexList from '@/components/PriceIndexList'
+import PriceMap from '@/components/PriceMap'
 import { ITEMS, formatDate, getPriceAsOfDate, buildPriceData } from '@/data/prices'
 import { POPULAR_PRICE_IDS } from '@/data/price-popular'
 
@@ -79,16 +79,17 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 			<script type='application/json' id='im-price-index' set:html={JSON.stringify(priceIndex)} />
 		</div>
 
-		<h2 class='im-front-label'>{isEn ? 'Most searched' : '많이 찾는 시세'}</h2>
-		<PriceBoard ids={POPULAR_PRICE_IDS} isEn={isEn} prefix={prefix} oneRow />
+		<PriceMap isEn={isEn} prefix={prefix} />
 
-		<h2 class='im-front-label im-front-label-all'>
-			{isEn ? `All ${ITEMS.length} items` : `전체 ${ITEMS.length}개 품목`}
-		</h2>
-		<PriceIndexList isEn={isEn} prefix={prefix} />
+		<h2 class='im-front-label im-front-label-all'>{isEn ? 'Most searched' : '많이 찾는 시세'}</h2>
+		<PriceBoard ids={POPULAR_PRICE_IDS} isEn={isEn} prefix={prefix} oneRow />
 		<div class='im-front-more'>
 			<a class='im-front-all' href={`${prefix}/prices/`}>
-				{isEn ? 'By city and date, with charts →' : '지역·날짜별 시세와 차트 보기 →'}
+				{
+					isEn
+						? `All ${ITEMS.length} items by city and date →`
+						: `전체 ${ITEMS.length}개 품목 시세표 보기 →`
+				}
 			</a>
 		</div>
 	</section>

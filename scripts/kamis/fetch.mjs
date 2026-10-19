@@ -6,6 +6,7 @@
  *   node scripts/kamis/fetch.mjs --full     # 일별 400일 전체 다시 받기
  *   node scripts/kamis/fetch.mjs --monthly  # 월별 10년치도 함께 갱신
  *   (출하량 volume.json 은 매번 최근 조사일 8일치를 갱신한다. 끄려면 --no-volume)
+ *   (시세 지도 반입량 trade.json 은 최근 조사일 7일치. 끄려면 --no-trade, 이것만 받으려면 --trade-only)
  *
  * 인증키는 환경변수 DATA_GO_KR_KEY 또는 repo 루트 .env 에서 읽는다.
  * 저장 파일은 빌드 때 그대로 읽히므로 배포 환경에는 키가 필요 없다.
@@ -253,6 +254,43 @@ const fetchVolume = async () => {
 	saveJson('volume.json', { dates })
 }
 
+/**
+ * trade.json — 시세 지도 칸 크기용 전국 공영도매시장 반입량 (모든 시장 합계, kg).
+ *   dates: { "20261016": { "배추|가을(김장)배추": 104354, ... } }
+ * price-map.json 에 있는 품목 중분류만 남긴다. 최근 조사일 7일치.
+ */
+const TRADE_DAYS = 7
+const fetchTrade = async () => {
+	const daily = loadJson('daily.json', null)
+	if (!daily) return
+	const map = JSON.parse(readFileSync(join(ROOT, 'src', 'data', 'price-map.json'), 'utf8'))
+	const wanted = new Set(map.crops.flatMap((c) => c.trade.map(([m]) => m)))
+	const surveyDates = new Set()
+	for (const bySgg of Object.values(daily.series))
+		for (const byDate of Object.values(bySgg)) for (const d of Object.keys(byDate)) surveyDates.add(d)
+	const recent = [...surveyDates].sort().slice(-TRADE_DAYS)
+	const prev = loadJson('trade.json', { dates: {} })
+	const dates = {}
+	for (const d of recent) {
+		if (prev.dates[d] && d < recent[recent.length - 2]) {
+			dates[d] = prev.dates[d]
+			continue
+		}
+		const rows = await callAll('shipmentSequel', { 'cond[spmt_ymd::EQ]': d }, 'info')
+		const agg = {}
+		for (const r of rows) {
+			if (!wanted.has(r.gds_mclsf_nm)) continue
+			const kg = Number(r.avg_spmt_amt)
+			if (!kg) continue
+			const key = `${r.gds_mclsf_nm}|${r.gds_sclsf_nm ?? ''}`
+			agg[key] = (agg[key] ?? 0) + kg
+		}
+		dates[d] = agg
+		process.stdout.write(`trade ${d}: ${rows.length}\n`)
+	}
+	saveJson('trade.json', { dates })
+}
+
 /** prices.ts 의 품목 코드 목록 (kamis-items.json) */
 const loadWantedCombos = () => {
 	const p = join(ROOT, 'src', 'data', 'kamis-items.json')
@@ -261,9 +299,15 @@ const loadWantedCombos = () => {
 }
 
 const main = async () => {
+	// 시세 지도 반입량만 다시 받을 때 (일별 시세는 건드리지 않는다)
+	if (args.has('--trade-only')) {
+		await fetchTrade()
+		return
+	}
 	const lastDate = await fetchDaily()
 	if (args.has('--monthly') || args.has('--monthly-all')) await fetchMonthly()
 	if (!args.has('--no-volume')) await fetchVolume()
+	if (!args.has('--no-trade')) await fetchTrade()
 	saveJson('meta.json', {
 		source: 'aT KAMIS 가격정보 (공공데이터포털 한국농수산식품유통공사_기간별 중도매인 가격정보, 연월별 도·소매가격정보)',
 		lastDate,

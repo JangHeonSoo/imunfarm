@@ -1,0 +1,834 @@
+---
+/**
+ * 시세 지도. 칸 크기 = 도매시장 거래금액, 색 = 작년 같은 달보다 비싼지(빨강) 싼지(파랑). 데이터: src/data/price-map.ts
+ * - 칸 배치는 squarify. 화면 크기에 맞춰 브라우저에서 다시 배치하고, 확대·이동해도 글자 크기는 그대로 둔다.
+ * - 휠 확대는 지도를 한 번 누른 뒤에만 (그냥 굴리면 페이지가 내려가야 한다). Ctrl/⌘+휠은 바로.
+ * - 작은 칸을 누르면 먼저 그 분류로 확대하고, 충분히 큰 칸을 누르면 시세 페이지로 간다 (손가락으로 잘못 누르지 않게).
+ */
+import { buildPriceMap } from '@/data/price-map'
+
+type Props = { isEn?: boolean; prefix?: string }
+const { isEn = false, prefix = '' } = Astro.props
+const { groups, days } = buildPriceMap(isEn)
+const payload = { groups, prefix, isEn }
+---
+
+<div class='im-map' data-map>
+	<div class='im-map-bar'>
+		<p>
+			{
+				isEn
+					? 'Tap a small tile to zoom in, a large one to open'
+					: '작은 칸은 누르면 크게 보이고, 큰 칸을 누르면 시세 페이지로 갑니다'
+			}
+		</p>
+		<div class='im-map-tools'>
+			<button type='button' data-zoom='in' aria-label={isEn ? 'Zoom in' : '확대'}>+</button>
+			<button type='button' data-zoom='out' aria-label={isEn ? 'Zoom out' : '축소'}>−</button>
+			<button type='button' data-zoom='reset' class='im-map-reset'>
+				{isEn ? 'All' : '전체'}
+			</button>
+		</div>
+	</div>
+	<div class='im-map-stage' data-stage tabindex='0' aria-label={isEn ? 'Price map' : '시세 지도'}>
+		<div class='im-map-layer' data-layer>
+			{
+				groups.map((g) => (
+					<section class='im-map-group' data-group={g.key}>
+						<button type='button' class='im-map-ghead' data-ghead={g.key}>
+							{g.label}
+						</button>
+						{g.tiles.map((t) => (
+							<a class='im-map-tile' href={`${prefix}/prices/${t.id}/`} data-tile={t.id}>
+								{t.name}
+							</a>
+						))}
+					</section>
+				))
+			}
+		</div>
+		<div class='im-map-tip' data-tip hidden></div>
+		<div class='im-map-hint' data-hint hidden>
+			{isEn ? 'Click the map first, then scroll to zoom' : '지도를 한 번 누르면 휠로 확대됩니다'}
+		</div>
+	</div>
+
+	<div class='im-map-legend'>
+		<span class='im-map-scale' aria-hidden='true'>
+			<i style='--p:70;--c:var(--down)'></i><i style='--p:40;--c:var(--down)'></i><i
+				style='--p:15;--c:var(--down)'></i><i style='--p:0;--c:var(--down)'></i><i
+				style='--p:15;--c:var(--up)'></i><i style='--p:40;--c:var(--up)'></i><i
+				style='--p:70;--c:var(--up)'></i>
+		</span>
+		<span>
+			{
+				isEn
+					? 'Blue: cheaper than last year · Red: pricier than last year'
+					: '파랑 = 작년보다 쌉니다 · 빨강 = 작년보다 비쌉니다'
+			}
+		</span>
+	</div>
+	<p class='im-meta im-map-note'>
+		{
+			isEn
+				? `Tile size: national public wholesale market trade value (average of the last ${days} survey days). Grains and seeds trade mostly outside these markets, so their tiles look small.`
+				: `칸 크기는 전국 공영도매시장 거래금액(최근 ${days}개 조사일 평균)입니다. 곡식·깨는 도매시장 밖 거래가 많아 작게 보입니다.`
+		}
+	</p>
+	<script type='application/json' data-map-data set:html={JSON.stringify(payload)} />
+</div>
+
+<script>
+	type Tile = {
+		id: string
+		name: string
+		photo: string | null
+		value: number
+		yoy: number | null
+		price: number | null
+		unit: string
+		kg: number | null
+	}
+	type Group = { key: string; label: string; tiles: Tile[] }
+	type Rect = { x: number; y: number; w: number; h: number }
+
+	const HEAD = 26
+	const GAP = 2
+
+	/** squarify: 값 큰 순서로 정사각형에 가깝게 채운다 */
+	const squarify = <T extends { value: number }>(items: T[], rect: Rect): (T & Rect)[] => {
+		const out: (T & Rect)[] = []
+		const total = items.reduce((s, i) => s + i.value, 0)
+		if (!total || rect.w <= 0 || rect.h <= 0)
+			return items.map((i) => ({ ...i, x: rect.x, y: rect.y, w: 0, h: 0 }))
+		const scale = (rect.w * rect.h) / total
+		const rest = items.map((i) => ({ item: i, area: i.value * scale }))
+		let { x, y, w, h } = rect
+		const worst = (row: number[], side: number) => {
+			const s = row.reduce((a, b) => a + b, 0)
+			const max = Math.max(...row)
+			const min = Math.min(...row)
+			return Math.max((side * side * max) / (s * s), (s * s) / (side * side * min))
+		}
+		while (rest.length) {
+			const side = Math.min(w, h)
+			const row = [rest[0]]
+			let i = 1
+			while (
+				i < rest.length &&
+				worst(
+					[...row, rest[i]].map((r) => r.area),
+					side
+				) <=
+					worst(
+						row.map((r) => r.area),
+						side
+					)
+			)
+				row.push(rest[i++])
+			rest.splice(0, row.length)
+			const sum = row.reduce((s, r) => s + r.area, 0)
+			if (w >= h) {
+				const cw = sum / h
+				let cy = y
+				for (const r of row) {
+					const ch = r.area / cw
+					out.push({ ...r.item, x, y: cy, w: cw, h: ch })
+					cy += ch
+				}
+				x += cw
+				w -= cw
+			} else {
+				const ch = sum / w
+				let cx = x
+				for (const r of row) {
+					const cw = r.area / ch
+					out.push({ ...r.item, x: cx, y, w: cw, h: ch })
+					cx += cw
+				}
+				y += ch
+				h -= ch
+			}
+		}
+		return out
+	}
+
+	const initMap = (box: HTMLElement) => {
+		if (box.dataset.bound === 'true') return
+		box.dataset.bound = 'true'
+		const data = JSON.parse(box.querySelector('[data-map-data]')!.textContent || '{}') as {
+			groups: Group[]
+			prefix: string
+			isEn: boolean
+		}
+		const { isEn } = data
+		const stage = box.querySelector<HTMLElement>('[data-stage]')!
+		const tip = box.querySelector<HTMLElement>('[data-tip]')!
+		const hint = box.querySelector<HTMLElement>('[data-hint]')!
+		const tileEls = new Map<string, HTMLAnchorElement>()
+		box
+			.querySelectorAll<HTMLAnchorElement>('[data-tile]')
+			.forEach((el) => tileEls.set(el.dataset.tile!, el))
+		const headEls = new Map<string, HTMLButtonElement>()
+		box
+			.querySelectorAll<HTMLButtonElement>('[data-ghead]')
+			.forEach((el) => headEls.set(el.dataset.ghead!, el))
+		const tileById = new Map<string, Tile>()
+		data.groups.forEach((g) => g.tiles.forEach((t) => tileById.set(t.id, t)))
+
+		const fmt = (v: number | null) =>
+			v == null ? '–' : isEn ? '₩' + v.toLocaleString('en-US') : v.toLocaleString('ko-KR') + '원'
+		const arrow = (v: number | null) => {
+			if (v == null) return ''
+			const n = Math.round(Math.abs(v))
+			return n < 1 ? (isEn ? 'same' : '비슷') : `${v > 0 ? '▲' : '▼'} ${n}%`
+		}
+		const sentence = (v: number | null) => {
+			if (v == null) return isEn ? 'Not surveyed now' : '지금은 조사하지 않습니다'
+			const n = Math.round(Math.abs(v))
+			if (isEn)
+				return n < 1
+					? 'About the same as last year'
+					: `${n}% ${v > 0 ? 'higher' : 'lower'} than last year`
+			return n < 1 ? '작년과 비슷합니다' : `작년보다 ${n}% ${v > 0 ? '비쌉니다' : '쌉니다'}`
+		}
+
+		// 색: ±40%에서 가장 진하게. 비슷하면 바탕에 가까운 회색
+		data.groups.forEach((g) =>
+			g.tiles.forEach((t) => {
+				const el = tileEls.get(t.id)!
+				const p = t.yoy == null ? 0 : Math.min(1, Math.abs(t.yoy) / 40)
+				const strength = Math.round(18 + p * 70)
+				el.style.setProperty(
+					'--tc',
+					t.yoy == null ? 'var(--line)' : t.yoy >= 0 ? 'var(--up)' : 'var(--down)'
+				)
+				el.style.setProperty('--tp', t.yoy == null || Math.abs(t.yoy) < 1 ? '0%' : strength + '%')
+				el.classList.toggle('is-dark', t.yoy != null && strength >= 55)
+				el.classList.toggle('is-none', t.yoy == null)
+				el.innerHTML = ''
+				if (t.photo) {
+					const img = document.createElement('img')
+					img.src = t.photo
+					img.alt = ''
+					img.loading = 'lazy'
+					img.width = 96
+					img.height = 96
+					el.append(img)
+				}
+				const name = document.createElement('b')
+				name.textContent = t.name
+				const yoy = document.createElement('span')
+				yoy.className = 'im-map-yoy'
+				yoy.textContent = arrow(t.yoy)
+				const price = document.createElement('span')
+				price.className = 'im-map-price'
+				price.textContent = t.price == null ? '' : t.kg ? `1kg ${fmt(t.kg)}` : fmt(t.price)
+				el.append(name, yoy, price)
+				el.setAttribute(
+					'aria-label',
+					`${t.name} ${t.price == null ? '' : fmt(t.price)} ${sentence(t.yoy)}`
+				)
+			})
+		)
+
+		// 세계 좌표(배율 1) 배치
+		let world = new Map<string, Rect>()
+		let groupRects = new Map<string, Rect>()
+		let W = 0
+		let H = 0
+		const layout = () => {
+			W = stage.clientWidth
+			H = stage.clientHeight
+			world = new Map()
+			groupRects = new Map()
+			const gs = squarify(
+				data.groups.map((g) => ({
+					key: g.key,
+					value: g.tiles.reduce((s, t) => s + t.value, 0),
+					g
+				})),
+				{ x: 0, y: 0, w: W, h: H }
+			)
+			for (const gr of gs) {
+				groupRects.set(gr.key, { x: gr.x, y: gr.y, w: gr.w, h: gr.h })
+				const inner = { x: gr.x + GAP, y: gr.y + HEAD, w: gr.w - GAP * 2, h: gr.h - HEAD - GAP }
+				for (const t of squarify(gr.g.tiles, inner))
+					world.set(t.id, { x: t.x, y: t.y, w: t.w, h: t.h })
+			}
+		}
+
+		// 화면 = 세계 × s + (tx, ty)
+		let s = 1
+		let tx = 0
+		let ty = 0
+		const MAX = 8
+		const clamp = () => {
+			s = Math.min(MAX, Math.max(1, s))
+			tx = Math.min(0, Math.max(W - W * s, tx))
+			ty = Math.min(0, Math.max(H - H * s, ty))
+		}
+		const render = () => {
+			for (const [id, r] of world) {
+				const el = tileEls.get(id)!
+				const x = r.x * s + tx
+				const y = r.y * s + ty
+				const w = r.w * s - GAP
+				const h = r.h * s - GAP
+				el.style.transform = `translate(${x}px, ${y}px)`
+				el.style.width = Math.max(0, w) + 'px'
+				el.style.height = Math.max(0, h) + 'px'
+				// 칸이 화면에서 얼마나 큰지에 따라 보여 줄 것을 고른다
+				const size =
+					w >= 118 && h >= 112
+						? 'xl'
+						: w >= 84 && h >= 62
+							? 'l'
+							: w >= 50 && h >= 30
+								? 'm'
+								: w >= 30 && h >= 18
+									? 's'
+									: 'xs'
+				if (el.dataset.size !== size) el.dataset.size = size
+			}
+			for (const [key, r] of groupRects) {
+				const el = headEls.get(key)!
+				el.style.transform = `translate(${r.x * s + tx}px, ${r.y * s + ty}px)`
+				el.style.width = Math.max(0, r.w * s - GAP) + 'px'
+			}
+			box.classList.toggle('is-zoomed', s > 1.01)
+		}
+
+		// 부드럽게 옮기기
+		let anim = 0
+		const animateTo = (ns: number, ntx: number, nty: number) => {
+			cancelAnimationFrame(anim)
+			const fs = s
+			const ftx = tx
+			const fty = ty
+			const t0 = performance.now()
+			const step = (now: number) => {
+				const k = Math.min(1, (now - t0) / 280)
+				const e = 1 - Math.pow(1 - k, 3)
+				s = fs + (ns - fs) * e
+				tx = ftx + (ntx - ftx) * e
+				ty = fty + (nty - fty) * e
+				clamp()
+				render()
+				if (k < 1) anim = requestAnimationFrame(step)
+			}
+			anim = requestAnimationFrame(step)
+		}
+		const zoomAt = (factor: number, cx: number, cy: number, smooth = true) => {
+			const ns = Math.min(MAX, Math.max(1, s * factor))
+			const wx = (cx - tx) / s
+			const wy = (cy - ty) / s
+			const ntx = cx - wx * ns
+			const nty = cy - wy * ns
+			if (smooth) animateTo(ns, ntx, nty)
+			else {
+				s = ns
+				tx = ntx
+				ty = nty
+				clamp()
+				render()
+			}
+		}
+		const fit = (r: Rect) => {
+			const ns = Math.min(MAX, Math.max(1, Math.min(W / r.w, H / r.h)))
+			animateTo(ns, (W - r.w * ns) / 2 - r.x * ns, (H - r.h * ns) / 2 - r.y * ns)
+		}
+		const groupOf = (id: string) => data.groups.find((g) => g.tiles.some((t) => t.id === id))!.key
+
+		// 휠: 지도를 누른 뒤에만, 또는 Ctrl/⌘
+		let active = false
+		let hintTimer = 0
+		stage.addEventListener(
+			'wheel',
+			(e) => {
+				if (!active && !e.ctrlKey && !e.metaKey) {
+					hint.hidden = false
+					clearTimeout(hintTimer)
+					hintTimer = window.setTimeout(() => (hint.hidden = true), 1600)
+					return
+				}
+				e.preventDefault()
+				const rect = stage.getBoundingClientRect()
+				zoomAt(Math.exp(-e.deltaY * 0.0022), e.clientX - rect.left, e.clientY - rect.top, false)
+			},
+			{ passive: false }
+		)
+		document.addEventListener('pointerdown', (e) => {
+			active = stage.contains(e.target as Node)
+		})
+
+		// 끌기·두 손가락 확대
+		const pts = new Map<number, { x: number; y: number }>()
+		let moved = false
+		let downAt = { x: 0, y: 0 }
+		let pinch0 = 0
+		let pinchS = 1
+		stage.addEventListener('pointerdown', (e) => {
+			pts.set(e.pointerId, { x: e.clientX, y: e.clientY })
+			downAt = { x: e.clientX, y: e.clientY }
+			moved = false
+			if (pts.size === 2) {
+				const [a, b] = [...pts.values()]
+				pinch0 = Math.hypot(a.x - b.x, a.y - b.y)
+				pinchS = s
+			}
+		})
+		stage.addEventListener('pointermove', (e) => {
+			if (!pts.has(e.pointerId)) {
+				if (e.pointerType === 'mouse') showTip(e)
+				return
+			}
+			const prev = pts.get(e.pointerId)!
+			pts.set(e.pointerId, { x: e.clientX, y: e.clientY })
+			if (Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) moved = true
+			if (pts.size === 2) {
+				const [a, b] = [...pts.values()]
+				const d = Math.hypot(a.x - b.x, a.y - b.y)
+				const rect = stage.getBoundingClientRect()
+				const cx = (a.x + b.x) / 2 - rect.left
+				const cy = (a.y + b.y) / 2 - rect.top
+				zoomAt((pinchS * d) / pinch0 / s, cx, cy, false)
+				return
+			}
+			if (moved && s > 1.01) {
+				if (!stage.hasPointerCapture(e.pointerId)) stage.setPointerCapture(e.pointerId)
+				tx += e.clientX - prev.x
+				ty += e.clientY - prev.y
+				clamp()
+				render()
+				tip.hidden = true
+			}
+		})
+		const up = (e: PointerEvent) => {
+			pts.delete(e.pointerId)
+		}
+		stage.addEventListener('pointerup', up)
+		stage.addEventListener('pointercancel', up)
+		stage.addEventListener('pointerleave', () => (tip.hidden = true))
+
+		// 확대 상태에서는 화면 끌기로 페이지가 움직이지 않게 (휴대폰)
+		stage.addEventListener(
+			'touchmove',
+			(e) => {
+				if (s > 1.01 || e.touches.length > 1) e.preventDefault()
+			},
+			{ passive: false }
+		)
+
+		// 누르기: 작은 칸이면 분류로 확대, 크면 시세 페이지
+		box.querySelectorAll<HTMLAnchorElement>('[data-tile]').forEach((el) =>
+			el.addEventListener('click', (e) => {
+				if (moved) {
+					e.preventDefault()
+					return
+				}
+				const size = el.dataset.size
+				if (size === 'xl' || size === 'l') return
+				e.preventDefault()
+				const key = groupOf(el.dataset.tile!)
+				const g = groupRects.get(key)!
+				// 이미 분류 크기로 확대돼 있으면 그 칸 쪽으로 더 확대
+				if (s >= Math.min(W / g.w, H / g.h) * 0.98) {
+					const r = world.get(el.dataset.tile!)!
+					fit({ x: r.x - r.w * 1.2, y: r.y - r.h * 1.2, w: r.w * 3.4, h: r.h * 3.4 })
+				} else fit(g)
+			})
+		)
+		headEls.forEach((el, key) =>
+			el.addEventListener('click', () => {
+				if (!moved) fit(groupRects.get(key)!)
+			})
+		)
+		box.querySelectorAll<HTMLButtonElement>('[data-zoom]').forEach((b) =>
+			b.addEventListener('click', () => {
+				const z = b.dataset.zoom
+				if (z === 'reset') animateTo(1, 0, 0)
+				else zoomAt(z === 'in' ? 1.6 : 1 / 1.6, W / 2, H / 2)
+			})
+		)
+
+		// 마우스를 올리면 가격 카드
+		const showTip = (e: PointerEvent) => {
+			const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tile]')
+			if (!el) {
+				tip.hidden = true
+				return
+			}
+			const t = tileById.get(el.dataset.tile!)!
+			tip.innerHTML = ''
+			if (t.photo) {
+				const img = document.createElement('img')
+				img.src = t.photo
+				img.alt = ''
+				tip.append(img)
+			}
+			const body = document.createElement('div')
+			const n = document.createElement('b')
+			n.textContent = t.name
+			const p = document.createElement('strong')
+			p.textContent = t.price == null ? '' : t.kg ? `1kg ${fmt(t.kg)}` : fmt(t.price)
+			const u = document.createElement('span')
+			u.textContent = t.price == null ? '' : `${isEn ? '' : '도매 '}${t.unit} ${fmt(t.price)}`
+			const y = document.createElement('em')
+			y.textContent = sentence(t.yoy)
+			y.className =
+				t.yoy == null || Math.round(Math.abs(t.yoy)) < 1 ? '' : t.yoy > 0 ? 'im-up' : 'im-down'
+			body.append(n, p, u, y)
+			tip.append(body)
+			tip.hidden = false
+			const rect = stage.getBoundingClientRect()
+			const x = e.clientX - rect.left
+			const yy = e.clientY - rect.top
+			const tw = tip.offsetWidth
+			const th = tip.offsetHeight
+			tip.style.transform = `translate(${x + 16 + tw > W ? x - tw - 12 : x + 16}px, ${yy + 16 + th > H ? yy - th - 12 : yy + 16}px)`
+		}
+
+		const relayout = () => {
+			const ow = W
+			layout()
+			if (ow && ow !== W) {
+				s = 1
+				tx = 0
+				ty = 0
+			}
+			clamp()
+			render()
+		}
+		relayout()
+		box.classList.add('is-ready')
+		new ResizeObserver(relayout).observe(stage)
+	}
+
+	const initAll = () => document.querySelectorAll<HTMLElement>('[data-map]').forEach(initMap)
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAll)
+	else initAll()
+	document.addEventListener('astro:page-load', initAll)
+</script>
+
+<style>
+	.im-map-stage {
+		position: relative;
+		height: clamp(420px, 62vh, 620px);
+		overflow: hidden;
+		background: var(--bg);
+		border: 1px solid var(--ink);
+		touch-action: pan-y;
+		user-select: none;
+		-webkit-user-select: none;
+		outline: none;
+	}
+
+	.im-map.is-zoomed .im-map-stage {
+		touch-action: none;
+		cursor: grab;
+	}
+
+	@media (max-width: 760px) {
+		.im-map-stage {
+			height: min(72vh, 560px);
+		}
+	}
+
+	/* JS 전: 이름만 줄지어 보인다 */
+	.im-map-layer {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		padding: 8px;
+	}
+
+	.im-map.is-ready .im-map-layer {
+		display: block;
+		padding: 0;
+	}
+
+	.im-map-group {
+		display: contents;
+	}
+
+	.im-map-ghead {
+		padding: 0 8px;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 13px;
+		font-weight: 800;
+		letter-spacing: 0.02em;
+		text-align: left;
+		cursor: zoom-in;
+	}
+
+	.im-map.is-ready .im-map-ghead {
+		position: absolute;
+		top: 0;
+		left: 0;
+		height: 26px;
+		line-height: 26px;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	.im-map-tile {
+		color: var(--ink);
+		font-size: 13px;
+	}
+
+	.im-map.is-ready .im-map-tile {
+		position: absolute;
+		top: 0;
+		left: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		overflow: hidden;
+		padding: 4px;
+		background: color-mix(in srgb, var(--tc) var(--tp), var(--tile0));
+		text-align: center;
+		line-height: 1.2;
+		will-change: transform;
+	}
+
+	.im-map-tile.is-dark {
+		color: #fff;
+	}
+
+	.im-map-tile.is-none {
+		color: var(--muted);
+	}
+
+	.im-map-tile:hover {
+		outline: 2px solid var(--ink);
+		outline-offset: -2px;
+		z-index: 2;
+	}
+
+	.im-map-tile :global(img) {
+		display: none;
+		width: 46px;
+		height: 46px;
+		object-fit: cover;
+		border-radius: 50%;
+		background: #fff;
+		margin-bottom: 4px;
+	}
+
+	.im-map-tile :global(b) {
+		font-weight: 700;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 100%;
+	}
+
+	.im-map-tile :global(.im-map-yoy),
+	.im-map-tile :global(.im-map-price) {
+		display: none;
+		font-size: 12px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
+	.im-map-tile :global(.im-map-price) {
+		font-weight: 600;
+		opacity: 0.85;
+	}
+
+	.im-map-tile[data-size='xl'] {
+		font-size: 16px;
+	}
+
+	.im-map-tile[data-size='xl'] :global(img) {
+		display: block;
+	}
+
+	.im-map-tile[data-size='xl'] :global(.im-map-yoy) {
+		display: block;
+		font-size: 14px;
+	}
+
+	.im-map-tile[data-size='xl'] :global(.im-map-price),
+	.im-map-tile[data-size='l'] :global(.im-map-price),
+	.im-map-tile[data-size='l'] :global(.im-map-yoy) {
+		display: block;
+	}
+
+	.im-map-tile[data-size='l'] {
+		font-size: 14px;
+	}
+
+	.im-map-tile[data-size='s'] {
+		font-size: 11px;
+		padding: 1px;
+	}
+
+	.im-map-tile[data-size='xs'] {
+		font-size: 0;
+		padding: 0;
+	}
+
+	.im-map-tile[data-size='xs'] :global(b) {
+		display: none;
+	}
+
+	.im-map-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 10px;
+	}
+
+	.im-map-bar p {
+		margin: 0;
+		color: var(--muted);
+		font-size: 14px;
+		font-weight: 600;
+	}
+
+	.im-map-tools {
+		display: flex;
+		flex: none;
+		gap: 6px;
+	}
+
+	.im-map-tools button {
+		min-width: 40px;
+		height: 40px;
+		padding: 0 10px;
+		border: 1px solid var(--ink);
+		background: var(--bg);
+		color: var(--ink);
+		font: inherit;
+		font-size: 18px;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.im-map-tools .im-map-reset {
+		font-size: 14px;
+	}
+
+	.im-map:not(.is-zoomed) .im-map-reset {
+		visibility: hidden;
+	}
+
+	.im-map-tip[hidden],
+	.im-map-hint[hidden] {
+		display: none;
+	}
+
+	.im-map-hint {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		z-index: 6;
+		padding: 10px 16px;
+		transform: translate(-50%, -50%);
+		background: var(--ink);
+		color: var(--bg);
+		font-size: 14px;
+		font-weight: 600;
+		pointer-events: none;
+	}
+
+	.im-map-tip {
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 7;
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		min-width: 210px;
+		padding: 12px 14px;
+		background: var(--bg);
+		border: 1px solid var(--ink);
+		pointer-events: none;
+	}
+
+	.im-map-tip :global(img) {
+		width: 56px;
+		height: 56px;
+		object-fit: cover;
+	}
+
+	.im-map-tip :global(div) {
+		display: grid;
+		gap: 2px;
+	}
+
+	.im-map-tip :global(b) {
+		font-size: 15px;
+	}
+
+	.im-map-tip :global(strong) {
+		font-size: 22px;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-map-tip :global(span) {
+		color: var(--muted);
+		font-size: 12px;
+	}
+
+	.im-map-tip :global(em) {
+		font-style: normal;
+		font-size: 14px;
+		font-weight: 700;
+	}
+
+	.im-map-tip :global(em.im-up) {
+		color: var(--up);
+	}
+
+	.im-map-tip :global(em.im-down) {
+		color: var(--down);
+	}
+
+	.im-map-legend {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: 8px 14px;
+		margin-top: 14px;
+		font-size: 14px;
+		font-weight: 600;
+	}
+
+	.im-map-scale {
+		display: inline-flex;
+	}
+
+	.im-map-scale i {
+		width: 22px;
+		height: 14px;
+		background: color-mix(in srgb, var(--c) calc(var(--p) * 1%), var(--tile0));
+	}
+
+	.im-map-note {
+		margin: 8px auto 0;
+		max-width: 720px;
+		text-align: center;
+	}
+
+	.im-map {
+		--tile0: #ece9e4;
+	}
+
+	:global(html.dark) .im-map {
+		--tile0: #2a2a27;
+	}
+</style>
