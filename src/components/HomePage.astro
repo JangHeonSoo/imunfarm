@@ -9,6 +9,7 @@ import {
 	getPosts
 } from '@/utils'
 import PriceBoard from '@/components/PriceBoard'
+import PriceIndexList from '@/components/PriceIndexList'
 import { ITEMS, formatDate, getPriceAsOfDate, buildPriceData } from '@/data/prices'
 import { POPULAR_PRICE_IDS } from '@/data/price-popular'
 
@@ -78,10 +79,16 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 			<script type='application/json' id='im-price-index' set:html={JSON.stringify(priceIndex)} />
 		</div>
 
+		<h2 class='im-front-label'>{isEn ? 'Most searched' : '많이 찾는 시세'}</h2>
 		<PriceBoard ids={POPULAR_PRICE_IDS} isEn={isEn} prefix={prefix} />
+
+		<h2 class='im-front-label im-front-label-all'>
+			{isEn ? `All ${ITEMS.length} items` : `전체 ${ITEMS.length}개 품목`}
+		</h2>
+		<PriceIndexList isEn={isEn} prefix={prefix} />
 		<div class='im-front-more'>
 			<a class='im-front-all' href={`${prefix}/prices/`}>
-				{isEn ? `All ${ITEMS.length} items →` : `전체 ${ITEMS.length}개 품목 시세 보기 →`}
+				{isEn ? 'By city and date, with charts →' : '지역·날짜별 시세와 차트 보기 →'}
 			</a>
 		</div>
 	</section>
@@ -227,10 +234,22 @@ const RATIOS = ['4 / 3', '3 / 4', '1 / 1', '4 / 5', '16 / 10', '5 / 4', '3 / 2',
 		padding-top: clamp(48px, 6vw, 88px);
 	}
 
+	.im-front-label {
+		margin: 0 0 clamp(16px, 2vw, 28px);
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-align: center;
+	}
+
+	.im-front-label-all {
+		margin-top: clamp(56px, 7vw, 100px);
+	}
+
 	.im-front-more {
 		display: flex;
 		justify-content: center;
-		margin-top: clamp(32px, 4vw, 56px);
+		margin-top: clamp(20px, 2.4vw, 32px);
 	}
 
 	.im-front-all {

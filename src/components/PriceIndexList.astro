@@ -1,0 +1,286 @@
+---
+/**
+ * 메인 첫 화면의 전체 품목 시세 (84개). 분류 탭으로 나눠 보고, 서버에서 모두 그린다 (JS 없이도 전부 읽힌다).
+ * 한 줄: 품목 · 1kg 환산(또는 오늘 도매가) · 1년 전 같은 달보다. 누르면 품목 시세 페이지.
+ */
+import { ITEMS, REGIONS, buildAnalysis, getItemStatus, getPriceAsOfDate } from '@/data/prices'
+import { SEARCH_NAME_KO } from '@/data/prices'
+import { KG_FIRST, perKgOf, unitKgOf } from '@/data/price-popular'
+import kamisItems from '@/data/kamis-items.json'
+
+type Props = { isEn?: boolean; prefix?: string }
+const { isEn = false, prefix = '' } = Astro.props
+
+const today = getPriceAsOfDate()
+const fmt = (v: number | null) =>
+	v == null ? '–' : isEn ? '₩' + v.toLocaleString('en-US') : v.toLocaleString('ko-KR') + '원'
+const pct = (v: number | null) =>
+	v == null ? '' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%'
+
+// KAMIS 부류 코드 첫 자리. 김장철을 앞두고 채소를 먼저 둔다.
+const CATS = isEn
+	? [
+			['200', 'Vegetables'],
+			['100', 'Grains and beans'],
+			['300', 'Special crops'],
+			['400', 'Fruit']
+		]
+	: [
+			['200', '채소'],
+			['100', '식량작물'],
+			['300', '특용작물'],
+			['400', '과일']
+		]
+const catOf = (id: string) =>
+	((kamisItems as Record<string, { codes: string[] }>)[id]?.codes[0] ?? '').split('-')[0]
+
+const rows = ITEMS.map((item) => {
+	const a = buildAnalysis(item, REGIONS[0], today)
+	const stale = getItemStatus(item, today).stale || a.current == null
+	const kg =
+		!isEn && KG_FIRST.has(item.id) && !stale ? perKgOf(a.current, unitKgOf(item.unitKo)) : null
+	return {
+		id: item.id,
+		cat: catOf(item.id),
+		name: isEn ? item.en : (SEARCH_NAME_KO[item.id] ?? item.ko),
+		unit: isEn ? item.unitEn : item.unitKo,
+		price: stale ? null : a.current,
+		kg,
+		yearAgo: stale ? null : (a.benchmarks.find((b) => b.yearsAgo === 1)?.diffPct ?? null)
+	}
+})
+
+// 분류 안에서는 조사 있는 품목 먼저, 이름순
+const groups = CATS.map(([code, label]) => ({
+	code,
+	label,
+	rows: rows
+		.filter((r) => r.cat === code)
+		.sort(
+			(a, b) =>
+				Number(a.price == null) - Number(b.price == null) || a.name.localeCompare(b.name, 'ko')
+		)
+})).filter((g) => g.rows.length)
+---
+
+<div class='im-plist' data-plist>
+	<nav class='im-plist-tabs' aria-label={isEn ? 'Categories' : '분류'}>
+		<button type='button' data-cat='all' aria-pressed='true'>{isEn ? 'All' : '전체'}</button>
+		{
+			groups.map((g) => (
+				<button type='button' data-cat={g.code} aria-pressed='false'>
+					{g.label} <span>{g.rows.length}</span>
+				</button>
+			))
+		}
+	</nav>
+
+	{
+		groups.map((g) => (
+			<section class='im-plist-group' data-group={g.code}>
+				<h3>{g.label}</h3>
+				<ul>
+					{g.rows.map((r) => (
+						<li>
+							<a href={`${prefix}/prices/${r.id}/`}>
+								<span class='im-plist-name'>{r.name}</span>
+								<span class='im-plist-val'>
+									{r.price == null ? (
+										<small>{isEn ? 'No survey' : '조사 없음'}</small>
+									) : r.kg ? (
+										<>
+											<small>1kg </small>
+											{fmt(r.kg)}
+										</>
+									) : (
+										<>
+											<small>{r.unit} </small>
+											{fmt(r.price)}
+										</>
+									)}
+								</span>
+								<span
+									class={`im-plist-yoy ${r.yearAgo == null ? '' : r.yearAgo > 0 ? 'im-up' : r.yearAgo < 0 ? 'im-down' : ''}`}
+								>
+									{pct(r.yearAgo)}
+								</span>
+							</a>
+						</li>
+					))}
+				</ul>
+			</section>
+		))
+	}
+	<p class='im-meta im-plist-note'>
+		{
+			isEn
+				? 'Right column: vs the same month last year (KAMIS monthly average).'
+				: '오른쪽 숫자는 1년 전 같은 달 평균보다 오르고 내린 정도입니다.'
+		}
+	</p>
+</div>
+
+<script is:inline>
+	function initPriceList() {
+		document.querySelectorAll('[data-plist]').forEach((box) => {
+			if (box.dataset.bound === 'true') return
+			box.dataset.bound = 'true'
+			const tabs = box.querySelectorAll('.im-plist-tabs button')
+			tabs.forEach((tab) =>
+				tab.addEventListener('click', () => {
+					const cat = tab.dataset.cat
+					tabs.forEach((t) => t.setAttribute('aria-pressed', String(t === tab)))
+					box.querySelectorAll('[data-group]').forEach((g) => {
+						g.hidden = cat !== 'all' && g.dataset.group !== cat
+					})
+				})
+			)
+		})
+	}
+	if (document.readyState === 'loading')
+		document.addEventListener('DOMContentLoaded', initPriceList)
+	else initPriceList()
+	document.addEventListener('astro:page-load', initPriceList)
+</script>
+
+<style>
+	.im-plist-tabs {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 8px clamp(14px, 2vw, 28px);
+		margin-bottom: clamp(20px, 2.6vw, 36px);
+	}
+
+	.im-plist-tabs button {
+		padding: 0 0 4px;
+		border: 0;
+		border-bottom: 1px solid transparent;
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 14px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.im-plist-tabs button span {
+		font-weight: 500;
+		font-size: 12px;
+	}
+
+	.im-plist-tabs button[aria-pressed='true'] {
+		color: var(--ink);
+		border-bottom-color: var(--ink);
+	}
+
+	.im-plist-group {
+		margin-bottom: clamp(24px, 3vw, 40px);
+	}
+
+	.im-plist-group h3 {
+		margin: 0;
+		padding-bottom: 8px;
+		border-bottom: 1px solid var(--ink);
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+	}
+
+	.im-plist-group ul {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		column-gap: var(--gap);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	@media (min-width: 761px) {
+		.im-plist-group ul {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			column-gap: clamp(24px, 3vw, 48px);
+		}
+	}
+
+	@media (min-width: 1100px) {
+		.im-plist-group ul {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+		}
+	}
+
+	.im-plist-group li {
+		border-bottom: 1px solid var(--line);
+	}
+
+	.im-plist-group a {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto 52px;
+		align-items: baseline;
+		gap: 10px;
+		padding: 10px 0;
+		color: var(--ink);
+		font-size: 14px;
+	}
+
+	.im-plist-group a:hover .im-plist-name {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.im-plist-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-weight: 600;
+	}
+
+	.im-plist-val {
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
+	.im-plist-val small {
+		color: var(--muted);
+		font-size: 11px;
+		font-weight: 500;
+	}
+
+	.im-plist-yoy {
+		color: var(--muted);
+		font-size: 12px;
+		font-weight: 600;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-plist-yoy.im-up {
+		color: var(--up);
+	}
+
+	.im-plist-yoy.im-down {
+		color: var(--down);
+	}
+
+	.im-plist-note {
+		text-align: center;
+	}
+
+	/* 휴대폰 2칸에서는 1년 전 비교를 가격 아래로 내려 이름이 잘리지 않게 */
+	@media (max-width: 760px) {
+		.im-plist-group a {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 2px;
+		}
+
+		.im-plist-val,
+		.im-plist-yoy {
+			text-align: left;
+		}
+
+		.im-plist-yoy:empty {
+			display: none;
+		}
+	}
+</style>
