@@ -174,20 +174,43 @@ const rankBase = ITEMS.map((i) => ({
 	photo: thumbOf(i.id),
 	price: table[latest][seoul.id][i.id]?.price ?? null,
 	m1: m1Of(i.id),
-	yoy: yoyBy[i.id][seoul.id]
+	yoy: yoyBy[i.id][seoul.id],
+	// 직전 조사일(어제) 대비, 시세 지도와 같은 기준
+	day: getItemStatus(i, today).stale ? null : (table[latest][seoul.id][i.id]?.delta ?? null)
 })).filter((r) => r.price != null)
+// 분류별 어제 대비 = 그 분류 품목들의 어제 대비 평균
+const dayOfCat = (cat: string) => {
+	const list = rankBase
+		.filter((r) => categoryOf(r.id) === cat && r.day != null)
+		.map((r) => r.day as number)
+	return list.length ? Math.round((list.reduce((a, b) => a + b, 0) / list.length) * 10) / 10 : null
+}
 // 맨 위 요약: 한 달 전(서울)보다 오른·내린 품목 수. 직전 조사일 대비는 KAMIS 값이 며칠씩 그대로라 늘 "그대로 78"이었다.
 const month = {
 	up: rankBase.filter((r) => r.m1 != null && r.m1 > 0).length,
 	down: rankBase.filter((r) => r.m1 != null && r.m1 < 0).length,
 	flat: rankBase.filter((r) => r.m1 === 0).length
 }
-const top = (key: 'm1' | 'yoy', dirn: 1 | -1) =>
+const top = (key: 'day' | 'm1' | 'yoy', dirn: 1 | -1) =>
 	rankBase
 		.filter((r) => r[key] != null && dirn * (r[key] as number) > 0)
 		.sort((a, b) => dirn * ((b[key] as number) - (a[key] as number)))
 		.slice(0, 6)
 const rankings = [
+	{
+		key: 'day-up',
+		label: isEn ? 'Up since yesterday' : '어제보다 오른',
+		rows: top('day', 1),
+		metric: 'day' as const,
+		empty: isEn ? 'No price rose since yesterday.' : '어제보다 오른 품목이 없습니다.'
+	},
+	{
+		key: 'day-down',
+		label: isEn ? 'Down since yesterday' : '어제보다 내린',
+		rows: top('day', -1),
+		metric: 'day' as const,
+		empty: isEn ? 'No price fell since yesterday.' : '어제보다 내린 품목이 없습니다.'
+	},
 	{
 		key: 'm1-up',
 		label: isEn ? 'Up in a month' : '한 달 새 오른',
@@ -503,6 +526,15 @@ const t = {
 						</strong>
 						<span class='im-idx-sub'>
 							{isEn ? 'vs last year' : '작년보다'}
+							{dayOfCat(c.cat) != null && (
+								<span
+									class={dayOfCat(c.cat)! > 0 ? 'im-up' : dayOfCat(c.cat)! < 0 ? 'im-down' : ''}
+								>
+									{' · '}
+									{isEn ? '1D ' : '어제 '}
+									{`${dayOfCat(c.cat)! > 0 ? '+' : dayOfCat(c.cat)! < 0 ? '−' : ''}${Math.abs(dayOfCat(c.cat)!).toFixed(1)}%`}
+								</span>
+							)}
 							{c.m1 != null && (
 								<span class={c.m1 > 0 ? 'im-up' : c.m1 < 0 ? 'im-down' : ''}>
 									{' · '}
@@ -566,7 +598,7 @@ const t = {
 							</li>
 						))}
 						{r.rows.length === 0 && (
-							<li class='im-rank-empty'>{isEn ? 'None' : '해당 품목이 없습니다.'}</li>
+							<li class='im-rank-empty'>{r.empty ?? (isEn ? 'None' : '해당 품목이 없습니다.')}</li>
 						)}
 					</ol>
 				))
@@ -2612,6 +2644,11 @@ const t = {
 		color: var(--muted);
 		font-size: 13px;
 		font-weight: 600;
+	}
+
+	/* "어제 +1.3%"·"한 달 −25.2%"가 줄 끝에서 갈라지지 않게 */
+	.im-idx-sub span {
+		white-space: nowrap;
 	}
 
 	.im-idx-card .im-spark {
