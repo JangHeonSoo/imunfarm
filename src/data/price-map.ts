@@ -2,10 +2,17 @@
  * 메인 시세 지도 (finviz 지도처럼 칸 크기 = 시장 크기, 색 = 오르고 내림).
  * - 칸 크기: 최근 7개 조사일 전국 공영도매시장 반입량 평균(aT 출하량 API, trade.json) × 그 품목 kg당 도매가 = 하루 거래금액 추정.
  *   곡식·깨는 도매시장 밖 거래가 많아 작게 나오고 쌀은 자료가 없어서, 모든 칸에 최소 크기를 둔다(MIN_SHARE).
- * - 색: 작년 같은 달 평균보다 비싸면 빨강, 싸면 파랑 (KAMIS 도매가는 몇 주씩 그대로라 하루 변동으로는 색이 거의 안 난다).
+ * - 색: 기본은 어제(직전 조사일)보다 오르면 빨강, 내리면 파랑. 단추로 작년 같은 달 평균과 비교로 바꾼다.
  * 크기·작물 목록은 price-map.json, 가격은 prices.ts(서울 KAMIS)에서 가져온다.
  */
-import { ITEMS, REGIONS, buildAnalysis, getItemStatus, getPriceAsOfDate } from '@/data/prices'
+import {
+	ITEMS,
+	REGIONS,
+	buildAnalysis,
+	buildPriceData,
+	getItemStatus,
+	getPriceAsOfDate
+} from '@/data/prices'
 import { KG_FIRST, perKgOf, unitKgOf } from '@/data/price-popular'
 import mapFile from '@/data/price-map.json'
 import tradeFile from '@/data/generated/kamis/trade.json'
@@ -29,6 +36,8 @@ export type MapTile = {
 	photo: string | null
 	value: number
 	yoy: number | null
+	/** 직전 조사일 대비 % */
+	day: number | null
 	price: number | null
 	unit: string
 	kg: number | null
@@ -61,8 +70,10 @@ const tradeKg = (rules: Rule[]) => {
 
 export const buildPriceMap = (
 	isEn = false
-): { groups: MapGroup[]; days: number; lastDate: string } => {
+): { groups: MapGroup[]; days: number; lastDate: string; prevDate: string; priceDate: string } => {
 	const today = getPriceAsOfDate()
+	const pd = buildPriceData(today)
+	const dayRow = pd.table[pd.dates[pd.dates.length - 1]]?.[REGIONS[0].id] ?? {}
 	const crops = (mapFile as unknown as { crops: Crop[] }).crops
 	const tiles = crops.map((crop) => {
 		const quotes = crop.items.map((id) => {
@@ -95,6 +106,7 @@ export const buildPriceMap = (
 					: null,
 				value: tradeKg(crop.trade) * perKg,
 				yoy: main.stale ? null : (main.a.benchmarks.find((b) => b.yearsAgo === 1)?.diffPct ?? null),
+				day: main.stale ? null : (dayRow[main.item.id]?.delta ?? null),
 				price: main.stale ? null : main.a.current,
 				unit: isEn ? main.item.unitEn : main.item.unitKo,
 				kg:
@@ -121,5 +133,11 @@ export const buildPriceMap = (
 		return { key, label: labels[key], subs }
 	})
 	const dates = Object.keys(trade.dates).sort()
-	return { groups, days: dates.length, lastDate: dates[dates.length - 1] ?? '' }
+	return {
+		groups,
+		days: dates.length,
+		lastDate: dates[dates.length - 1] ?? '',
+		priceDate: pd.dates[pd.dates.length - 1] ?? '',
+		prevDate: pd.dates[pd.dates.length - 2] ?? ''
+	}
 }
