@@ -1,0 +1,122 @@
+---
+title: 'Solar CCTV 2026: Off-Grid Farm Theft Cameras, LTE vs Wi-Fi, Winter Batteries'
+description: 'What to check before putting a solar security camera on a field or farm shed with no mains power: how panel, battery and motion-triggered recording work, LTE (SIM) vs Wi-Fi, a December charging example from Korean irradiance data (1.96 kWh/㎡ per day, 36% of May), why lithium charging stops below 0°C, microSD vs NVR vs cloud storage, and the signage and no-audio rules in Article 25 of the Personal Information Protection Act.'
+pubDate: '2026-10-25T16:32:00+09:00'
+heroImage: '/images/solar-cctv-farm-2026-hero.png'
+category: 'equipment-review'
+author: 'imunfarm'
+tags: ['solar CCTV', 'security camera', 'LTE camera', 'farm theft', 'farm shed', 'winter battery']
+comments: true
+---
+
+Miss a day at the field just before harvest and it is hard to relax. If the chili rows are stripped or the shed padlock is broken, there is no way to know who came. That is why so many people look for a solar CCTV camera that needs neither mains power nor a wired internet line. In Korea, "solar CCTV" is searched about 1,340 times a month and "CCTV camera" 2,610 times. Police data show 8,586 thefts of agricultural and fishery products in 2024, with an average clearance rate of 48.3% over 2022–2024: fewer than half are solved. This note works out how a solar camera runs, whether to pick LTE or Wi-Fi, and whether it survives December, using official data and manufacturer documentation.
+
+> Bottom line: <strong>For a field with no power, choose a motion-triggered solar camera with its own panel and battery; if the shed router's signal does not reach, choose LTE.</strong> Horizontal irradiance in December is 1.96 kWh/㎡ per day, 36% of May (5.45). Face the panel due south with no shade, and size it generously because lithium batteries stop charging below 0°C. Keep the view on your own land, put up a sign, and turn audio recording off.
+
+> Earlier notes: wired CCTV and sensor alerts for greenhouses in [farm CCTV and remote monitoring](/en/blog/greenhouse-cctv-remote-monitoring-risk-reduction/), winter maths for solar lights in [choosing solar garden and street lights](/en/blog/farm-shed-solar-light-buying-guide/), a full off-grid shed system in [farm shed off-grid solar cost](/en/blog/farm-shed-small-solar-off-grid-cost/), and wild boar and deer measures in [bird and wildlife repellers 2026](/en/blog/bird-wildlife-repeller-solar-2026/).
+
+## 1. How a solar CCTV camera works
+
+A solar camera has three parts: a small panel, a battery that stores its output, and the camera. In all-in-one units the panel sits on the camera body; split units connect a separate panel by cable so it can sit in the sun.
+
+Most do not record around the clock. The camera idles until its PIR (passive infrared) sensor picks up body heat moving, then wakes and records a short clip. Continuous recording would drain a small panel and battery. What a field needs is the clip of someone arriving plus a phone alert, and motion recording does exactly that.
+
+| Type                     | Power                    | Recording           | Best for                         |
+| ------------------------ | ------------------------ | ------------------- | -------------------------------- |
+| Wired CCTV + recorder    | Mains                    | Continuous possible | Greenhouses, sheds with power    |
+| Solar CCTV (all-in-one)  | Panel + built-in battery | Motion-triggered    | Fields with no power, shed doors |
+| Solar CCTV (split panel) | Separate panel, cable    | Motion-triggered    | Camera spots in shade            |
+
+At night many models switch to infrared LEDs and black-and-white video. Colour night modes use a spotlight and drain the battery faster.
+
+To compare batteries, convert mAh to Wh: mAh × voltage ÷ 1,000. Assuming a nominal lithium-ion cell voltage of 3.6 V, a 6,000 mAh battery holds about 21.6 Wh.
+
+## 2. LTE (SIM) vs Wi-Fi
+
+**Wi-Fi** cameras join a router in the shed. There is no extra data charge, but you need a router with an internet connection, and the signal weakens through walls, trees and greenhouse frames. Stand at the planned camera spot with your phone and check the Wi-Fi bars before buying.
+
+**LTE** cameras take a SIM card and connect straight to the mobile network, so they work in a field with no shed at all. You pay for a data plan every month; Korean carrier and MVNO prices vary, so compare data allowances on a plan comparison site such as mvnohub.kr. Check the LTE signal at the camera spot too.
+
+Reolink, which makes LTE cameras, recommends 1 GB of data a month for its basic Go and Go PT models and 2 GB for higher-resolution models. The same article notes that recording to a local microSD card uses no data. Live view, remote playback, cloud uploads and notifications do.
+
+|              | Wi-Fi                     | LTE (SIM)                   |
+| ------------ | ------------------------- | --------------------------- |
+| Needs        | Router with internet      | SIM with a data plan        |
+| Monthly cost | None beyond home internet | Data plan                   |
+| Range        | Where the router reaches  | Anywhere with mobile signal |
+| Best for     | Shed door, yard           | Remote plots with no shed   |
+
+## 3. Will it last the winter?
+
+The Korea Energy Agency's renewable energy cloud platform lists monthly horizontal irradiance (2010–2015 average):
+
+| Month    | kWh/㎡ per day | vs May |
+| -------- | -------------: | -----: |
+| May      |           5.45 |   100% |
+| November |           2.27 |    42% |
+| December |           1.96 |    36% |
+| January  |           2.39 |    44% |
+
+1.96 kWh/㎡ is equivalent to about 1.96 hours of full sun (1 kW/㎡). Daily charge is roughly panel W × those hours × 0.75 (assumed 25% loss). The camera's 3 Wh daily use below is an assumed value for illustration, not a product spec.
+
+| Panel | December charge (example) | May charge (example) | Camera using 3 Wh/day (assumed) |
+| ----- | ------------------------: | -------------------: | ------------------------------- |
+| 3 W   |              about 4.4 Wh |        about 12.3 Wh | about 1.4 Wh spare in December  |
+| 6 W   |              about 8.8 Wh |        about 24.5 Wh | about 5.8 Wh spare in December  |
+
+These are averages across sunny and cloudy days. During three grey, snowy days the camera runs on the battery alone; the 21.6 Wh example lasts about 7 days at 3 Wh a day. Busy spots trigger more clips. Buy one panel size up.
+
+**Cold stops charging.** Reolink's documentation gives a 0–45°C charging range for its 3 W, 6 W and 12 W panels and says the camera will not charge below 0°C. On a freezing winter morning, charging may only start once the afternoon warms up. Some products are built for low-temperature charging; check the stated charging range.
+
+**Placement.** Face the panel south. Reolink suggests 40–45° as a good year-round tilt, ideally your latitude plus 5°. Avoid eaves, trees and the north wall of the shed, and brush off snow, leaves and droppings.
+
+## 4. Where the video goes: microSD, NVR or cloud
+
+| Storage      | Where             | Pros                         | Cons                             |
+| ------------ | ----------------- | ---------------------------- | -------------------------------- |
+| microSD      | Inside the camera | No data or power cost        | Stolen camera means lost footage |
+| NVR recorder | Box in the shed   | Many cameras, long retention | Needs constant power             |
+| Cloud        | Maker's servers   | Survives camera theft        | Subscription; uses LTE data      |
+
+When a microSD card fills, most cameras overwrite the oldest footage. As a worked example at Reolink's default 1.5 Mbps main stream: one minute is 90 Mb, about 11.25 MB, so a 64 GB card holds about 5,690 minutes, roughly 95 hours of clips. Narrow the detection zone and lower sensitivity so grass and cats do not fill it.
+
+## 5. Stop the camera itself being stolen
+
+- Mount it out of reach without a ladder.
+- Use tool-only screws and a metal bracket.
+- Turn on cloud alerts so a clip reaches your phone before the camera disappears.
+- Point it at the entrance, the shed door and the track, not the whole field.
+
+## 6. Privacy law: where can it point?
+
+Article 25(1) of Korea's Personal Information Protection Act says no one may install or operate a fixed video device in a publicly accessible place except in listed cases, such as crime prevention and facility safety. The Personal Information Protection Commission's standard guideline defines such places as parks, roads, subways, shop interiors, car parks and other places that anyone may enter or pass through without restriction.
+
+Watching your own fenced field is different from capturing the village road or a neighbour's plot. Aim the camera so only your land is in frame, and use a privacy mask in the app if available. Article 25(4) requires a sign showing the purpose and location, the recording range and hours, and the contact of the person in charge. Article 25(5) bans pointing the camera elsewhere for other purposes and states that <strong>audio recording may not be used</strong>. Turn the microphone recording off.
+
+An amendment of March 14, 2023 (in force September 15, 2023) renamed these "fixed" video devices and added Article 25-2 for mobile devices such as drones and body cameras. Whether a specific setup is lawful cannot be settled from the text alone; ask the Commission if unsure.
+
+## FAQ
+
+**Does a solar CCTV record 24 hours a day?**
+Usually not. It records on motion. For continuous recording you need mains power and a recorder, or a larger [off-grid shed system](/en/blog/farm-shed-small-solar-off-grid-cost/).
+
+**Is a wireless CCTV the same as a solar CCTV?**
+Not quite. "Wireless" usually means video goes over Wi-Fi or LTE, while power may still come from a socket. A solar camera has no cables at all.
+
+**The battery keeps running flat in winter. What now?**
+Clear snow and shade first, then lower sensitivity and cut live view. If that is not enough, fit a bigger or second panel.
+
+## Summary
+
+Where you mount it and how it sends video decide the choice: Wi-Fi if the router reaches, LTE if not. Winter endurance comes from panel size and an unshaded spot, not megapixels. Keep the view on your land, sign the entrance, and switch audio off.
+
+## References
+
+- Naver Search Ad keyword tool, checked October 25, 2026 (solar CCTV 1,340 monthly searches, CCTV camera 2,610, CCTV recorder 1,630, wireless CCTV 5,860, IP camera 1,860, infrared camera 1,920).
+- The Fact, "Agricultural and fishery product thefts over 25,000 in three years," October 10, 2025 (National Police Agency data via Rep. Yoon Jun-byeong: 8,130 in 2022, 9,059 in 2023, 8,586 in 2024; three-year average clearance rate 48.3%).
+- Korea Energy Agency, renewable energy cloud platform, monthly horizontal irradiance 2010–2015 average (kWh/㎡/day): January 2.39, May 5.45, November 2.27, December 1.96. Checked October 25, 2026.
+- Reolink Support, "Understanding and Optimizing Reolink Solar Panel Efficiency" (charging 0–45°C, no charging below 0°C, face south, 40–45° or latitude plus 5°). Checked October 25, 2026.
+- Reolink Support, "How Much Data Do Reolink 4G Cameras Need in Normal Usage" (1 GB/month for Go and Go PT, 2 GB for higher models, 1.5 Mbps default main stream, microSD recording uses no data). Checked October 25, 2026.
+- Personal Information Protection Act, Articles 25 and 25-2, current text (Act No. 21445, in force September 11, 2026), Korea Law Information Center; amendment Act No. 19234 of March 14, 2023, in force six months after promulgation.
+- Personal Information Protection Commission, Standard Personal Information Protection Guideline (Notice 2025-4, April 11, 2025), Article 2(11) and Article 39.
+- Charge, battery and storage figures are worked examples using the data above and stated assumptions. Real results depend on the product, orientation, shade, weather, temperature and how often motion is detected.
