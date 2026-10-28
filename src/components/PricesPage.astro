@@ -479,6 +479,13 @@ const t = {
 					{isEn ? 'survey' : '조사'} · {ITEMS.length}
 					{isEn ? ' crops' : '개 품목'}
 				</p>
+				{
+					!isEn && (
+						<p class='im-prices-sub'>
+							<a href='/prices/kerosene/'>오늘 등유 가격 보기 →</a>
+						</p>
+					)
+				}
 			</div>
 			<dl class='im-prices-sum' aria-label={isEn ? 'Change in a month' : '한 달 전 대비'}>
 				<div>

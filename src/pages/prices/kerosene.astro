@@ -1,0 +1,495 @@
+---
+/**
+ * 등유 가격 (실내등유 시도별 평균). 오피넷 오픈 API 값을 GitHub Actions 가 매일 쌓는다
+ * (scripts/energy/kerosene.mjs → src/data/generated/energy/kerosene.json, 2026-10-28 시작).
+ * 시세 페이지처럼 날마다 바뀌는 숫자 페이지: "등유가격" 월 14,700 (2026-10, 겨울에 늘어남).
+ * 한국어만 만든다. 지난 값이 쌓이기 전에는 지난주·작년 비교와 그래프를 숨긴다.
+ */
+import BaseLayout from '@/layouts/BaseLayout'
+import { getPostUrl } from '@/utils'
+import { siteConfig } from '@/site-config'
+import kerosene from '@/data/generated/energy/kerosene.json'
+
+type Series = Record<string, Record<string, number>>
+const series = kerosene.series as Series
+const regionNames = kerosene.regions as Record<string, string>
+const last = kerosene.lastDate as string
+
+const dates = (code: string) => Object.keys(series[code] ?? {}).sort()
+const priceOn = (code: string, d: string) => series[code]?.[d] ?? null
+/** d 이전(포함) 가장 가까운 값 */
+const priceAtOrBefore = (code: string, d: string) => {
+	const ds = dates(code).filter((x) => x <= d)
+	return ds.length ? series[code][ds[ds.length - 1]] : null
+}
+const shift = (d: string, days: number) =>
+	new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8)) + days * 86400000)
+		.toISOString()
+		.slice(0, 10)
+		.replace(/-/g, '')
+const won = (v: number) => `${Math.round(v).toLocaleString('ko-KR')}원`
+const man = (v: number) => `약 ${(Math.round(v / 1000) / 10).toLocaleString('ko-KR')}만 원`
+const mmdd = (d: string) => `${+d.slice(4, 6)}월 ${+d.slice(6, 8)}일`
+const dot = (d: string) => `${d.slice(4, 6)}.${d.slice(6, 8)}`
+
+const national = priceOn('00', last) ?? 0
+const prev = shift(last, -1)
+
+// 시도별 (전국 제외): 오늘 값, 어제 대비 원
+const rows = Object.keys(regionNames)
+	.filter((c) => c !== '00' && priceOn(c, last) != null)
+	.map((c) => {
+		const now = priceOn(c, last) as number
+		const before = priceOn(c, prev)
+		return { code: c, name: regionNames[c], now, diff: before != null ? now - before : null }
+	})
+	.sort((a, b) => a.now - b.now)
+const cheapest = rows[0]
+const priciest = rows[rows.length - 1]
+
+// 전국 어제 대비: 전국 전날 값이 쌓여 있으면 그 값, 없으면 시도 등락의 평균으로 말하지 않고 숨긴다
+const nationalPrev = priceOn('00', prev)
+const nationalDiff = nationalPrev != null ? national - nationalPrev : null
+// 지난주·작년 (쌓인 값이 있을 때만)
+const weekAgo = dates('00')[0] <= shift(last, -7) ? priceAtOrBefore('00', shift(last, -7)) : null
+const yearAgo =
+	dates('00')[0] <= shift(last, -365) ? priceAtOrBefore('00', shift(last, -365)) : null
+const pct = (a: number, b: number) => Math.round(((a - b) / b) * 1000) / 10
+const say = (label: string, base: number | null) => {
+	if (base == null) return null
+	const p = pct(national, base)
+	return p === 0
+		? `${label}와 같습니다`
+		: `${label}보다 ${Math.abs(p)}% ${p > 0 ? '비쌉니다' : '쌉니다'}`
+}
+const compare = [
+	nationalDiff != null
+		? nationalDiff === 0
+			? '어제와 같습니다'
+			: `어제보다 ${Math.abs(Math.round(nationalDiff * 10) / 10)}원 ${nationalDiff > 0 ? '올랐습니다' : '내렸습니다'}`
+		: null,
+	say('지난주', weekAgo),
+	say('작년 이맘때', yearAgo)
+].filter(Boolean) as string[]
+
+// 전국 그래프 (최근 120일, 7일 이상 쌓였을 때)
+const nd = dates('00').slice(-120)
+const chart =
+	nd.length >= 7
+		? (() => {
+				const vals = nd.map((d) => series['00'][d])
+				const lo = Math.min(...vals)
+				const hi = Math.max(...vals)
+				const span = hi - lo || 1
+				const W = 640
+				const H = 160
+				const pts = vals.map(
+					(v, i) =>
+						`${((i / (vals.length - 1)) * W).toFixed(1)},${(H - 12 - ((v - lo) / span) * (H - 24)).toFixed(1)}`
+				)
+				return { W, H, pts: pts.join(' '), lo, hi, from: nd[0], to: nd[nd.length - 1] }
+			})()
+		: null
+
+// 신일 9L 석유 팬히터 판매 페이지 사양 (0.143–0.642 L/h, 2026-10-24 확인) 기준 시간당 비용
+const heater = { low: 0.143, high: 0.642 }
+const can = 18
+const drum = 200
+
+const fanHeaterUrl = getPostUrl('fan-heater-recommendation-2026', 'ko', 'country-life')
+const links = [
+	{ href: fanHeaterUrl, label: '팬히터 추천 2026: 석유 팬히터와 전기 팬히터 차이, 기름값 계산' },
+	{
+		href: getPostUrl('greenhouse-farm-shed-heater-buying-guide', 'ko', 'equipment-review'),
+		label: '하우스·농막 난방기 고르는 법'
+	},
+	{
+		href: getPostUrl('electric-heater-electricity-bill-calculation-2026', 'ko', 'energy'),
+		label: '전기 난방기 전기요금 계산'
+	},
+	{
+		href: getPostUrl('draft-stopper-insulation-film-winter', 'ko', 'country-life'),
+		label: '문풍지·단열 필름으로 난방비 줄이기'
+	},
+	{
+		href: getPostUrl('energy-voucher-2026-winter-prep', 'ko', 'energy'),
+		label: '에너지바우처 신청 방법'
+	}
+]
+
+const title = `등유 가격 오늘: 실내등유 1L ${won(national)}, 18L 한 통 ${man(national * can)} · 시도별 등유값 (${dot(last)})`
+const description = `${+last.slice(0, 4)}년 ${mmdd(last)} 오피넷 기준 실내등유 전국 평균은 1L ${won(national)}, 18L 한 통 ${man(national * can)}, 200L 드럼 ${man(national * drum)}. 가장 싼 곳은 ${cheapest.name}(${won(cheapest.now)}), 가장 비싼 곳은 ${priciest.name}(${won(priciest.now)}). 시도별 등유값과 어제 대비 등락, 석유 팬히터 시간당 기름값을 매일 정리한다.`
+const canonical = new URL('/prices/kerosene/', siteConfig.siteUrl).href
+
+const faq = [
+	{
+		q: '오늘 등유 가격은 얼마인가요?',
+		a: `${mmdd(last)} 오피넷 기준 실내등유 전국 평균은 1L ${won(national)}입니다. 18L 한 통이면 ${man(national * can)}입니다.`
+	},
+	{
+		q: '등유가 가장 싼 지역은 어디인가요?',
+		a: `${mmdd(last)} 기준 ${cheapest.name}이 1L ${won(cheapest.now)}으로 가장 쌉니다. 가장 비싼 곳은 ${priciest.name}(1L ${won(priciest.now)})으로 1L에 ${won(priciest.now - cheapest.now)} 차이가 납니다.`
+	},
+	{
+		q: '이 값은 배달 등유 값과 같나요?',
+		a: '아닙니다. 오피넷이 집계한 주유소 판매가격의 시도 평균입니다. 집으로 배달받는 등유 값은 업체와 양에 따라 다르니 주문할 때 확인하세요.'
+	}
+]
+const jsonLd = [
+	{
+		'@context': 'https://schema.org',
+		'@type': 'Dataset',
+		name: '실내등유 시도별 평균 판매가격',
+		description,
+		url: canonical,
+		dateModified: `${last.slice(0, 4)}-${last.slice(4, 6)}-${last.slice(6, 8)}`,
+		creator: { '@type': 'Organization', name: '오피넷(한국석유공사)' },
+		inLanguage: 'ko'
+	},
+	{
+		'@context': 'https://schema.org',
+		'@type': 'FAQPage',
+		mainEntity: faq.map((f) => ({
+			'@type': 'Question',
+			name: f.q,
+			acceptedAnswer: { '@type': 'Answer', text: f.a }
+		}))
+	}
+]
+---
+
+<BaseLayout title={title} description={description} locale='ko' active='prices' altPath={null}>
+	{jsonLd.map((schema) => <script type='application/ld+json' set:html={JSON.stringify(schema)} />)}
+
+	<div class='im-pad im-bottom ks'>
+		<div class='im-top-sm'></div>
+		<nav class='im-meta ks-crumb'>
+			<a href='/prices/'>농산물 시세</a>
+			<span>/</span>
+			<span>등유 가격</span>
+		</nav>
+
+		<header class='ks-head'>
+			<div>
+				<h1 class='ks-title'>등유 가격</h1>
+				<p class='ks-sub'>실내등유 · 전국 주유소 평균 · 오피넷(한국석유공사)</p>
+			</div>
+			<div class='ks-quote'>
+				<strong class='ks-price'>{won(national)}<span class='ks-unit'> / 1L</span></strong>
+				{compare.length > 0 && <p class='ks-say'>{compare.join(' · ')}</p>}
+				<p class='ks-date'>{+last.slice(0, 4)}년 {mmdd(last)} 기준</p>
+			</div>
+		</header>
+
+		<dl class='ks-snap'>
+			<div>
+				<dt>18L 한 통</dt>
+				<dd>{man(national * can)}</dd>
+			</div>
+			<div>
+				<dt>200L 드럼</dt>
+				<dd>{man(national * drum)}</dd>
+			</div>
+			<div>
+				<dt>가장 싼 곳</dt>
+				<dd>{cheapest.name} {won(cheapest.now)}</dd>
+			</div>
+			<div>
+				<dt>가장 비싼 곳</dt>
+				<dd>{priciest.name} {won(priciest.now)}</dd>
+			</div>
+		</dl>
+
+		{
+			chart && (
+				<figure class='ks-chart'>
+					<svg
+						viewBox={`0 0 ${chart.W} ${chart.H}`}
+						role='img'
+						aria-label='실내등유 전국 평균 가격 추이'
+					>
+						<polyline points={chart.pts} fill='none' stroke='currentColor' stroke-width='2.5' />
+					</svg>
+					<figcaption>
+						전국 평균 {mmdd(chart.from)}부터 {mmdd(chart.to)}까지 · 가장 낮을 때 {won(chart.lo)},
+						가장 높을 때 {won(chart.hi)}
+					</figcaption>
+				</figure>
+			)
+		}
+
+		<h2 class='ks-h'>시도별 등유값</h2>
+		<p class='ks-note'>싼 곳부터 보여 드립니다. 어제보다 오른 곳은 ▲, 내린 곳은 ▼로 표시합니다.</p>
+		<div class='ks-table-wrap'>
+			<table class='ks-table'>
+				<thead>
+					<tr>
+						<th scope='col'>지역</th>
+						<th scope='col'>1L</th>
+						<th scope='col'>18L 한 통</th>
+						<th scope='col'>어제보다</th>
+					</tr>
+				</thead>
+				<tbody>
+					{
+						rows.map((r) => (
+							<tr>
+								<th scope='row'>{r.name}</th>
+								<td>{won(r.now)}</td>
+								<td>{won(r.now * can)}</td>
+								<td
+									class={
+										r.diff == null || Math.abs(r.diff) < 0.05 ? '' : r.diff > 0 ? 'up' : 'down'
+									}
+								>
+									{r.diff == null
+										? '-'
+										: Math.abs(r.diff) < 0.05
+											? '같음'
+											: `${r.diff > 0 ? '▲' : '▼'} ${Math.abs(Math.round(r.diff * 10) / 10)}원`}
+								</td>
+							</tr>
+						))
+					}
+				</tbody>
+			</table>
+		</div>
+
+		<h2 class='ks-h'>석유 팬히터, 한 시간에 얼마나 드나</h2>
+		<p class='ks-text'>
+			9L 석유 팬히터(신일 SFH-1200MG 판매 페이지 사양: 시간당 0.143–0.642L)를 오늘 전국 평균값으로
+			계산했습니다.
+		</p>
+		<dl class='ks-snap ks-snap-2'>
+			<div>
+				<dt>약하게 틀 때</dt>
+				<dd>시간당 {won(national * heater.low)}</dd>
+			</div>
+			<div>
+				<dt>세게 틀 때</dt>
+				<dd>시간당 {won(national * heater.high)}</dd>
+			</div>
+			<div>
+				<dt>하루 4시간, 세게</dt>
+				<dd>{won(national * heater.high * 4)}</dd>
+			</div>
+			<div>
+				<dt>9L 한 번 채우기</dt>
+				<dd>{won(national * 9)}</dd>
+			</div>
+		</dl>
+		<p class='ks-text'>
+			전기 팬히터와 비교한 값과 고르는 법은 <a href={fanHeaterUrl}>팬히터 추천 글</a>에
+			정리했습니다.
+		</p>
+
+		<h2 class='ks-h'>자주 묻는 질문</h2>
+		<dl class='ks-faq'>
+			{
+				faq.map((f) => (
+					<div>
+						<dt>{f.q}</dt>
+						<dd>{f.a}</dd>
+					</div>
+				))
+			}
+		</dl>
+
+		<h2 class='ks-h'>난방비 관련 글</h2>
+		<ul class='ks-links'>
+			{
+				links.map((l) => (
+					<li>
+						<a href={l.href}>{l.label} →</a>
+					</li>
+				))
+			}
+		</ul>
+
+		<p class='ks-src'>
+			출처: 오피넷(한국석유공사) 시도별 주유소 평균가격 오픈 API · 실내등유(제품코드 C004). 매일
+			아침 새 값으로 바뀝니다. 지난 값은 2026년 10월 27일부터 쌓고 있어, 지난주·작년 비교와 그래프는
+			값이 쌓이면 나타납니다.
+		</p>
+	</div>
+</BaseLayout>
+
+<style>
+	.ks {
+		max-width: 960px;
+		margin: 0 auto;
+	}
+	.ks-crumb {
+		display: flex;
+		gap: 8px;
+	}
+	.ks-crumb a {
+		color: inherit;
+	}
+	.ks-head {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: flex-end;
+		gap: 16px 32px;
+		padding: 20px 0 24px;
+		border-bottom: 1px solid var(--line);
+	}
+	.ks-title {
+		margin: 0;
+		font-size: clamp(34px, 6vw, 56px);
+		line-height: 1.1;
+		letter-spacing: -0.02em;
+	}
+	.ks-sub,
+	.ks-date {
+		margin: 8px 0 0;
+		color: var(--muted);
+		font-size: 16px;
+	}
+	.ks-quote {
+		text-align: right;
+	}
+	.ks-price {
+		display: block;
+		font-size: clamp(40px, 8vw, 72px);
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
+	}
+	.ks-unit {
+		font-size: 0.35em;
+		font-weight: 600;
+		color: var(--muted);
+	}
+	.ks-say {
+		margin: 10px 0 0;
+		font-size: 19px;
+		font-weight: 700;
+	}
+	.ks-snap {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		margin: 0;
+		border-bottom: 1px solid var(--line);
+	}
+	.ks-snap div {
+		padding: 18px 12px 18px 0;
+	}
+	.ks-snap dt {
+		color: var(--muted);
+		font-size: 15px;
+	}
+	.ks-snap dd {
+		margin: 6px 0 0;
+		font-size: 22px;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+	}
+	.ks-chart {
+		margin: 28px 0 0;
+	}
+	.ks-chart svg {
+		display: block;
+		width: 100%;
+		height: auto;
+		color: var(--ink);
+	}
+	.ks-chart figcaption {
+		margin-top: 8px;
+		color: var(--muted);
+		font-size: 15px;
+	}
+	.ks-h {
+		margin: 44px 0 10px;
+		font-size: clamp(22px, 3vw, 28px);
+	}
+	.ks-note,
+	.ks-text {
+		max-width: var(--measure);
+		margin: 0 0 14px;
+		font-size: 17px;
+		line-height: 1.7;
+	}
+	.ks-text a,
+	.ks-links a {
+		color: inherit;
+	}
+	.ks-table-wrap {
+		overflow-x: auto;
+	}
+	.ks-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 18px;
+		font-variant-numeric: tabular-nums;
+	}
+	.ks-table th,
+	.ks-table td {
+		padding: 12px 10px;
+		border-bottom: 1px solid var(--line);
+		text-align: right;
+		white-space: nowrap;
+	}
+	.ks-table th:first-child {
+		text-align: left;
+	}
+	.ks-table thead th {
+		color: var(--muted);
+		font-size: 15px;
+		font-weight: 600;
+	}
+	.ks-table .up {
+		color: var(--up);
+	}
+	.ks-table .down {
+		color: var(--down);
+	}
+	.ks-faq {
+		margin: 0;
+		max-width: var(--measure);
+	}
+	.ks-faq div {
+		padding: 14px 0;
+		border-bottom: 1px solid var(--line);
+	}
+	.ks-faq dt {
+		font-weight: 800;
+		font-size: 18px;
+	}
+	.ks-faq dd {
+		margin: 6px 0 0;
+		font-size: 17px;
+		line-height: 1.7;
+	}
+	.ks-links {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.ks-links li {
+		padding: 12px 0;
+		border-bottom: 1px solid var(--line);
+		font-size: 17px;
+	}
+	.ks-src {
+		margin: 40px 0 0;
+		color: var(--muted);
+		font-size: 14px;
+		line-height: 1.7;
+	}
+	@media (max-width: 640px) {
+		.ks-quote {
+			text-align: left;
+		}
+		.ks-snap {
+			grid-template-columns: repeat(2, 1fr);
+		}
+		.ks-table {
+			font-size: 16px;
+		}
+		.ks-table th,
+		.ks-table td {
+			padding: 11px 6px;
+		}
+	}
+</style>
