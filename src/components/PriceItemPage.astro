@@ -7,7 +7,7 @@ import PriceSwitcher from '@/components/PriceSwitcher'
 import CoupangDynamic from '@/components/CoupangDynamic'
 import AffiliateBox from '@/components/mdx/AffiliateBox'
 import { PRICE_PICKS } from '@/data/price-picks'
-import { KG_FIRST, POPULAR_PRICE_IDS } from '@/data/price-popular'
+import { KG_FIRST, MAL_KG, POPULAR_PRICE_IDS } from '@/data/price-popular'
 import PriceBoard from '@/components/PriceBoard'
 import kamisItems from '@/data/kamis-items.json'
 import { DEFAULT_LOCALE, getLocalePrefix, getPostUrl, getPosts } from '@/utils'
@@ -149,6 +149,10 @@ const staleNote = status.stale
 		: `최근 조사 자료가 없습니다${status.lastSurvey ? ` (마지막 조사 ${formatDate(status.lastSurvey)})` : ''}.`
 	: null
 const kgNow = perKg(analysis.current)
+// 한 말(5kg·6kg) 값: 들깨는 직거래에서 "한 말에 얼마"로 부른다. 만 원 단위 소수 한 자리 (예: 약 8.1만 원)
+const man = (v: number) => `약 ${(Math.round(v / 1000) / 10).toLocaleString('ko-KR')}만 원`
+const malNote =
+	!isEn && kgNow && MAL_KG.has(item.id) ? { five: man(kgNow * 5), six: man(kgNow * 6) } : null
 // 검색은 "2026 생강", "올해 들깨 가격", "2026년 10월 참깨 시세"처럼 연도·달을 붙여 많이 한다 (2026-10-09).
 // 날짜가 2026.10.08 형식으로만 있으면 이런 검색과 잘 이어지지 않아 제목·설명·FAQ에 "2026년 10월"을 말로 넣는다.
 const [yy, mm, dd] = (surveyLabel ?? dateLabel).split('.')
@@ -158,12 +162,14 @@ const title = isEn
 	? `${name} price — wholesale market outlook (${dateLabel})`
 	: analysis.current != null && !status.stale
 		? kgNow && KG_FIRST.has(item.id)
-			? `${searchName} 1kg 가격 약 ${fmt(kgNow)}(도매 환산), ${koMonth} 시세: 오늘 ${unit} ${fmt(analysis.current)} (${mm}.${dd})`
+			? malNote
+				? `${searchName} 1kg 가격 약 ${fmt(kgNow)}, 한 말(5kg) ${malNote.five}: ${koMonth} 도매 시세 (${mm}.${dd})`
+				: `${searchName} 1kg 가격 약 ${fmt(kgNow)}(도매 환산), ${koMonth} 시세: 오늘 ${unit} ${fmt(analysis.current)} (${mm}.${dd})`
 			: `${searchName} 가격·시세 ${koMonth}: 오늘 ${unit} 도매 ${fmt(analysis.current)}${kgNow ? `, 1kg 약 ${fmt(kgNow)}` : ''} (${mm}.${dd})`
 		: `${searchName} 가격·시세 ${yy}년: ${unit} 도매가 추이와 전망 (${dateLabel} 기준)`
 const description = isEn
 	? `${name} wholesale price (KAMIS, Seoul) ${surveyLabel ? `on ${surveyLabel}: ${fmt(analysis.current)} per ${unit}` : 'not surveyed recently'}. Compared with the same month 1, 3, 5 and 10 years ago, with seasonal index, 5-year monthly trend and prices in five Korean cities.`
-	: `${koDay ? `${koDay} 기준 ` : ''}${SEARCH_NAME_KO[item.id] ?? name} 가격(KAMIS 도매 중도매인 판매가격, 서울)은 ${koDay ? `${unit}당 ${fmt(analysis.current)}${kgNow ? `, 1kg으로 환산하면 약 ${fmt(kgNow)}` : ''}` : '최근 조사가 없다'}. 1년·3년·5년·10년 전 같은 달과 비교하고, 계절지수와 최근 5년 월평균 추이, 서울·부산·대구·광주·대전 지역별 가격을 함께 정리했다.`
+	: `${koDay ? `${koDay} 기준 ` : ''}${SEARCH_NAME_KO[item.id] ?? name} 가격(KAMIS 도매 중도매인 판매가격, 서울)은 ${koDay ? `${unit}당 ${fmt(analysis.current)}${kgNow ? `, 1kg으로 환산하면 약 ${fmt(kgNow)}` : ''}${malNote ? `, 한 말로 치면 5kg ${malNote.five}, 6kg ${malNote.six}` : ''}` : '최근 조사가 없다'}. 1년·3년·5년·10년 전 같은 달과 비교하고, 계절지수와 최근 5년 월평균 추이, 서울·부산·대구·광주·대전 지역별 가격을 함께 정리했다.`
 
 const canonical = new URL(Astro.url.pathname, siteConfig.siteUrl).href
 

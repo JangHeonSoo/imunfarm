@@ -591,8 +591,8 @@ const RAW_ITEMS: Item[] = [
 		en: 'Perilla seed',
 		gradeKo: '상품',
 		gradeEn: 'A',
-		unitKo: '22.5kg',
-		unitEn: '22.5kg',
+		unitKo: '23kg',
+		unitEn: '23kg',
 		keywordsKo: ['들깨 시세', '들깨 가격', '들깨 도매가', '들깨', '국산', '국산 시세', '국산 가격'],
 		keywordsEn: ['Perilla seed price', 'Perilla seed wholesale korea', 'Perilla seed']
 	},
