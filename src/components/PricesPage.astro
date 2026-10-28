@@ -17,6 +17,7 @@ import CoupangDynamic from '@/components/CoupangDynamic'
 import PriceMap from '@/components/PriceMap'
 import kamisItems from '@/data/kamis-items.json'
 import pricePhotos from '@/data/price-photos.json'
+import kerosene from '@/data/generated/energy/kerosene.json'
 import { buildMoversInput } from '@/data/movers-input'
 import { buildMovers } from '@/data/movers'
 
@@ -460,6 +461,16 @@ const t = {
 		: '사과, 홍로, 샤인머스켓, 시금치, 피망…',
 	noResults: isEn ? 'No matching crops.' : '검색 결과가 없습니다.'
 }
+// 생활 물가: 등유 (오피넷 실내등유 전국 평균, /prices/kerosene/). 한국어 화면만.
+const keroSeries = (kerosene.series as Record<string, Record<string, number>>)['00'] ?? {}
+const keroDates = Object.keys(keroSeries).sort()
+const keroLast = kerosene.lastDate as string
+const keroNow = keroSeries[keroLast] ?? null
+const keroPrevDate = keroDates.filter((d) => d < keroLast).pop()
+const keroDiff =
+	keroNow != null && keroPrevDate
+		? Math.round((keroNow - keroSeries[keroPrevDate]) * 10) / 10
+		: null
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription} locale={locale} active='prices'>
@@ -479,13 +490,6 @@ const t = {
 					{isEn ? 'survey' : '조사'} · {ITEMS.length}
 					{isEn ? ' crops' : '개 품목'}
 				</p>
-				{
-					!isEn && (
-						<p class='im-prices-sub'>
-							<a href='/prices/kerosene/'>오늘 등유 가격 보기 →</a>
-						</p>
-					)
-				}
 			</div>
 			<dl class='im-prices-sum' aria-label={isEn ? 'Change in a month' : '한 달 전 대비'}>
 				<div>
@@ -502,6 +506,34 @@ const t = {
 				</div>
 			</dl>
 		</header>
+
+		{
+			!isEn && keroNow != null && (
+				<a class='im-life' href='/prices/kerosene/'>
+					<span class='im-life-name'>
+						등유 가격
+						<small>
+							실내등유 1L · 전국 평균 · {+keroLast.slice(4, 6)}월 {+keroLast.slice(6, 8)}일
+						</small>
+					</span>
+					<span class='im-life-val'>
+						<strong>{Math.round(keroNow).toLocaleString('ko-KR')}원</strong>
+						<span
+							class={keroDiff == null || keroDiff === 0 ? '' : keroDiff > 0 ? 'im-up' : 'im-down'}
+						>
+							{keroDiff == null
+								? `18L 한 통 약 ${(Math.round((keroNow * 18) / 1000) / 10).toLocaleString('ko-KR')}만 원`
+								: keroDiff === 0
+									? '어제와 같습니다'
+									: `어제보다 ${Math.abs(keroDiff)}원 ${keroDiff > 0 ? '올랐습니다' : '내렸습니다'}`}
+						</span>
+					</span>
+					<span class='im-life-go' aria-hidden='true'>
+						시도별 보기 →
+					</span>
+				</a>
+			)
+		}
 
 		<h2 class='im-sec-h'>
 			{isEn ? 'Price map' : '시세 지도'}
@@ -2601,6 +2633,66 @@ const t = {
 		color: var(--muted);
 		font-size: 13px;
 		font-weight: 600;
+	}
+
+	/* 생활 물가 (등유): 시세표 머리 바로 아래 한 줄 카드 */
+	.im-life {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px 24px;
+		margin: 8px 0 0;
+		padding: 18px 20px;
+		border: 1px solid var(--line);
+		color: var(--ink);
+		text-decoration: none;
+	}
+
+	.im-life:hover {
+		border-color: var(--ink);
+	}
+
+	.im-life-name {
+		display: grid;
+		gap: 4px;
+		font-size: 20px;
+		font-weight: 800;
+	}
+
+	.im-life-name small {
+		color: var(--muted);
+		font-size: 14px;
+		font-weight: 600;
+	}
+
+	.im-life-val {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 4px 14px;
+	}
+
+	.im-life-val strong {
+		font-size: clamp(28px, 3.4vw, 38px);
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.im-life-val span {
+		font-size: 16px;
+		font-weight: 700;
+	}
+
+	.im-life-go {
+		font-size: 16px;
+		font-weight: 700;
+	}
+
+	@media (max-width: 640px) {
+		.im-life-go {
+			width: 100%;
+		}
 	}
 
 	.im-idx {
