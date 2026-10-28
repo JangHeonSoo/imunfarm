@@ -7,7 +7,13 @@ import ListRelatedPosts from '@/components/ListRelatedPosts'
 import ArticleAds from '@/components/ArticleAds'
 import Disqus from '@/components/Disqus'
 import { disqusConfig } from '@/data/disqus.config'
-import { DEFAULT_LOCALE, getCounterpartUrl, getPosts, stripLocaleFromSlug } from '@/utils'
+import {
+	DEFAULT_LOCALE,
+	getCounterpartUrl,
+	getPostUrl,
+	getPosts,
+	stripLocaleFromSlug
+} from '@/utils'
 import { components } from '../../components/mixins/AutoImportComponents'
 
 export async function getStaticPaths() {
@@ -33,6 +39,9 @@ const relatedPosts = posts
 	.slice(0, 3)
 
 const altPath = await getCounterpartUrl(post.slug, DEFAULT_LOCALE, 'en')
+// 같은 글이 /분류/글주소/ 에도 있다. 사이트 안 링크와 네이버 노출이 분류 주소 쪽이라 그쪽을 대표로 적는다 (2026-10-28)
+const canonical = new URL(getPostUrl(post.slug, DEFAULT_LOCALE, post.data.category), Astro.site)
+	.href
 
 const { Content, headings, remarkPluginFrontmatter } = await post.render()
 ---
@@ -44,6 +53,7 @@ const { Content, headings, remarkPluginFrontmatter } = await post.render()
 	readTime={remarkPluginFrontmatter.minutesRead}
 	locale={locale}
 	altPath={altPath}
+	canonical={canonical}
 >
 	<div class='im-prose'>
 		<Content components={{ ...components, pre: Code, SButton }} />

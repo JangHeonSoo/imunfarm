@@ -7,10 +7,12 @@ export interface Props {
 	description?: string
 	ogImage?: string | undefined
 	articleDate?: string | undefined
+	/** 대표 주소(절대 URL). 같은 글이 두 주소로 열릴 때 한쪽으로 모은다 (2026-10-28) */
+	canonical?: string
 }
 
-const { title, description = siteConfig.description, ogImage, articleDate } = Astro.props
-const canonicalURL = new URL(Astro.url.pathname, Astro.site)
+const { title, description = siteConfig.description, ogImage, articleDate, canonical } = Astro.props
+const canonicalURL = canonical ? new URL(canonical) : new URL(Astro.url.pathname, Astro.site)
 const socialImageURL = new URL(ogImage ? ogImage : '/open-graph.png', Astro.url).href
 
 const titleSeparator = '•'
@@ -53,7 +55,7 @@ const siteTitle =
 
 <!-- Open Graph / Facebook -->
 <meta property='og:type' content={articleDate ? 'article' : 'website'} />
-<meta property='og:url' content={Astro.url} />
+<meta property='og:url' content={canonicalURL} />
 <meta property='og:title' content={title} />
 <meta property='og:description' content={description} />
 <meta property='og:image' content={socialImageURL} />
@@ -68,7 +70,7 @@ const siteTitle =
 
 <!-- Twitter -->
 <meta property='twitter:card' content='summary_large_image' />
-<meta property='twitter:url' content={Astro.url} />
+<meta property='twitter:url' content={canonicalURL} />
 <meta property='twitter:title' content={title} />
 <meta property='twitter:description' content={description} />
 <meta property='twitter:image' content={socialImageURL} />

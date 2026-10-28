@@ -23,6 +23,8 @@ type Props = {
 	active?: string
 	/** 다른 언어 경로. null 이면 언어 전환 링크를 숨긴다. */
 	altPath?: string | null
+	/** 대표 주소(절대 URL) */
+	canonical?: string
 }
 
 const {
@@ -34,7 +36,8 @@ const {
 	postCategory,
 	locale = Astro.currentLocale ?? DEFAULT_LOCALE,
 	active = '',
-	altPath
+	altPath,
+	canonical
 } = Astro.props
 
 const otherLocale = SUPPORTED_LOCALES.find((l) => l !== locale) ?? DEFAULT_LOCALE
@@ -48,7 +51,13 @@ const resolvedAltPath =
 
 <html lang={getLocaleLanguageTag(locale)} class='scroll-smooth'>
 	<head>
-		<BaseHead title={title} description={description} ogImage={image} articleDate={articleDate} />
+		<BaseHead
+			title={title}
+			description={description}
+			ogImage={image}
+			articleDate={articleDate}
+			canonical={canonical}
+		/>
 		<ProviderTheme />
 		<script
 			async

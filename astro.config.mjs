@@ -53,7 +53,8 @@ export default defineConfig({
 			},
 			drafts: true
 		}),
-		sitemap(),
+		// /blog/글주소/ 는 /분류/글주소/ 와 같은 글이라 사이트맵에서 뺀다 (목록 /blog/, /blog/2/ 는 둔다)
+		sitemap({ filter: (page) => !/^https:\/\/imun\.farm\/blog\/(?!\d+\/$)[^/]+\/$/.test(page) }),
 		tailwind()
 	],
 	experimental: {
