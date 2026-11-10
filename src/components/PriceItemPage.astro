@@ -162,9 +162,7 @@ const title = isEn
 	? `${name} price — wholesale market outlook (${dateLabel})`
 	: analysis.current != null && !status.stale
 		? kgNow && KG_FIRST.has(item.id)
-			? malNote
-				? `${searchName} 1kg 가격 약 ${fmt(kgNow)}, 한 말(5kg) ${malNote.five}: ${koMonth} 도매 시세 (${mm}.${dd})`
-				: `${searchName} 1kg 가격 약 ${fmt(kgNow)}(도매 환산), ${koMonth} 시세: 오늘 ${unit} ${fmt(analysis.current)} (${mm}.${dd})`
+			? `${searchName} 1kg 가격 약 ${fmt(kgNow)}(도매 환산), ${koMonth} 시세: 오늘 ${unit} ${fmt(analysis.current)} (${mm}.${dd})`
 			: `${searchName} 가격·시세 ${koMonth}: 오늘 ${unit} 도매 ${fmt(analysis.current)}${kgNow ? `, 1kg 약 ${fmt(kgNow)}` : ''} (${mm}.${dd})`
 		: `${searchName} 가격·시세 ${yy}년: ${unit} 도매가 추이와 전망 (${dateLabel} 기준)`
 const description = isEn
