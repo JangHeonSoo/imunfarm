@@ -1473,7 +1473,35 @@ export const SEARCH_NAME_KO: Record<string, string> = {
 	'sesame-china': '중국산 참깨',
 	'green-chili-pepper-cheongyang': '청양고추',
 	'green-chili-pepper-cucumber-flavor': '오이맛고추',
-	'green-chili-pepper': '꽈리고추'
+	'green-chili-pepper': '꽈리고추',
+	// 2026-11-16: 국산·수입, 품종 페이지 제목이 서로 같았다 (예: 국산 팥·수입 팥 둘 다 "팥 1kg 가격",
+	// 샤인머스켓 페이지가 "포도 가격"). 검색량(메주콩가격 4,250, 쪽파가격 1,420, 취청오이 1,650,
+	// 적상추 2,300, 쥬키니호박 2,970, 샤인머스켓가격 560)을 보고 실제로 찾는 이름을 앞에 둔다.
+	soybean: '국산 메주콩(백태)',
+	'soybean-white': '수입 콩(백태)',
+	'red-bean': '국산 팥',
+	'red-bean-red': '수입 팥',
+	'mung-bean': '국산 녹두',
+	'mung-bean-imported': '수입 녹두',
+	ginger: '국산 생강',
+	'ginger-imported': '수입 생강',
+	'grape-shine-muscat': '샤인머스켓',
+	grape: '거봉 포도',
+	'grape-campbell-early': '캠벨얼리 포도',
+	'apple-hongro': '홍로 사과',
+	greenonion: '대파',
+	'greenonion-2': '쪽파',
+	squash: '애호박',
+	'squash-zucchini': '쥬키니 호박',
+	'cucumber-cheong': '취청오이',
+	lettuce: '적상추',
+	'lettuce-green': '청상추',
+	'carrot-2': '세척 당근',
+	'oyster-mushroom-2': '애느타리버섯',
+	'garlic-whole': '난지형 피마늘',
+	'garlic-whole-2': '한지형 피마늘',
+	garlic: '깐마늘(대서)',
+	'garlic-2': '깐마늘(남도)'
 }
 
 /** 차트·표에 보여 주는 최근 조사일 수 */
