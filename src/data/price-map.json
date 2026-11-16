@@ -274,7 +274,7 @@
 			"group": "fruit",
 			"sub": "국산 과일",
 			"subEn": "Domestic fruit",
-			"items": ["mandarin"],
+			"items": ["mandarin-open", "mandarin"],
 			"trade": [["감귤", null]]
 		},
 		{

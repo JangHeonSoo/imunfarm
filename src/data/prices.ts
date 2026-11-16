@@ -39,9 +39,20 @@ export const REGIONS: Region[] = [
 
 const RAW_ITEMS: Item[] = [
 	{
+		id: 'mandarin-open',
+		ko: '감귤 (노지)',
+		en: 'Mandarin (open-field)',
+		gradeKo: 'M과',
+		gradeEn: 'M',
+		unitKo: '5kg',
+		unitEn: '5kg',
+		keywordsKo: ['귤 가격', '귤 시세', '감귤 가격', '감귤 시세', '노지 감귤', '제주 귤', '귤 5kg'],
+		keywordsEn: ['Mandarin price', 'Jeju mandarin price', 'Mandarin (open-field)']
+	},
+	{
 		id: 'mandarin',
 		ko: '감귤 (시설)',
-		en: 'Mandarin (시설)',
+		en: 'Mandarin (greenhouse)',
 		gradeKo: 'M과',
 		gradeEn: 'M',
 		unitKo: '3kg',
@@ -53,9 +64,10 @@ const RAW_ITEMS: Item[] = [
 			'감귤 (시설)',
 			'시설',
 			'시설 시세',
-			'시설 가격'
+			'시설 가격',
+			'하우스 감귤'
 		],
-		keywordsEn: ['Mandarin price', 'Mandarin wholesale korea', 'Mandarin (시설)']
+		keywordsEn: ['Mandarin price', 'Mandarin wholesale korea', 'Mandarin (greenhouse)']
 	},
 	{
 		id: 'lemon',
@@ -1477,6 +1489,8 @@ export const SEARCH_NAME_KO: Record<string, string> = {
 	// 2026-11-16: 국산·수입, 품종 페이지 제목이 서로 같았다 (예: 국산 팥·수입 팥 둘 다 "팥 1kg 가격",
 	// 샤인머스켓 페이지가 "포도 가격"). 검색량(메주콩가격 4,250, 쪽파가격 1,420, 취청오이 1,650,
 	// 적상추 2,300, 쥬키니호박 2,970, 샤인머스켓가격 560)을 보고 실제로 찾는 이름을 앞에 둔다.
+	'mandarin-open': '귤(노지 감귤)',
+	mandarin: '하우스 감귤',
 	soybean: '국산 메주콩(백태)',
 	'soybean-white': '수입 콩(백태)',
 	'red-bean': '국산 팥',
