@@ -163,11 +163,11 @@ const title = isEn
 	: analysis.current != null && !status.stale
 		? kgNow && KG_FIRST.has(item.id)
 			? `${searchName} 1kg 가격 약 ${fmt(kgNow)}(도매 환산), ${koMonth} 시세: 오늘 ${unit} ${fmt(analysis.current)} (${mm}.${dd})`
-			: `${searchName} 가격·시세 ${koMonth}: 오늘 ${unit} 도매 ${fmt(analysis.current)}${kgNow ? `, 1kg 약 ${fmt(kgNow)}` : ''} (${mm}.${dd})`
+			: `${searchName} 가격·시세 ${koMonth}: 오늘 ${unit} 도매 ${fmt(analysis.current)}${kgNow && unitKg !== 1 ? `, 1kg 약 ${fmt(kgNow)}` : ''} (${mm}.${dd})`
 		: `${searchName} 가격·시세 ${yy}년: ${unit} 도매가 추이와 전망 (${dateLabel} 기준)`
 const description = isEn
 	? `${name} wholesale price (KAMIS, Seoul) ${surveyLabel ? `on ${surveyLabel}: ${fmt(analysis.current)} per ${unit}` : 'not surveyed recently'}. Compared with the same month 1, 3, 5 and 10 years ago, with seasonal index, 5-year monthly trend and prices in five Korean cities.`
-	: `${koDay ? `${koDay} 기준 ` : ''}${SEARCH_NAME_KO[item.id] ?? name} 가격(KAMIS 도매 중도매인 판매가격, 서울)은 ${koDay ? `${unit}당 ${fmt(analysis.current)}${kgNow ? `, 1kg으로 환산하면 약 ${fmt(kgNow)}` : ''}${malNote ? `, 한 말로 치면 5kg ${malNote.five}, 6kg ${malNote.six}` : ''}` : '최근 조사가 없다'}. 1년·3년·5년·10년 전 같은 달과 비교하고, 계절지수와 최근 5년 월평균 추이, 서울·부산·대구·광주·대전 지역별 가격을 함께 정리했다.`
+	: `${koDay ? `${koDay} 기준 ` : ''}${SEARCH_NAME_KO[item.id] ?? name} 가격(KAMIS 도매 중도매인 판매가격, 서울)은 ${koDay ? `${unit}당 ${fmt(analysis.current)}${kgNow && unitKg !== 1 ? `, 1kg으로 환산하면 약 ${fmt(kgNow)}` : ''}${malNote ? `, 한 말로 치면 5kg ${malNote.five}, 6kg ${malNote.six}` : ''}` : '최근 조사가 없다'}. 1년·3년·5년·10년 전 같은 달과 비교하고, 계절지수와 최근 5년 월평균 추이, 서울·부산·대구·광주·대전 지역별 가격을 함께 정리했다.`
 
 const canonical = new URL(Astro.url.pathname, siteConfig.siteUrl).href
 
@@ -282,7 +282,8 @@ const CAT_LABEL: Record<string, [string, string]> = {
 	'100': ['쌀·콩·감자', 'Grains and beans'],
 	'200': ['채소', 'Vegetables'],
 	'300': ['깨·땅콩·버섯', 'Seeds and mushrooms'],
-	'400': ['과일', 'Fruit']
+	'400': ['과일', 'Fruit'],
+	'600': ['수산물', 'Seafood']
 }
 const catLabel = (CAT_LABEL[codeOf(item.id)[0] ?? ''] ?? ['', ''])[isEn ? 1 : 0]
 const short = (iso: string) => iso.slice(2).replace(/-/g, '.')

@@ -1461,6 +1461,76 @@ const RAW_ITEMS: Item[] = [
 		unitEn: '10kg',
 		keywordsKo: ['참외 시세', '참외 가격', '참외 도매가', '참외 10kg 가격', '참외'],
 		keywordsEn: ['Korean melon price', 'Korean melon wholesale korea', 'Korean melon']
+	},
+	{
+		id: 'oyster',
+		ko: '굴',
+		en: 'Oyster',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '1kg',
+		unitEn: '1kg',
+		keywordsKo: ['굴 가격', '굴 시세', '생굴 가격', '통영 굴', '굴 1kg 가격', '굴'],
+		keywordsEn: ['Oyster price', 'Oyster wholesale korea', 'Oyster']
+	},
+	{
+		id: 'scallop-red',
+		ko: '가리비 (홍가리비)',
+		en: 'Red scallop',
+		gradeKo: '상품',
+		gradeEn: 'A',
+		unitKo: '1kg',
+		unitEn: '1kg',
+		keywordsKo: ['홍가리비 가격', '가리비 가격', '가리비 시세', '홍가리비 1kg', '가리비'],
+		keywordsEn: ['Red scallop price', 'Red scallop wholesale korea', 'Red scallop']
+	},
+	{
+		id: 'abalone',
+		ko: '전복',
+		en: 'Abalone',
+		gradeKo: '중품',
+		gradeEn: 'B',
+		unitKo: '1kg',
+		unitEn: '1kg',
+		keywordsKo: ['전복 가격', '전복 시세', '전복 1kg 가격', '활전복', '전복'],
+		keywordsEn: ['Abalone price', 'Abalone wholesale korea', 'Abalone']
+	},
+	{
+		id: 'laver',
+		ko: '김 (마른김)',
+		en: 'Dried laver',
+		gradeKo: '중품',
+		gradeEn: 'B',
+		unitKo: '1속',
+		unitEn: '1 sok (100 sheets)',
+		keywordsKo: ['마른김 가격', '김 가격', '김 시세', '마른김 1속', '김'],
+		keywordsEn: ['Dried laver price', 'Dried laver wholesale korea', 'Dried laver']
+	},
+	{
+		id: 'anchovy-dried',
+		ko: '멸치 (국물용 대멸)',
+		en: 'Dried anchovy (large)',
+		gradeKo: '대멸',
+		gradeEn: 'Large',
+		unitKo: '2kg',
+		unitEn: '2kg',
+		keywordsKo: ['국물멸치 가격', '멸치 가격', '멸치 시세', '대멸 가격', '마른멸치'],
+		keywordsEn: [
+			'Dried anchovy (large) price',
+			'Dried anchovy (large) wholesale korea',
+			'Dried anchovy (large)'
+		]
+	},
+	{
+		id: 'hairtail',
+		ko: '갈치',
+		en: 'Hairtail',
+		gradeKo: '중',
+		gradeEn: 'M',
+		unitKo: '1kg',
+		unitEn: '1kg',
+		keywordsKo: ['갈치 가격', '갈치 시세', '생갈치 가격', '갈치 1kg 가격', '갈치'],
+		keywordsEn: ['Hairtail price', 'Hairtail wholesale korea', 'Hairtail']
 	}
 ]
 
@@ -1490,6 +1560,9 @@ export const SEARCH_NAME_KO: Record<string, string> = {
 	// 샤인머스켓 페이지가 "포도 가격"). 검색량(메주콩가격 4,250, 쪽파가격 1,420, 취청오이 1,650,
 	// 적상추 2,300, 쥬키니호박 2,970, 샤인머스켓가격 560)을 보고 실제로 찾는 이름을 앞에 둔다.
 	'mandarin-open': '귤(노지 감귤)',
+	'scallop-red': '홍가리비',
+	laver: '마른김',
+	'anchovy-dried': '국물멸치(대멸)',
 	mandarin: '하우스 감귤',
 	soybean: '국산 메주콩(백태)',
 	'soybean-white': '수입 콩(백태)',

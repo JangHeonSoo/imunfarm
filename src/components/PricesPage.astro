@@ -61,8 +61,14 @@ const initialMovers = buildMovers(moversInput, defaultRegion.id, dates.length - 
 
 // 분류 소제목 (KAMIS 부류 코드 첫 자리)
 const CAT_LABELS: Record<string, string> = isEn
-	? { '400': 'Fruit', '100': 'Grains and beans', '300': 'Special crops', '200': 'Vegetables' }
-	: { '400': '과일', '100': '식량작물', '300': '특용작물', '200': '채소' }
+	? {
+			'400': 'Fruit',
+			'100': 'Grains and beans',
+			'300': 'Special crops',
+			'200': 'Vegetables',
+			'600': 'Seafood'
+		}
+	: { '400': '과일', '100': '식량작물', '300': '특용작물', '200': '채소', '600': '수산물' }
 
 // 최근 조사일 범위 안에서 오늘 값의 위치 (0 = 최저, 1 = 최고)
 const rangeOf = (values: (number | null)[], i: number) => {
