@@ -37,7 +37,7 @@ const {
 				{items.map((item) => (
 					<li>
 						<a
-							class='im-aff-item'
+							class:list={['im-aff-item', { 'is-text': !item.image }]}
 							href={item.url}
 							target='_blank'
 							rel='nofollow sponsored noopener'
@@ -261,5 +261,10 @@ const {
 		.im-aff.is-compact .im-aff-list li + li {
 			border-top: 0;
 		}
+	}
+
+	/* 사진 없는 글자형 박스(쿠팡 Open API 링크): 글이 한 칸 전체를 쓴다 */
+	.im-aff .im-aff-item.is-text {
+		grid-template-columns: minmax(0, 564px);
 	}
 </style>
