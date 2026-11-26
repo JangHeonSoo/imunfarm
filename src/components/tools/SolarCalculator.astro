@@ -403,6 +403,14 @@ const data = { defaults, scenarios: SOLAR_SCENARIOS, isEn }
 					? 'SMP is the average of hourly land SMP; REC is the volume-weighted land spot average. Updated daily from Korea Power Exchange open data.'
 					: 'SMP는 육지 시간별 SMP의 평균, REC는 육지 현물시장 거래량 가중 평균입니다. 한국전력거래소 공공데이터로 매일 갱신합니다.'
 			}
+			{
+				!isEn && (
+					<>
+						{' '}
+						날마다 바뀌는 값은 <a href='/prices/smp/'>SMP·REC 가격 오늘</a>에서 볼 수 있습니다.
+					</>
+				)
+			}
 		</p>
 	</section>
 

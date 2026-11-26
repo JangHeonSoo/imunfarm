@@ -1,0 +1,620 @@
+---
+/**
+ * SMP·REC 가격 (태양광 전력 판매 단가). 한국전력거래소 공공데이터를 GitHub Actions 가 매일 받는다
+ * (scripts/energy/fetch.mjs → src/data/generated/energy/{smp,rec,summary}.json, 2026-10-03 시작, 400일 보관).
+ * 등유 가격 페이지처럼 날마다 바뀌는 숫자 페이지: "SMP가격" 월 3,450, "REC가격" 월 1,310 (2026-11 네이버).
+ * SMP 는 육지 시간별 값의 하루 평균, REC 는 육지 현물시장 거래일별 평균가. 한국어만 만든다.
+ */
+import BaseLayout from '@/layouts/BaseLayout'
+import { getPostUrl } from '@/utils'
+import { siteConfig } from '@/site-config'
+import smpData from '@/data/generated/energy/smp.json'
+import recData from '@/data/generated/energy/rec.json'
+import summary from '@/data/generated/energy/summary.json'
+
+const smp = smpData.daily as Record<string, number>
+const rec = recData.daily as Record<string, [number, number]>
+const smpDates = Object.keys(smp).sort()
+const recDates = Object.keys(rec).sort()
+const last = smpDates[smpDates.length - 1]
+const recLast = recDates[recDates.length - 1]
+
+const shift = (d: string, days: number) =>
+	new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8)) + days * 86400000)
+		.toISOString()
+		.slice(0, 10)
+		.replace(/-/g, '')
+const atOrBefore = (d: string) => {
+	const ds = smpDates.filter((x) => x <= d)
+	return ds.length ? smp[ds[ds.length - 1]] : null
+}
+const week = ['일', '월', '화', '수', '목', '금', '토']
+const dow = (d: string) =>
+	week[new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8))).getUTCDay()]
+const mmdd = (d: string) => `${+d.slice(4, 6)}월 ${+d.slice(6, 8)}일`
+const mmddw = (d: string) => `${mmdd(d)}(${dow(d)})`
+const dot = (d: string) => `${d.slice(4, 6)}.${d.slice(6, 8)}`
+const ym = (k: string) => `${k.slice(0, 4)}년 ${+k.slice(5)}월`
+const n2 = (v: number) => (Math.round(v * 100) / 100).toLocaleString('ko-KR')
+const won = (v: number) => `${Math.round(v).toLocaleString('ko-KR')}원`
+const man = (v: number) => `약 ${Math.round(v / 10000).toLocaleString('ko-KR')}만 원`
+
+// SMP 오늘·비교
+const today = smp[last]
+const yesterday = smp[shift(last, -1)] ?? null
+const weekAgo = atOrBefore(shift(last, -7))
+const pct = (a: number, b: number) => Math.round(((a - b) / b) * 1000) / 10
+const say = (label: string, base: number | null) => {
+	if (base == null) return null
+	const p = pct(today, base)
+	return p === 0
+		? `${label}와 같습니다`
+		: `${label}보다 ${Math.abs(p)}% ${p > 0 ? '높습니다' : '낮습니다'}`
+}
+const compare = [say('어제', yesterday), say('지난주 같은 요일', weekAgo)].filter(
+	Boolean
+) as string[]
+
+// 이번 달 평균(지금까지), 지난달, 작년 같은 달
+const monthKey = `${last.slice(0, 4)}-${last.slice(4, 6)}`
+const thisMonthDays = smpDates.filter((d) => d.startsWith(last.slice(0, 6)))
+const thisMonthAvg = thisMonthDays.reduce((a, d) => a + smp[d], 0) / thisMonthDays.length
+const smpMonthly = summary.smpMonthly as Record<string, number>
+const recMonthly = summary.recMonthly as Record<string, number>
+const lastMonthKey = summary.month
+const lyKey = `${+last.slice(0, 4) - 1}-${last.slice(4, 6)}`
+const lastYearSameMonth = smpMonthly[lyKey] ?? null
+const monthSpan = `${+last.slice(4, 6)}월 1일부터 ${+last.slice(6, 8)}일까지`
+const vsLastYear = lastYearSameMonth != null ? pct(thisMonthAvg, lastYearSameMonth) : null
+
+// 최근 1년 월평균 최저·최고
+const months12 = Object.keys(smpMonthly).sort().slice(-12)
+const lowM = months12.reduce((a, k) => (smpMonthly[k] < smpMonthly[a] ? k : a), months12[0])
+const highM = months12.reduce((a, k) => (smpMonthly[k] > smpMonthly[a] ? k : a), months12[0])
+
+// REC 최근 거래일
+const [recNow, recVol] = rec[recLast]
+const recPrevDate = recDates[recDates.length - 2]
+const recDiff = recPrevDate ? recNow - rec[recPrevDate][0] : null
+const recRows = recDates
+	.slice(-8)
+	.reverse()
+	.map((d, i, arr) => {
+		const prev = arr[i + 1] ?? recDates[recDates.length - 9]
+		return { d, price: rec[d][0], vol: rec[d][1], diff: prev ? rec[d][0] - rec[prev][0] : null }
+	})
+
+// 태양광 1kWh 판매 단가 (가중치 1.0), 100kW 한 달 매출 (계산기와 같은 kW당 연 1,300kWh)
+const perKwhToday = today + recNow / 1000
+const perKwhMonth = summary.smp + summary.rec / 1000
+const kwhPerMonth100 = (100 * 1300) / 12
+const revenue100 = kwhPerMonth100 * perKwhMonth
+
+// 최근 30일 표
+const recent = smpDates
+	.slice(-30)
+	.reverse()
+	.map((d) => {
+		const p = smp[shift(d, -1)]
+		return { d, v: smp[d], diff: p != null ? smp[d] - p : null }
+	})
+
+// 1년 그래프 (하루 값 + 7일 평균)
+const chart = (() => {
+	const ds = smpDates.slice(-366)
+	const vals = ds.map((d) => smp[d])
+	const avg7 = vals.map((_, i) => {
+		const s = vals.slice(Math.max(0, i - 6), i + 1)
+		return s.reduce((a, b) => a + b, 0) / s.length
+	})
+	const lo = Math.min(...vals)
+	const hi = Math.max(...vals)
+	const span = hi - lo || 1
+	const W = 640
+	const H = 180
+	const pts = (arr: number[]) =>
+		arr
+			.map(
+				(v, i) =>
+					`${((i / (arr.length - 1)) * W).toFixed(1)},${(H - 12 - ((v - lo) / span) * (H - 24)).toFixed(1)}`
+			)
+			.join(' ')
+	return { W, H, daily: pts(vals), avg: pts(avg7), lo, hi, from: ds[0], to: ds[ds.length - 1] }
+})()
+
+const monthRows = Object.keys(smpMonthly)
+	.sort()
+	.slice(-12)
+	.reverse()
+	.map((k) => ({ k, smp: smpMonthly[k], rec: recMonthly[k] ?? null }))
+
+const calcUrl = '/tools/solar-income-calculator/'
+const links = [
+	{ href: calcUrl, label: '태양광 발전 수익 계산기: 용량·시공비·대출로 월 순수익 계산' },
+	{
+		href: getPostUrl('agrivoltaic-law-december-enforcement-2026', 'ko', 'agrivoltaics'),
+		label: '영농형태양광 12월 17일 시행: 시행령 정부안 최대 23년·차광률 30%, 신청 순서'
+	},
+	{
+		href: getPostUrl('solar-profitability-september-2026-smp-rec-construction-cost', 'ko', 'solar'),
+		label: '2026년 9월 기준 태양광 수익성, SMP·REC·시공비까지 현실 계산'
+	},
+	{
+		href: getPostUrl('farmland-solar-100kw-monthly-profit', 'ko', 'solar'),
+		label: '농지 태양광 수익 계산, 100kW 기준 월 얼마 남을까'
+	},
+	{
+		href: getPostUrl('kepco-grid-connection-capacity-solar-risk', 'ko', 'solar'),
+		label: '한전 계통연계 가능 용량 확인법'
+	}
+]
+
+const title = `SMP 가격 오늘: 육지 SMP ${n2(today)}원/kWh, REC ${won(recNow)} · 태양광 전력 판매 단가 (${dot(last)})`
+const description = `${+last.slice(0, 4)}년 ${mmdd(last)} 한국전력거래소 기준 육지 SMP 하루 평균은 1kWh ${n2(today)}원, REC 현물시장 육지 평균가는 ${won(recNow)}(${mmdd(recLast)} 거래). ${ym(lastMonthKey)} 평균은 SMP ${n2(summary.smp)}원, REC ${won(summary.rec)}. 날마다 바뀌는 SMP·REC와 태양광 1kWh 판매 단가, 월별 평균을 정리한다.`
+const canonical = new URL('/prices/smp/', siteConfig.siteUrl).href
+
+const faq = [
+	{
+		q: '오늘 SMP 가격은 얼마인가요?',
+		a: `${mmdd(last)} 육지 SMP는 시간별 값의 하루 평균으로 1kWh ${n2(today)}원입니다. ${monthSpan} 평균은 ${n2(thisMonthAvg)}원입니다.${vsLastYear != null ? ` 작년 ${+lyKey.slice(5)}월 평균(${n2(lastYearSameMonth as number)}원)보다 ${Math.abs(vsLastYear)}% ${vsLastYear >= 0 ? '높습니다' : '낮습니다'}.` : ''}`
+	},
+	{
+		q: 'SMP와 REC는 무엇인가요?',
+		a: 'SMP(계통한계가격)는 발전소가 전력시장에 전기를 팔 때 받는 1kWh당 값입니다. REC(신재생에너지 공급인증서)는 태양광 같은 신재생 발전 1MWh(1,000kWh)마다 받는 인증서로, 발전사업자가 따로 팔아 수익을 얻습니다. 태양광 매출은 이 둘을 합친 값입니다.'
+	},
+	{
+		q: '태양광으로 1kWh를 팔면 얼마를 받나요?',
+		a: `REC 가중치 1.0이라면 SMP ${n2(today)}원에 REC ${won(recNow)}÷1,000 = ${n2(recNow / 1000)}원을 더해 1kWh에 약 ${n2(perKwhToday)}원입니다(오늘 값 기준). 고정가격 계약을 맺었다면 이 값이 아니라 계약 단가를 받습니다.`
+	},
+	{
+		q: '주말에는 SMP가 왜 낮나요?',
+		a: '이 표에서도 토요일·일요일 값이 평일보다 낮은 날이 많습니다. 전력 수요가 적은 날에는 비싼 발전기를 덜 돌려도 되기 때문입니다. 그래서 하루 값보다 한 달 평균으로 수익을 계산하는 것이 맞습니다.'
+	}
+]
+const jsonLd = [
+	{
+		'@context': 'https://schema.org',
+		'@type': 'Dataset',
+		name: '육지 SMP 하루 평균·REC 현물시장 평균가',
+		description,
+		url: canonical,
+		dateModified: `${last.slice(0, 4)}-${last.slice(4, 6)}-${last.slice(6, 8)}`,
+		creator: { '@type': 'Organization', name: '한국전력거래소' },
+		inLanguage: 'ko'
+	},
+	{
+		'@context': 'https://schema.org',
+		'@type': 'FAQPage',
+		mainEntity: faq.map((f) => ({
+			'@type': 'Question',
+			name: f.q,
+			acceptedAnswer: { '@type': 'Answer', text: f.a }
+		}))
+	}
+]
+const cls = (d: number | null, eps: number) =>
+	d == null || Math.abs(d) < eps ? '' : d > 0 ? 'up' : 'down'
+---
+
+<BaseLayout title={title} description={description} locale='ko' active='prices' altPath={null}>
+	{jsonLd.map((schema) => <script type='application/ld+json' set:html={JSON.stringify(schema)} />)}
+
+	<div class='im-pad im-bottom sp'>
+		<div class='im-top-sm'></div>
+		<nav class='im-meta sp-crumb'>
+			<a href='/prices/'>농산물 시세</a>
+			<span>/</span>
+			<span>SMP·REC 가격</span>
+		</nav>
+
+		<header class='sp-head'>
+			<div>
+				<h1 class='sp-title'>SMP·REC 가격</h1>
+				<p class='sp-sub'>태양광 전력 판매 단가 · 육지 · 한국전력거래소</p>
+			</div>
+			<div class='sp-quote'>
+				<strong class='sp-price'>{n2(today)}<span class='sp-unit'>원 / kWh</span></strong>
+				{compare.length > 0 && <p class='sp-say'>{compare.join(' · ')}</p>}
+				<p class='sp-date'>{+last.slice(0, 4)}년 {mmddw(last)} SMP 하루 평균</p>
+				{
+					vsLastYear != null && (
+						<p class='sp-date'>
+							이번 달 평균은 작년 {+lyKey.slice(5)}월보다 {Math.abs(vsLastYear)}%{' '}
+							{vsLastYear >= 0 ? '높습니다' : '낮습니다'}
+						</p>
+					)
+				}
+			</div>
+		</header>
+
+		<dl class='sp-snap'>
+			<div>
+				<dt>REC ({mmdd(recLast)} 거래)</dt>
+				<dd>{won(recNow)}</dd>
+			</div>
+			<div>
+				<dt>이번 달 SMP 평균</dt>
+				<dd>{n2(thisMonthAvg)}원</dd>
+			</div>
+			<div>
+				<dt>{ym(lastMonthKey)} SMP 평균</dt>
+				<dd>{n2(summary.smp)}원</dd>
+			</div>
+			<div>
+				<dt>1kWh 판매 단가(오늘)</dt>
+				<dd>약 {n2(perKwhToday)}원</dd>
+			</div>
+		</dl>
+
+		<figure class='sp-chart'>
+			<svg
+				viewBox={`0 0 ${chart.W} ${chart.H}`}
+				role='img'
+				aria-label='육지 SMP 하루 평균 1년 추이'
+			>
+				<polyline
+					points={chart.daily}
+					fill='none'
+					stroke='currentColor'
+					stroke-width='1'
+					opacity='0.3'></polyline>
+				<polyline points={chart.avg} fill='none' stroke='currentColor' stroke-width='2.5'
+				></polyline>
+			</svg>
+			<figcaption>
+				육지 SMP {+chart.from.slice(0, 4)}년 {mmdd(chart.from)}부터 {+chart.to.slice(0, 4)}년 {
+					mmdd(chart.to)
+				}까지 · 굵은 선은 7일 평균, 옅은 선은 하루 값 · 가장 낮을 때 {n2(chart.lo)}원, 가장 높을 때 {
+					n2(chart.hi)
+				}원
+			</figcaption>
+		</figure>
+
+		<h2 class='sp-h'>태양광 100kW, 한 달 매출은</h2>
+		<p class='sp-text'>
+			{ym(lastMonthKey)} 평균값(SMP {n2(summary.smp)}원, REC {won(summary.rec)})과 kW당 연
+			1,300kWh(태양광 계산기와 같은 가정), REC 가중치 1.0으로 계산했습니다.
+		</p>
+		<dl class='sp-snap sp-snap-3'>
+			<div>
+				<dt>한 달 발전량</dt>
+				<dd>약 {Math.round(kwhPerMonth100).toLocaleString('ko-KR')}kWh</dd>
+			</div>
+			<div>
+				<dt>1kWh 판매 단가</dt>
+				<dd>약 {n2(perKwhMonth)}원</dd>
+			</div>
+			<div>
+				<dt>한 달 매출</dt>
+				<dd>{man(revenue100)}</dd>
+			</div>
+		</dl>
+		<p class='sp-text'>
+			운영비·대출·세금을 빼기 전 금액입니다. 시공비와 대출까지 넣은 월 순수익은 <a href={calcUrl}
+				>태양광 발전 수익 계산기</a
+			>에서 바로 계산할 수 있습니다. 영농형 태양광은 입지·용량에 따라 REC 가중치가 다르니 계약 전에
+			꼭 확인하세요.
+		</p>
+
+		<h2 class='sp-h'>최근 30일 SMP</h2>
+		<p class='sp-note'>
+			육지 시간별 SMP의 하루 평균입니다. 어제보다 오른 날은 ▲, 내린 날은 ▼로 표시합니다.
+		</p>
+		<div class='sp-table-wrap'>
+			<table class='sp-table'>
+				<thead>
+					<tr>
+						<th scope='col'>날짜</th>
+						<th scope='col'>SMP (원/kWh)</th>
+						<th scope='col'>어제보다</th>
+					</tr>
+				</thead>
+				<tbody>
+					{
+						recent.map((r) => (
+							<tr>
+								<th scope='row'>{mmddw(r.d)}</th>
+								<td>{n2(r.v)}</td>
+								<td class={cls(r.diff, 0.005)}>
+									{r.diff == null
+										? '-'
+										: Math.abs(r.diff) < 0.005
+											? '같음'
+											: `${r.diff > 0 ? '▲' : '▼'} ${n2(Math.abs(r.diff))}원`}
+								</td>
+							</tr>
+						))
+					}
+				</tbody>
+			</table>
+		</div>
+
+		<h2 class='sp-h'>REC 현물시장 최근 거래</h2>
+		<p class='sp-note'>
+			{
+				`REC 현물시장은 보통 화·목요일에 열립니다. ${mmdd(recLast)} 육지 평균가는 ${won(recNow)}으로${
+					recDiff == null
+						? ''
+						: Math.abs(recDiff) < 1
+							? ' 직전 거래와 같았습니다'
+							: ` 직전 거래보다 ${won(Math.abs(recDiff))} ${recDiff > 0 ? '올랐습니다' : '내렸습니다'}`
+				}. 거래량은 ${recVol.toLocaleString('ko-KR')}REC입니다.`
+			}
+		</p>
+		<div class='sp-table-wrap'>
+			<table class='sp-table'>
+				<thead>
+					<tr>
+						<th scope='col'>거래일</th>
+						<th scope='col'>평균가</th>
+						<th scope='col'>직전보다</th>
+						<th scope='col'>거래량(REC)</th>
+					</tr>
+				</thead>
+				<tbody>
+					{
+						recRows.map((r) => (
+							<tr>
+								<th scope='row'>{mmddw(r.d)}</th>
+								<td>{won(r.price)}</td>
+								<td class={cls(r.diff, 1)}>
+									{r.diff == null
+										? '-'
+										: Math.abs(r.diff) < 1
+											? '같음'
+											: `${r.diff > 0 ? '▲' : '▼'} ${won(Math.abs(r.diff))}`}
+								</td>
+								<td>{r.vol.toLocaleString('ko-KR')}</td>
+							</tr>
+						))
+					}
+				</tbody>
+			</table>
+		</div>
+
+		<h2 class='sp-h'>월별 평균</h2>
+		<p class='sp-note'>
+			최근 12개월 중 SMP가 가장 낮았던 달은 {ym(lowM)}({n2(smpMonthly[lowM])}원), 가장 높았던 달은 {
+				ym(highM)
+			}({n2(smpMonthly[highM])}원)입니다.{
+				lastYearSameMonth != null &&
+					` 작년 ${+lyKey.slice(5)}월 평균은 ${n2(lastYearSameMonth)}원이었습니다.`
+			}
+		</p>
+		<div class='sp-table-wrap'>
+			<table class='sp-table'>
+				<thead>
+					<tr>
+						<th scope='col'>월</th>
+						<th scope='col'>SMP (원/kWh)</th>
+						<th scope='col'>REC (원)</th>
+					</tr>
+				</thead>
+				<tbody>
+					{
+						monthRows.map((r) => (
+							<tr>
+								<th scope='row'>{ym(r.k)}</th>
+								<td>{n2(r.smp)}</td>
+								<td>{r.rec != null ? won(r.rec) : '-'}</td>
+							</tr>
+						))
+					}
+				</tbody>
+			</table>
+		</div>
+
+		<h2 class='sp-h'>자주 묻는 질문</h2>
+		<dl class='sp-faq'>
+			{
+				faq.map((f) => (
+					<div>
+						<dt>{f.q}</dt>
+						<dd>{f.a}</dd>
+					</div>
+				))
+			}
+		</dl>
+
+		<h2 class='sp-h'>태양광 관련 글</h2>
+		<ul class='sp-links'>
+			{
+				links.map((l) => (
+					<li>
+						<a href={l.href}>{l.label} →</a>
+					</li>
+				))
+			}
+		</ul>
+
+		<p class='sp-src'>
+			출처: 한국전력거래소 공공데이터(공공데이터포털) · SMP는 육지 시간별 계통한계가격의 하루 평균,
+			REC는 현물시장 육지 거래량 가중 평균가입니다. 월평균은 25일 이상 쌓인 달만 냅니다. 매일 아침
+			새 값으로 바뀝니다. 투자 판단에는 계약 조건과 공식 자료를 함께 확인하세요.
+		</p>
+	</div>
+</BaseLayout>
+
+<style>
+	.sp {
+		max-width: 960px;
+		margin: 0 auto;
+	}
+	.sp-crumb {
+		display: flex;
+		gap: 8px;
+	}
+	.sp-crumb a {
+		color: inherit;
+	}
+	.sp-head {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: flex-end;
+		gap: 16px 32px;
+		padding: 20px 0 24px;
+		border-bottom: 1px solid var(--line);
+	}
+	.sp-title {
+		margin: 0;
+		font-size: clamp(34px, 6vw, 56px);
+		line-height: 1.1;
+		letter-spacing: -0.02em;
+	}
+	.sp-sub,
+	.sp-date {
+		margin: 8px 0 0;
+		color: var(--muted);
+		font-size: 16px;
+	}
+	.sp-quote {
+		text-align: right;
+	}
+	.sp-price {
+		display: block;
+		font-size: clamp(40px, 8vw, 72px);
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
+	}
+	.sp-unit {
+		font-size: 0.35em;
+		font-weight: 600;
+		color: var(--muted);
+	}
+	.sp-say {
+		margin: 10px 0 0;
+		font-size: 19px;
+		font-weight: 700;
+	}
+	.sp-snap {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		margin: 0;
+		border-bottom: 1px solid var(--line);
+	}
+	.sp-snap-3 {
+		grid-template-columns: repeat(3, 1fr);
+	}
+	.sp-snap div {
+		padding: 18px 12px 18px 0;
+	}
+	.sp-snap dt {
+		color: var(--muted);
+		font-size: 15px;
+	}
+	.sp-snap dd {
+		margin: 6px 0 0;
+		font-size: 22px;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+	}
+	.sp-chart {
+		margin: 28px 0 0;
+	}
+	.sp-chart svg {
+		display: block;
+		width: 100%;
+		height: auto;
+		color: var(--ink);
+	}
+	.sp-chart figcaption {
+		margin-top: 8px;
+		color: var(--muted);
+		font-size: 15px;
+	}
+	.sp-h {
+		margin: 44px 0 10px;
+		font-size: clamp(22px, 3vw, 28px);
+	}
+	.sp-note,
+	.sp-text {
+		max-width: var(--measure);
+		margin: 0 0 14px;
+		font-size: 17px;
+		line-height: 1.7;
+	}
+	.sp-text a,
+	.sp-links a {
+		color: inherit;
+	}
+	.sp-table-wrap {
+		overflow-x: auto;
+	}
+	.sp-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 18px;
+		font-variant-numeric: tabular-nums;
+	}
+	.sp-table th,
+	.sp-table td {
+		padding: 12px 10px;
+		border-bottom: 1px solid var(--line);
+		text-align: right;
+		white-space: nowrap;
+	}
+	.sp-table th:first-child {
+		text-align: left;
+	}
+	.sp-table thead th {
+		color: var(--muted);
+		font-size: 15px;
+		font-weight: 600;
+	}
+	.sp-table .up {
+		color: var(--up);
+	}
+	.sp-table .down {
+		color: var(--down);
+	}
+	.sp-faq {
+		margin: 0;
+		max-width: var(--measure);
+	}
+	.sp-faq div {
+		padding: 14px 0;
+		border-bottom: 1px solid var(--line);
+	}
+	.sp-faq dt {
+		font-weight: 800;
+		font-size: 18px;
+	}
+	.sp-faq dd {
+		margin: 6px 0 0;
+		font-size: 17px;
+		line-height: 1.7;
+	}
+	.sp-links {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.sp-links li {
+		padding: 12px 0;
+		border-bottom: 1px solid var(--line);
+		font-size: 17px;
+	}
+	.sp-src {
+		margin: 40px 0 0;
+		color: var(--muted);
+		font-size: 14px;
+		line-height: 1.7;
+	}
+	@media (max-width: 640px) {
+		.sp-quote {
+			text-align: left;
+		}
+		.sp-snap,
+		.sp-snap-3 {
+			grid-template-columns: repeat(2, 1fr);
+		}
+		.sp-table {
+			font-size: 16px;
+		}
+		.sp-table th,
+		.sp-table td {
+			padding: 11px 6px;
+		}
+	}
+</style>
